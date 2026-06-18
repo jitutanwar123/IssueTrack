@@ -1,4 +1,4 @@
-# WelServe Ticket Tracking System
+# VIRAJ Ticket Tracking System
 
 Full-stack ITSM-style ticket tracking app with:
 
