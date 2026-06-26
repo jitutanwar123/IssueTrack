@@ -145,15 +145,15 @@ export default function Login() {
               {loading ? "Signing In..." : "Login"}
             </button>
 
-            <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
-              Not an admin?{" "}
-              <Link
-                to="/user-login"
-                className="font-medium text-cyan-600 hover:text-cyan-500"
-              >
-                User Portal Login →
-              </Link>
-            </div>
+            <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-600">
+  Not an admin?{" "}
+  <Link
+    to="/user-login"
+    className="font-medium text-cyan-700 hover:text-cyan-600"
+  >
+    User Portal Login →
+  </Link>
+</div>
           </form>
         </div>
 
