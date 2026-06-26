@@ -418,54 +418,120 @@ export function getCategoryCounts(filters = {}) {
   return Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
 }
 
-export function getResolverCounts(filters = {}) {
-  const tickets = getAllTickets(filters);
-  const counts = new Map();
-  for (const ticket of tickets) {
-    const key = ticket.assigned_to_name || "Unassigned";
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
+export function getAgeingBuckets(filters = {}) {
+  const { clauses, params } = buildFilters(filters);
+  const activeWhere = clauses.length
+    ? `WHERE (${clauses.join(" AND ")}) AND t.status NOT IN ('Closed','Cancelled')`
+    : `WHERE t.status NOT IN ('Closed','Cancelled')`;
+
+  const rows = db.prepare(`
+    SELECT
+      CASE
+        WHEN CAST((julianday('now') - julianday(t.created_at)) AS INTEGER) <= 1 THEN '0-1 Day'
+        WHEN CAST((julianday('now') - julianday(t.created_at)) AS INTEGER) <= 3 THEN '2-3 Days'
+        WHEN CAST((julianday('now') - julianday(t.created_at)) AS INTEGER) <= 5 THEN '4-5 Days'
+        WHEN CAST((julianday('now') - julianday(t.created_at)) AS INTEGER) <= 10 THEN '6-10 Days'
+        WHEN CAST((julianday('now') - julianday(t.created_at)) AS INTEGER) <= 20 THEN '11-20 Days'
+        ELSE '21+ Days'
+      END AS bucket,
+      COUNT(*) AS count
+    FROM tickets t
+    ${activeWhere}
+    GROUP BY bucket
+  `).all(...params);
+
+  const order = ["0-1 Day","2-3 Days","4-5 Days","6-10 Days","11-20 Days","21+ Days"];
+  const map = Object.fromEntries(rows.map(r => [r.bucket, r.count]));
+  return order.map(bucket => ({ bucket, count: map[bucket] || 0 }));
 }
 
-export function getAgeingBuckets(filters = {}) {
-  const tickets = getAllTickets(filters).filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status));
-  const buckets = {
-    "0-1 Day": 0,
-    "2-3 Days": 0,
-    "4-5 Days": 0,
-    "6-10 Days": 0,
-    "11-20 Days": 0,
-    "21+ Days": 0,
-  };
-  for (const ticket of tickets) {
-    buckets[ageingBucket(ticket.age_days)] += 1;
-  }
-  return Object.entries(buckets).map(([bucket, count]) => ({ bucket, count }));
+export function getCategoryCounts(filters = {}) {
+  const { clauses, params } = buildFilters(filters);
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db.prepare(`
+    SELECT COALESCE(t.category, 'Uncategorized') AS name, COUNT(*) AS value
+    FROM tickets t
+    ${where}
+    GROUP BY t.category
+    ORDER BY value DESC
+  `).all(...params);
+}
+
+export function getResolverCounts(filters = {}) {
+  const { clauses, params } = buildFilters(filters);
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db.prepare(`
+    SELECT COALESCE(u.name, t.assigned_to, 'Unassigned') AS name, COUNT(*) AS value
+    FROM tickets t
+    LEFT JOIN users u ON u.id = t.assigned_to_id
+    ${where}
+    GROUP BY name
+    ORDER BY value DESC
+    LIMIT 10
+  `).all(...params);
 }
 
 export function getSummaryStats(filters = {}) {
-  const tickets = getAllTickets(filters);
-  const activeTickets = tickets.filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status));
-  const now = new Date();
-  const last24Hours = tickets.filter((ticket) => now.getTime() - new Date(ticket.created_at).getTime() <= 86_400_000);
-  const overdue = activeTickets.filter((ticket) => ticket.expected_closure_date && new Date(ticket.expected_closure_date) < now);
+  const { clauses, params } = buildFilters(filters);
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const activeWhere = clauses.length
+    ? `WHERE (${clauses.join(" AND ")}) AND t.status NOT IN ('Closed','Cancelled')`
+    : `WHERE t.status NOT IN ('Closed','Cancelled')`;
+
+  const now = new Date().toISOString();
+  const since24h = new Date(Date.now() - 86_400_000).toISOString();
+
+  const totalLast24h = db.prepare(`
+    SELECT COUNT(*) AS c FROM tickets t
+    ${where ? where + " AND" : "WHERE"} datetime(t.created_at) >= datetime(?)
+  `).get(...params, since24h).c;
+
+  const unassigned = db.prepare(`
+    SELECT COUNT(*) AS c FROM tickets t
+    ${activeWhere}
+    AND (t.assigned_to_id IS NULL OR t.assigned_to_id = '')
+    AND (t.assigned_to IS NULL OR t.assigned_to = '')
+  `).get(...params).c;
+
+  const incidents = db.prepare(`
+    SELECT COUNT(*) AS c FROM tickets t
+    ${where ? where + " AND" : "WHERE"} t.category = 'Incident'
+  `).get(...params).c;
+
+  const serviceRequests = db.prepare(`
+    SELECT COUNT(*) AS c FROM tickets t
+    ${where ? where + " AND" : "WHERE"} t.category = 'Service Request'
+  `).get(...params).c;
+
+  const p1Incidents = db.prepare(`
+    SELECT COUNT(*) AS c FROM tickets t
+    ${where ? where + " AND" : "WHERE"} t.category = 'Incident' AND t.priority = 'P1'
+  `).get(...params).c;
+
+  const pendingBreach = db.prepare(`
+    SELECT COUNT(*) AS c FROM tickets t
+    ${activeWhere}
+    AND t.expected_closure_date != ''
+    AND t.expected_closure_date IS NOT NULL
+    AND datetime(t.expected_closure_date) < datetime(?)
+    AND t.status IN ('Pending','Open','Assigned','Work In Progress')
+  `).get(...params, now).c;
+
+  const totalTickets = db.prepare(`SELECT COUNT(*) AS c FROM tickets t ${where}`).get(...params).c;
+  const activeTickets = db.prepare(`SELECT COUNT(*) AS c FROM tickets t ${activeWhere}`).get(...params).c;
 
   return {
-    totalTicketsLast24Hours: last24Hours.length,
-    unassignedTickets: activeTickets.filter((ticket) => !ticket.assigned_to_id && !ticket.assigned_to).length,
-    incidentTickets: tickets.filter((ticket) => ticket.category === "Incident").length,
-    serviceRequestTickets: tickets.filter((ticket) => ticket.category === "Service Request").length,
-    p1Incidents: tickets.filter((ticket) => ticket.priority === "P1" && ticket.category === "Incident").length,
-    pendingBreachTickets: overdue.filter((ticket) => ["Pending", "Open", "Assigned", "Work In Progress"].includes(ticket.status)).length,
-    activeAgeing: getAgeingBuckets(filters),
-    activeByCategory: getCategoryCounts(filters),
-    resolverBreakdown: getResolverCounts(filters),
-    totalTickets: tickets.length,
-    activeTickets: activeTickets.length,
+    totalTicketsLast24Hours: totalLast24h,
+    unassignedTickets:       unassigned,
+    incidentTickets:         incidents,
+    serviceRequestTickets:   serviceRequests,
+    p1Incidents,
+    pendingBreachTickets:    pendingBreach,
+    activeAgeing:            getAgeingBuckets(filters),
+    activeByCategory:        getCategoryCounts(filters),
+    resolverBreakdown:       getResolverCounts(filters),
+    totalTickets,
+    activeTickets,
   };
 }
 
