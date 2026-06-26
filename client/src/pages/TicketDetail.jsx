@@ -16,6 +16,7 @@ export default function TicketDetail() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
+  const [users, setUsers] = useState([]);
 
   async function load() {
     const response = await api.ticket(id);
@@ -31,6 +32,7 @@ export default function TicketDetail() {
 
   useEffect(() => {
     load().catch((err) => setError(err.message));
+    api.users().then((res) => setUsers(res.data || [])).catch(() => {})
   }, [id]);
 
   const sections = useMemo(
@@ -46,7 +48,6 @@ export default function TicketDetail() {
       ["phone", "Phone Number"],
       ["department", "Department"],
       ["requested_by", "Requested By"],
-      ["assigned_to", "Assigned To"],
       ["expected_closure_date", "Expected Closure Date"],
       ["actual_closure_date", "Actual Closure Date"],
       ["response_time", "Response Time"],
@@ -174,9 +175,32 @@ export default function TicketDetail() {
                   multiline={field === "description"}
                 />
               ))}
+            {/* Assignee dropdown */}
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Assigned To</span>
+                <select
+                  value={form.assigned_to_id || ""}
+                  onChange={(e) => {
+                    const selected = users.find((u) => String(u.id) === e.target.value);
+                    setForm((cur) => ({
+                      ...cur,
+                      assigned_to_id: selected ? selected.id : null,
+                      assigned_to: selected ? selected.name : "",
+                    }));
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+                >
+                  <option value="">— Unassigned —</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}{u.department ? ` (${u.department})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </section>
-
+          
           {/* Attachment (if any) */}
           {ticket.attachment_name && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
