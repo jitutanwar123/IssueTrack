@@ -5,6 +5,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
+import { buildTicketPdf } from "./utils/pdf.js";
 
 import {
   sendNewTicketToAdmin,
@@ -710,7 +711,29 @@ app.post("/api/tickets/:id/comments", authenticateJWT, async (req, res) => {
 
 // PDF download stub (keep existing)
 app.get("/api/tickets/:id/pdf", authenticateJWT, async (req, res) => {
-  res.status(200).json({ message: "PDF endpoint - configure as needed" });
+  try {
+    const rows = await query("SELECT * FROM tickets WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
+
+    const ticket = rows[0];
+    const comments = await query(
+      "SELECT * FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC",
+      [req.params.id]
+    ).catch(() => []);
+    const timeline = await query(
+      "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC",
+      [req.params.id]
+    ).catch(() => []);
+
+    const pdf = await buildTicketPdf(ticket, comments, timeline);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${ticket.ticket_id}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error("PDF error:", err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // ════════════════════════════════════════════════════════════════
