@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../utils/api.js";
 
 const TicketContext = createContext(null);
@@ -33,6 +33,10 @@ export function TicketProvider({ children }) {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [error, setError] = useState("");
 
+  // ── In-flight guards — prevent stacked concurrent auto-refreshes ──────────
+  const fetchingTickets = useRef(false);
+  const fetchingSummary = useRef(false);
+
   const dashboardQuery = useMemo(() => dashboardFilters, [dashboardFilters]);
   const listQuery = useMemo(() => ticketFilters, [ticketFilters]);
 
@@ -53,37 +57,30 @@ export function TicketProvider({ children }) {
   }
 
   async function loadSummary() {
-  setLoadingSummary(true);
-
-  try {
-    const response = await api.reportSummary(dashboardFilters);
-
-    console.log(
-      "SUMMARY RESPONSE =",
-      JSON.stringify(response, null, 2)
-    );
-
-    setSummary({
-      totalTicketsLast24Hours: response.totalTicketsLast24Hours || 0,
-      unassignedTickets: response.unassignedTickets || 0,
-      incidentTickets: response.incidentTickets || 0,
-      serviceRequestTickets: response.serviceRequestTickets || 0,
-      p1Incidents: response.p1Incidents || 0,
-      pendingBreachTickets: response.pendingBreachTickets || 0,
-
-      activeAgeing: response.activeAgeing || [],
-      activeByCategory: response.activeByCategory || [],
-      resolverBreakdown: response.resolverBreakdown || [],
-    });
-
-    return response;
-  } catch (err) {
-    console.error("SUMMARY ERROR:", err);
-    throw err;
-  } finally {
-    setLoadingSummary(false);
+    if (fetchingSummary.current) return;
+    fetchingSummary.current = true;
+    setLoadingSummary(true);
+    try {
+      const response = await api.reportSummary(dashboardFilters);
+      setSummary({
+        totalTicketsLast24Hours: response.totalTicketsLast24Hours || 0,
+        unassignedTickets:       response.unassignedTickets || 0,
+        incidentTickets:         response.incidentTickets || 0,
+        serviceRequestTickets:   response.serviceRequestTickets || 0,
+        p1Incidents:             response.p1Incidents || 0,
+        pendingBreachTickets:    response.pendingBreachTickets || 0,
+        activeAgeing:            response.activeAgeing || [],
+        activeByCategory:        response.activeByCategory || [],
+        resolverBreakdown:       response.resolverBreakdown || [],
+      });
+      return response;
+    } catch (err) {
+      throw err;
+    } finally {
+      fetchingSummary.current = false;
+      setLoadingSummary(false);
+    }
   }
-}
   async function loadReports(params = {}) {
   console.log("LOAD REPORTS CALLED", params);
 
@@ -125,20 +122,25 @@ export function TicketProvider({ children }) {
   return response;
 }
 
+
+  // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     loadTickets().catch(() => {});
     loadSummary().catch(() => {});
+
+    // Auto-refresh SUMMARY only every 60 s (tickets are large; reload on user action)
     const interval = setInterval(() => {
-      loadSummary().catch(() => {});
-      loadTickets().catch(() => {});
-    }, 15_000);
+      if (!fetchingSummary.current) loadSummary().catch(() => {});
+    }, 60_000);
     return () => clearInterval(interval);
   }, []);
 
+  // ── Reload ticket list whenever filters change ───────────────────────────────
   useEffect(() => {
     loadTickets().catch(() => {});
   }, [JSON.stringify(listQuery)]);
 
+  // ── Reload summary whenever dashboard filters change ────────────────────────
   useEffect(() => {
     loadSummary().catch(() => {});
   }, [JSON.stringify(dashboardQuery)]);

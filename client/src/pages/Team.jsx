@@ -8,6 +8,7 @@ export default function Team() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: "", email: "", username: "", password: "", role: "Agent", team: "", status: "Available", avatar_color: "#0f172a" });
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function load() {
   const response = await api.users();
@@ -39,17 +40,24 @@ export default function Team() {
   async function submit(event) {
     event.preventDefault();
     setError("");
+    setSuccess("");
     try {
+      console.log("[Team] Submitting — editingId:", editingId, "form:", form);
       if (editingId) {
-        await api.updateUser(editingId, form);
+        const result = await api.updateUser(editingId, form);
+        console.log("[Team] updateUser result:", result);
+        setSuccess("Member updated successfully!");
       } else {
-        await api.createUser(form);
+        const result = await api.createUser(form);
+        console.log("[Team] createUser result:", result);
+        setSuccess("Member added successfully!");
       }
       setEditingId(null);
       setForm({ name: "", email: "", username: "", password: "", role: "Agent", team: "", status: "Available", avatar_color: "#0f172a" });
       await load();
     } catch (err) {
-      setError(err.message);
+      console.error("[Team] submit error:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
     }
   }
 
@@ -109,9 +117,10 @@ export default function Team() {
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
             />
           </label>
-          {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+          {error ? <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-700">{error}</div> : null}
+          {success ? <div className="rounded-2xl bg-green-50 border border-green-200 px-4 py-3 text-sm font-medium text-green-700">{success}</div> : null}
           <div className="flex gap-3">
-            <button className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
+            <button type="submit" className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
               {editingId ? "Update Member" : "Add Member"}
             </button>
             {editingId ? (

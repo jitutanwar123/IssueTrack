@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTickets } from "../context/TicketContext.jsx";
-import { api } from "../utils/api.js";
 import { AgeingChart, CategoryPieChart, ResolverChart } from "../components/Charts.jsx";
 import { StatsCard } from "../components/StatsCard.jsx";
 import { TicketCard } from "../components/TicketCard.jsx";
@@ -111,26 +110,36 @@ function FilterSelect({ label, value, onChange, options }) {
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { summary, reportData, dashboardFilters, setDashboardFilters, refreshSummary } = useTickets();
-  const [allTickets, setAllTickets] = useState([]);
+  const {
+    tickets,
+    summary,
+    dashboardFilters,
+    setDashboardFilters,
+    refreshSummary,
+    refreshTickets,
+  } = useTickets();
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
 
-  useEffect(() => {
-    api
-      .tickets({ limit: 100 })
-      .then((response) => setAllTickets(response.data))
-      .catch(() => {});
-  }, []);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshSummary(), refreshTickets()]);
+      setLastRefreshed(new Date());
+    } catch (_) {}
+    finally { setRefreshing(false); }
+  }
 
-  // Dynamic options for fields NOT overridden by static lists
+  // Dynamic dropdown options derived from already-loaded ticket data
   const dynamicOptions = useMemo(() => {
     const unique = (field) =>
-      [...new Set(allTickets.map((ticket) => ticket[field]).filter(Boolean))].sort();
+      [...new Set(tickets.map((t) => t[field]).filter(Boolean))].sort();
     return {
-      category: unique("category"),
+      category:     unique("category"),
       sub_category: unique("sub_category"),
-      customer: unique("customer_name"),
+      customer:     unique("customer_name"),
     };
-  }, [allTickets]);
+  }, [tickets]);
 
   return (
     <div className="space-y-6">
@@ -154,13 +163,32 @@ export default function Dashboard() {
               Create Ticket
             </Link>
             <button
-              onClick={() => refreshSummary()}
-              className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
             >
-              Refresh Stats
+              {refreshing ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                  Refresh Stats
+                </>
+              )}
             </button>
           </div>
         </div>
+        {lastRefreshed && (
+          <div className="mt-2 text-right text-xs text-slate-400">
+            ✓ Last refreshed at {lastRefreshed.toLocaleTimeString("en-IN")}
+          </div>
+        )}
       </section>
 
       {/* ── Stats Cards ── */}
@@ -253,7 +281,7 @@ export default function Dashboard() {
             <h3 className="text-base font-semibold text-slate-900">Recent Tickets</h3>
           </div>
           <div className="grid gap-3 p-4">
-            {allTickets.slice(0, 5).map((ticket, index) => (
+            {tickets.slice(0, 5).map((ticket, index) => (
               <TicketCard
                 key={ticket.id || ticket.ticket_id || index}
                 ticket={ticket}

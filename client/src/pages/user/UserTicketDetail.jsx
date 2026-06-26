@@ -113,7 +113,25 @@ export default function UserTicketDetail() {
             </p>
           </div>
 
-          {/* Conversation thread */}
+          {/* Attachment */}
+          {ticket.attachment_name && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">Attachment</h3>
+              <a
+                href={api.ticketAttachmentUrl(ticket.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                {ticket.attachment_name}
+              </a>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-slate-200 bg-white shadow-soft">
             <div className="border-b border-slate-200 px-5 py-4">
               <h3 className="text-sm font-semibold text-slate-900">Conversation Thread</h3>

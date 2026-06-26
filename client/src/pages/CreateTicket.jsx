@@ -19,7 +19,7 @@ const statuses = [
 export default function CreateTicket() {
   const navigate = useNavigate();
   const { createTicket } = useTickets();
-  const [ticketId] = useState("Auto Generated");
+  const [ticketId, setTicketId] = useState("Generating...");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -51,9 +51,15 @@ export default function CreateTicket() {
   useEffect(() => {
     async function loadData() {
       try {
-        const usersResponse = await api.users();
+        // Fetch next ticket ID and users in parallel
+        const [idResponse, usersResponse] = await Promise.all([
+          api.nextTicketId(),
+          api.users(),
+        ]);
 
-        console.log("Users API Response:", usersResponse);
+        if (idResponse?.ticket_id) {
+          setTicketId(idResponse.ticket_id);
+        }
 
         if (Array.isArray(usersResponse)) {
           setUsers(usersResponse);
@@ -66,6 +72,7 @@ export default function CreateTicket() {
         }
       } catch (err) {
         console.error("CreateTicket load error:", err);
+        setTicketId("Error");
         setUsers([]);
       }
     }
@@ -129,7 +136,7 @@ navigate("/tickets");
         </h2>
 
         <p className="mt-1 text-sm text-slate-500">
-          A new ticket ID is generated automatically when the form loads.
+          Ticket ID is pre-assigned automatically when the form loads.
         </p>
       </div>
 
@@ -140,7 +147,7 @@ navigate("/tickets");
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Field
             label="Ticket ID"
-            value={ticketId || "Generating..."}
+            value={ticketId}
             readOnly
           />
 

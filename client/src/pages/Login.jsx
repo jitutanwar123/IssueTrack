@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { clearToken } from "../utils/api.js";
-import virajLogo from "../viraj.jpg";
+import virajLogo from "../viraaj.webp";
 
 export default function Login() {
   const { login } = useAuth();
@@ -51,17 +51,16 @@ export default function Login() {
 
         {/* LEFT SIDE */}
         <div className="bg-navy p-10 text-white">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white p-2">
-            <img
-              src={virajLogo}
-              alt="Viraj Profiles Limited"
-              className="h-full w-full object-contain"
-            />
-          </div>
-
-          <h1 className="mt-8 text-4xl font-bold tracking-tight">
-            Viraj Profiles Limited
-          </h1>
+          <div className="mb-8">
+  <img
+    src={virajLogo}
+    alt="Viraj Profiles Limited"
+    className="h-24 w-auto object-contain"
+  />
+</div>
+          <h1 className="text-3xl font-bold tracking-tight">
+  Viraj Profiles Limited
+</h1>
 
           <p className="mt-4 max-w-md text-slate-300">
             Incident, service request, problem and change tracking designed

@@ -117,12 +117,21 @@ export async function sendNewTicketToAdmin(ticket) {
      <p class="section-title">Description</p>
      <div class="comment-box">${ticket.description || "—"}</div>`
   );
-  await getTransporter().sendMail({
+  const mailOptions = {
     from: `"Viraj Ticketing" <${process.env.GMAIL_USER}>`,
     to: process.env.ADMIN_EMAIL,
     subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
     html,
-  });
+  };
+  // Attach file if provided
+  if (ticket.attachment_data && ticket.attachment_name) {
+    mailOptions.attachments = [{
+      filename: ticket.attachment_name,
+      content: ticket.attachment_data,
+      contentType: ticket.attachment_mime || "application/octet-stream",
+    }];
+  }
+  await getTransporter().sendMail(mailOptions);
 }
 
 // ─── 2. Ticket confirmation → User ──────────────────────────────
@@ -140,12 +149,21 @@ export async function sendTicketConfirmationToUser(ticket) {
      </div>
      <p style="font-size:14px;color:#64748b;">You can track your ticket status by logging in to the <strong>Viraj Ticket Portal</strong>.</p>`
   );
-  await getTransporter().sendMail({
+  const mailOptions2 = {
     from: `"Viraj Ticketing" <${process.env.GMAIL_USER}>`,
     to: ticket.requester_email,
     subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`,
     html,
-  });
+  };
+  // Attach file if provided
+  if (ticket.attachment_data && ticket.attachment_name) {
+    mailOptions2.attachments = [{
+      filename: ticket.attachment_name,
+      content: ticket.attachment_data,
+      contentType: ticket.attachment_mime || "application/octet-stream",
+    }];
+  }
+  await getTransporter().sendMail(mailOptions2);
 }
 
 // ─── 3. Status update → User ─────────────────────────────────────
@@ -211,3 +229,96 @@ export async function sendUserCommentToAdmin(ticket, comment, userName) {
   });
 }
 
+// ─── 6. Ticket assigned → Assignee (admin-created tickets) ──────
+export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
+  if (!assigneeEmail || !process.env.GMAIL_USER) return;
+  const pc = priorityColors[ticket.priority] || { bg: "#64748b", label: ticket.priority };
+  const html = baseTemplate(
+    "A Ticket Has Been Assigned to You",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">📌 A new ticket has been assigned to you</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">
+       A support ticket has been created and assigned to you by the admin. Please review and take action.
+     </p>
+     ${ticketTable(ticket)}
+     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;color:#1e40af;">
+       <strong>Action Required:</strong> Please log in to the Viraj Ticket Portal to view this ticket and begin working on it.
+     </div>
+     <p style="font-size:14px;color:#64748b;">
+       If you believe this ticket was assigned to you in error, please contact your administrator.
+     </p>`
+  );
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.GMAIL_USER}>`,
+    to: assigneeEmail,
+    subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
+}
+
+// ─── 7. Admin-created ticket → Admin notification ────────────────
+export async function sendAdminCreatedTicketToAdmin(ticket) {
+  if (!process.env.ADMIN_EMAIL || !process.env.GMAIL_USER) return;
+  const pc = priorityColors[ticket.priority] || { label: ticket.priority };
+  const html = baseTemplate(
+    "Ticket Created by Admin",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">📋 New Ticket Created</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">A new support ticket has been created by the admin and is now active in the system.</p>
+     ${ticketTable(ticket)}
+     <p class="section-title">Description</p>
+     <div class="comment-box">${ticket.description || "—"}</div>`
+  );
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.GMAIL_USER}>`,
+    to: process.env.ADMIN_EMAIL,
+    subject: `[TICKET CREATED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
+}
+
+// ─── 8. Ticket resolved → User ───────────────────────────────────
+export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
+  if (!ticket.requester_email || !process.env.GMAIL_USER) return;
+
+  const resolvedAt = ticket.resolved_at
+    ? new Date(ticket.resolved_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+    : new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+
+  const html = baseTemplate(
+    "Your Ticket Has Been Resolved",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">✅ Your ticket has been resolved!</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">
+       Dear <strong>${ticket.customer_name || "User"}</strong>, we are pleased to inform you that your support ticket
+       <strong>${ticket.ticket_id || ticket.id}</strong> has been marked as <strong style="color:#16a34a;">Resolved</strong>.
+     </p>
+
+     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin:16px 0;">
+       <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#15803d;">Resolution Details</p>
+       <table style="width:100%;border-collapse:collapse;font-size:14px;">
+         <tr>
+           <td style="padding:6px 0;font-weight:600;color:#166534;width:40%;">Resolved By</td>
+           <td style="padding:6px 0;color:#374151;">${resolvedBy}</td>
+         </tr>
+         <tr>
+           <td style="padding:6px 0;font-weight:600;color:#166534;">Resolved At</td>
+           <td style="padding:6px 0;color:#374151;">${resolvedAt}</td>
+         </tr>
+       </table>
+       <p style="margin:12px 0 4px;font-size:13px;font-weight:600;color:#166534;">Resolution Note</p>
+       <div style="background:#fff;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;font-size:14px;color:#374151;white-space:pre-wrap;">${resolutionNote}</div>
+     </div>
+
+     ${ticketTable({ ...ticket, status: "Resolved" })}
+
+     <p style="font-size:14px;color:#64748b;margin-top:16px;">
+       If you feel the issue has not been fully addressed, please log in to the
+       <strong>Viraj Ticket Portal</strong> and reopen the ticket or raise a new request.
+     </p>`
+  );
+
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.GMAIL_USER}>`,
+    to: ticket.requester_email,
+    subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`,
+    html,
+  });
+}

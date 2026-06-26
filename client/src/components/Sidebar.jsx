@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "../utils/helpers.js";
-import virajLogo from "../viraj.jpg";   // adjust path if needed
+import virajLogo from "../viraaj.webp";   // adjust path if needed
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: "grid" },

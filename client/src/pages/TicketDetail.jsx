@@ -69,14 +69,28 @@ export default function TicketDetail() {
     setError("");
     try {
       const payload = {
-        ...form,
+        title: form.title || "",
+        description: form.description || "",
+        category: form.category || "",
+        sub_category: form.sub_category || "",
+        priority: form.priority || "",
         status: nextStatus,
+        customer_name: form.customer_name || "",
+        requester_email: form.requester_email || "",
+        phone: form.phone || "",
+        department: form.department || "",
+        requested_by: form.requested_by || "",
+        assigned_to: form.assigned_to || "",
         requested_by_id: form.requested_by_id || null,
         assigned_to_id: form.assigned_to_id || null,
         expected_closure_date: form.expected_closure_date ? fromInputDateTime(form.expected_closure_date) : "",
         actual_closure_date: form.actual_closure_date ? fromInputDateTime(form.actual_closure_date) : "",
         response_time: Number(form.response_time || 0),
         resolution_time: Number(form.resolution_time || 0),
+        location: form.location || "",
+        workstream: form.workstream || "",
+        workgroup: form.workgroup || "",
+        service: form.service || "",
       };
       await api.updateTicket(id, payload);
       await load();
@@ -134,7 +148,7 @@ export default function TicketDetail() {
               {status}
             </button>
           ))}
-          <button onClick={save} disabled={saving} className="rounded-2xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-navy transition hover:bg-cyan-300">
+          <button onClick={() => save()} disabled={saving} className="rounded-2xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-navy transition hover:bg-cyan-300">
             {saving ? "Saving..." : "Save"}
           </button>
           <button onClick={downloadPdf} className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
@@ -163,6 +177,27 @@ export default function TicketDetail() {
             </div>
           </section>
 
+          {/* Attachment (if any) */}
+          {ticket.attachment_name && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+              <h3 className="mb-3 text-base font-semibold text-slate-900">Attachment</h3>
+              <a
+                href={api.ticketAttachmentUrl(ticket.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                {ticket.attachment_name}
+              </a>
+            </section>
+          )}
+
+
+
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <h3 className="text-base font-semibold text-slate-900">Timeline / Activity</h3>
             <div className="mt-4 space-y-3">
@@ -181,6 +216,7 @@ export default function TicketDetail() {
               ))}
             </div>
           </section>
+
         </div>
 
         <div className="space-y-6">

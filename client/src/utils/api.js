@@ -81,12 +81,18 @@ export const api = {
   addComment: (id, body) =>
     request(`/tickets/${id}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
   ticketPdfUrl: (id) => `${API_BASE}/tickets/${id}/pdf`,
+  ticketAttachmentUrl: (id) => `${API_BASE}/tickets/${id}/attachment?token=${encodeURIComponent(getToken())}`,
 
   // Admin: Status + Comment (with email triggers)
   updateTicketStatus: (id, status, note) =>
     request(`/admin/tickets/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, note }) }),
   addAdminComment: (id, body) =>
     request(`/admin/tickets/${id}/comment`, { method: "POST", body: JSON.stringify({ body }) }),
+
+  // Admin: Resolve ticket (updates status + sends resolution email)
+  resolveTicket: (id, payload) =>
+    request(`/tickets/${id}/resolve`, { method: "PUT", body: JSON.stringify(payload) }),
+
 
   // ── User Portal: Tickets ──────────────────────────────────────
   userTickets: (params = {}) => {

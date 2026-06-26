@@ -36,6 +36,7 @@ export default function UserCreateTicket() {
   const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [dragging, setDragging] = useState(false);
 
   function setField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -51,6 +52,21 @@ export default function UserCreateTicket() {
     if (!form.priority) e.priority = "Priority is required";
     setErrors(e);
     return Object.keys(e).length === 0;
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    const maxSize = 10 * 1024 * 1024; // 10 MB
+    if (file.size > maxSize) {
+      showToast("File is too large. Maximum size is 10MB.", "error");
+      return;
+    }
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowed.includes(file.type)) {
+      showToast("Invalid file type. Please upload PNG, JPG, PDF, DOC, or DOCX.", "error");
+      return;
+    }
+    setAttachment(file);
   }
 
   async function submit(event) {
@@ -164,25 +180,37 @@ export default function UserCreateTicket() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">Attachment (Optional)</label>
                 <div
                   onClick={() => fileRef.current?.click()}
-                  className="cursor-pointer rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center transition hover:border-cyan-400 hover:bg-cyan-50/30"
+                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                  onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    const file = e.dataTransfer.files[0];
+                    handleFile(file);
+                  }}
+                  className={`cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition ${
+                    dragging ? "border-cyan-400 bg-cyan-50/60" : "border-slate-200 hover:border-cyan-400 hover:bg-cyan-50/30"
+                  }`}
                 >
                   {attachment ? (
                     <div className="flex items-center justify-center gap-2">
                       <svg viewBox="0 0 24 24" className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                       <span className="text-sm text-slate-700">{attachment.name}</span>
+                      <span className="text-xs text-slate-400">({(attachment.size / 1024).toFixed(1)} KB)</span>
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setAttachment(null); }}
-                        className="text-red-500 hover:text-red-700"
+                        onClick={(e) => { e.stopPropagation(); setAttachment(null); if (fileRef.current) fileRef.current.value = ""; }}
+                        className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600 hover:bg-red-200"
                       >
-                        ✕
+                        Remove
                       </button>
                     </div>
                   ) : (
                     <>
                       <svg viewBox="0 0 24 24" className="mx-auto mb-2 h-8 w-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                      <p className="text-sm text-slate-400">Click to upload or drag & drop</p>
-                      <p className="text-xs text-slate-300">PNG, JPG, PDF up to 10MB</p>
+                      <p className="text-sm text-slate-400">{dragging ? "Drop file here" : "Click to upload or drag & drop"}</p>
+                      <p className="text-xs text-slate-300">PNG, JPG, PDF, DOC up to 10MB</p>
                     </>
                   )}
                 </div>
@@ -191,7 +219,7 @@ export default function UserCreateTicket() {
                   type="file"
                   accept=".png,.jpg,.jpeg,.pdf,.doc,.docx"
                   className="hidden"
-                  onChange={(e) => setAttachment(e.target.files[0] || null)}
+                  onChange={(e) => handleFile(e.target.files[0] || null)}
                 />
               </div>
             </div>

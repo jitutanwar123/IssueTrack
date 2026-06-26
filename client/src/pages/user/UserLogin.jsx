@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { clearToken } from "../../utils/api.js";
-import virajLogo from "../../viraj.jpg";
+import virajLogo from "../../viraaj.webp";
 
 export default function UserLogin() {
   const { login } = useAuth();
@@ -49,7 +49,7 @@ export default function UserLogin() {
         {/* LEFT SIDE */}
         <div className="bg-navy p-10 text-white">
           <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white p-2">
-            <img src={virajLogo} alt="Viraj Profiles Limited" className="h-full w-full object-contain" />
+            <img src={virajLogo} alt="Viraj Profiles Limited" width={72} height={72} className="h-full w-full object-contain" />
           </div>
 
           <h1 className="mt-8 text-4xl font-bold tracking-tight">Viraj Profiles Limited</h1>

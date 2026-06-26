@@ -12,6 +12,9 @@ import {
   sendStatusUpdateToUser,
   sendAdminCommentToUser,
   sendUserCommentToAdmin,
+  sendResolutionToUser,
+  sendTicketAssignedToAssignee,
+  sendAdminCreatedTicketToAdmin,
 } from "./emailService.js";
 
 dotenv.config();
@@ -35,6 +38,28 @@ db.connect((err) => {
     return;
   }
   console.log("✅ MySQL Connected");
+
+  // ─── Auto-migration: add resolution columns if they don't exist ──
+  // Run as 3 separate statements; duplicate-column errors (1060) are silently ignored
+  const migrationCols = [
+    "ALTER TABLE tickets ADD COLUMN resolved_at DATETIME DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN resolution_note TEXT DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN resolved_by VARCHAR(255) DEFAULT NULL",
+    // Attachment support
+    "ALTER TABLE tickets ADD COLUMN attachment_name VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN attachment_mime VARCHAR(100) DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN attachment_data LONGBLOB DEFAULT NULL",
+  ];
+  migrationCols.forEach((sql) => {
+    db.query(sql, (migErr) => {
+      if (migErr && migErr.errno !== 1060) {
+        // errno 1060 = "Duplicate column name" — column already exists, that's fine
+        console.warn("⚠️  Migration warning:", migErr.message);
+      }
+    });
+  });
+  console.log("✅ Migration queued (resolved_at, resolution_note, resolved_by, attachment columns)");
+
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || "viraj_jwt_secret_change_me";
@@ -88,9 +113,9 @@ function query(sql, params = []) {
 
 // ─── Helper: auto-generate ticket ID ────────────────────────────
 async function generateTicketId() {
-  const rows = await query("SELECT COUNT(*) as cnt FROM tickets");
-  const count = (rows[0]?.cnt || 0) + 1;
-  return `INC${String(count).padStart(5, "0")}`;
+  const rows = await query("SELECT MAX(id) as maxId FROM tickets");
+  const next = (rows[0]?.maxId || 0) + 1;
+  return `INC${next}`;
 }
 
 app.get("/", (req, res) => {
@@ -158,6 +183,9 @@ app.post("/api/auth/login", (req, res) => {
           portal_role: portalRole,
           department: user.department,
           phone: user.phone,
+          status: user.status || "Available",
+          team: user.team || "",
+          avatar_color: user.avatar_color || "#0f172a",
         },
       });
     }
@@ -188,30 +216,71 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// CURRENT USER
-app.get("/api/auth/me", authenticateJWT, (req, res) => {
-  res.json({ user: req.user });
+// CURRENT USER — fetch live from DB so status/team changes reflect immediately
+app.get("/api/auth/me", authenticateJWT, async (req, res) => {
+  try {
+    const rows = await query("SELECT id,name,email,role,portal_role,department,phone,status,team,avatar_color FROM users WHERE id = ?", [req.user.id]);
+    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+    const u = rows[0];
+    res.json({
+      user: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        portal_role: u.portal_role || req.user.portal_role,
+        department: u.department,
+        phone: u.phone,
+        status: u.status || "Available",
+        team: u.team || "",
+        avatar_color: u.avatar_color || "#0f172a",
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-// GET ALL TICKETS
+// GET ALL TICKETS (paginated)
 app.get("/api/tickets", (req, res) => {
-  const { search, status, priority, category, assignee } = req.query;
-  let sql = "SELECT * FROM tickets WHERE 1=1";
+  const { search, status, priority, category, assignee, location, sub_category, service, workgroup, customer_name } = req.query;
+
+  // ── Pagination ────────────────────────────────────────────────
+  const page  = Math.max(1, parseInt(req.query.page,  10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const offset = (page - 1) * limit;
+
+  let whereSql = "WHERE 1=1";
   let params = [];
 
-  if (search) { sql += " AND title LIKE ?"; params.push(`%${search}%`); }
-  if (status) { sql += " AND status = ?"; params.push(status); }
-  if (priority) { sql += " AND priority = ?"; params.push(priority); }
-  if (category) { sql += " AND category = ?"; params.push(category); }
-  if (assignee) { sql += " AND assigned_to = ?"; params.push(assignee); }
+  if (search)       { whereSql += " AND (title LIKE ? OR ticket_id LIKE ?)"; params.push(`%${search}%`, `%${search}%`); }
+  if (status)       { whereSql += " AND status = ?";           params.push(status); }
+  if (priority)     { whereSql += " AND priority = ?";         params.push(priority); }
+  if (category)     { whereSql += " AND category = ?";         params.push(category); }
+  if (assignee)     { whereSql += " AND assigned_to = ?";      params.push(assignee); }
+  if (location)     { whereSql += " AND location = ?";         params.push(location); }
+  if (sub_category) { whereSql += " AND sub_category = ?";     params.push(sub_category); }
+  if (service)      { whereSql += " AND service = ?";          params.push(service); }
+  if (workgroup)    { whereSql += " AND workgroup = ?";        params.push(workgroup); }
+  if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
 
-  db.query(sql, params, (err, results) => {
-    if (err) return res.status(500).json(err);
-    res.json({
-      data: results,
-      pagination: { page: 1, limit: results.length, total: results.length, totalPages: 1 },
-    });
-  });
+  const dataSql  = `SELECT * FROM tickets ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
+
+  // Run both queries in parallel using the promise-based interface
+  Promise.all([
+    db.promise().query(dataSql,  [...params, limit, offset]),
+    db.promise().query(countSql, params),
+  ])
+    .then(([[dataRows], [countRows]]) => {
+      const total      = countRows[0]?.total ?? 0;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      res.json({
+        data: dataRows,
+        pagination: { page, limit, total, totalPages },
+      });
+    })
+    .catch((err) => res.status(500).json({ message: err.message }));
 });
 
 // NEXT TICKET ID — MUST be before /:id to avoid Express param capture
@@ -271,12 +340,82 @@ app.get("/api/tickets/:id", (req, res) => {
 
 // CREATE TICKET (admin)
 app.post("/api/tickets", async (req, res) => {
-  const { title, description, priority, status, ...rest } = req.body;
-  const sql = "INSERT INTO tickets(title, description, priority, status) VALUES (?, ?, ?, ?)";
-  db.query(sql, [title, description, priority, status], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ success: true, data: { id: result.insertId } });
-  });
+  const {
+    title, description, category, sub_category, priority, status,
+    customer_name, requester_email, phone, department,
+    requested_by, assigned_to, requested_by_id, assigned_to_id,
+    expected_closure_date, actual_closure_date,
+    response_time, resolution_time, location, workstream, workgroup, service,
+  } = req.body;
+
+  try {
+    const ticketId = await generateTicketId();
+    const sql = `INSERT INTO tickets
+      (ticket_id, title, description, category, sub_category, priority, status,
+       customer_name, requester_email, phone, department,
+       requested_by, assigned_to,
+       expected_closure_date, actual_closure_date,
+       response_time, resolution_time, location, workstream, workgroup, service)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const result = await query(sql, [
+      ticketId, title, description, category || null, sub_category || null,
+      priority, status || "Open",
+      customer_name || null, requester_email || null, phone || null, department || null,
+      requested_by || null, assigned_to || null,
+      expected_closure_date || null, actual_closure_date || null,
+      response_time || 0, resolution_time || 0,
+      location || null, workstream || null, workgroup || null, service || null,
+    ]);
+
+    // Build ticket object for email notifications
+    const newTicket = {
+      id: result.insertId,
+      ticket_id: ticketId,
+      title, description, category, sub_category, priority,
+      status: status || "Open",
+      customer_name: customer_name || null,
+      requester_email: requester_email || null,
+      phone: phone || null,
+      department: department || null,
+      assigned_to: assigned_to || null,
+      location: location || null,
+      created_at: new Date(),
+    };
+
+    console.log(`📧 Admin created ticket ${ticketId} — sending email notifications...`);
+
+    // 1. Notify the admin inbox that a ticket was created
+    sendAdminCreatedTicketToAdmin(newTicket)
+      .then(() => console.log(`✅ Admin creation email sent for ${ticketId}`))
+      .catch((e) => console.error(`❌ Admin creation email error:`, e.message));
+
+    // 2. If a requester email was provided, send them a confirmation
+    if (requester_email) {
+      sendTicketConfirmationToUser(newTicket)
+        .then(() => console.log(`✅ Requester confirmation email sent to ${requester_email} for ${ticketId}`))
+        .catch((e) => console.error(`❌ Requester email error:`, e.message));
+    }
+
+    // 3. If assigned_to is set, look up that user's email and notify them
+    if (assigned_to) {
+      query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to])
+        .then((rows) => {
+          const assigneeEmail = rows[0]?.email;
+          if (assigneeEmail) {
+            return sendTicketAssignedToAssignee(newTicket, assigneeEmail)
+              .then(() => console.log(`✅ Assignment email sent to ${assigneeEmail} for ${ticketId}`))
+              .catch((e) => console.error(`❌ Assignment email error:`, e.message));
+          } else {
+            console.warn(`⚠️ Could not find email for assigned user "${assigned_to}"`);
+          }
+        })
+        .catch((e) => console.error(`❌ User lookup error for assignment email:`, e.message));
+    }
+
+    res.json({ success: true, data: { id: result.insertId, ticket_id: ticketId } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // UPDATE TICKET (admin — triggers status email if status changed)
@@ -336,25 +475,98 @@ app.delete("/api/tickets/:id", (req, res) => {
   });
 });
 
-// REPORT SUMMARY
-app.get("/api/reports/summary", (req, res) => {
-  db.query("SELECT * FROM tickets", (err, rows) => {
-    if (err) return res.status(500).json(err);
+// REPORT SUMMARY — uses SQL aggregates instead of loading all rows into JS
+app.get("/api/reports/summary", async (req, res) => {
+  const { location, category, sub_category, service, workgroup, customer } = req.query;
+
+  // Build a reusable filter clause on top of WHERE 1=1
+  const filterClauses = [];
+  const filterParams  = [];
+  if (location)    { filterClauses.push("location = ?");      filterParams.push(location); }
+  if (category)    { filterClauses.push("category = ?");      filterParams.push(category); }
+  if (sub_category){ filterClauses.push("sub_category = ?");  filterParams.push(sub_category); }
+  if (service)     { filterClauses.push("service = ?");       filterParams.push(service); }
+  if (workgroup)   { filterClauses.push("workgroup = ?");     filterParams.push(workgroup); }
+  if (customer)    { filterClauses.push("customer_name = ?"); filterParams.push(customer); }
+
+  // Safe: all extra conditions are AND-appended to WHERE 1=1
+  const baseWhere = filterClauses.length
+    ? `WHERE 1=1 AND ${filterClauses.join(" AND ")}`
+    : "WHERE 1=1";
+
+  const q = (sql, p = filterParams) => db.promise().query(sql, p).then(([rows]) => rows);
+
+  try {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 19).replace("T", " ");
+
+    const [
+      totalLast24h,
+      unassigned,
+      incidents,
+      serviceRequests,
+      p1Incidents,
+      pendingBreach,
+      ageingRows,
+      categoryRows,
+      resolverRows,
+    ] = await Promise.all([
+      // Total tickets created in last 24 h
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND created_at >= ?`,
+        [...filterParams, yesterday]),
+      // Unassigned active tickets
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND (assigned_to IS NULL OR assigned_to = '') AND status NOT IN ('Closed','Cancelled')`),
+      // Incident count
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND category = 'Incident'`),
+      // Service Request count
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND category = 'Service Request'`),
+      // P1 Incidents
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND priority = 'P1' AND category = 'Incident'`),
+      // Pending-breach: active tickets (not closed/cancelled)
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND status NOT IN ('Closed','Cancelled')`),
+      // Ageing buckets (active tickets only) using SQL CASE
+      q(`SELECT
+           CASE
+             WHEN DATEDIFF(NOW(), created_at) <= 7  THEN '0-7 Days'
+             WHEN DATEDIFF(NOW(), created_at) <= 30 THEN '8-30 Days'
+             WHEN DATEDIFF(NOW(), created_at) <= 60 THEN '31-60 Days'
+             ELSE '60+ Days'
+           END AS bucket,
+           COUNT(*) AS count
+         FROM tickets
+         ${baseWhere} AND status NOT IN ('Closed','Cancelled')
+         GROUP BY bucket`),
+      // Category breakdown
+      q(`SELECT COALESCE(category,'Uncategorised') AS name, COUNT(*) AS value
+         FROM tickets ${baseWhere}
+         GROUP BY name`),
+      // Resolver breakdown (top 10)
+      q(`SELECT COALESCE(NULLIF(assigned_to,''),'Unassigned') AS name, COUNT(*) AS value
+         FROM tickets ${baseWhere}
+         GROUP BY name
+         ORDER BY value DESC
+         LIMIT 10`),
+    ]);
+
+    // Guarantee ordering for ageing buckets
+    const ageOrder = ["0-7 Days", "8-30 Days", "31-60 Days", "60+ Days"];
+    const ageMap   = Object.fromEntries(ageingRows.map((r) => [r.bucket, Number(r.count)]));
+    const activeAgeing = ageOrder.map((bucket) => ({ bucket, count: ageMap[bucket] ?? 0 }));
+
     res.json({
-      totalTicketsLast24Hours: rows.length,
-      unassignedTickets: rows.filter((t) => !t.assigned_to).length,
-      incidentTickets: rows.filter((t) => t.category === "Incident").length,
-      serviceRequestTickets: rows.filter((t) => t.category === "Service Request").length,
-      p1Incidents: rows.filter((t) => t.priority === "P1" && t.category === "Incident").length,
-      pendingBreachTickets: rows.filter((t) => t.status !== "Closed").length,
-      activeAgeing: [{ bucket: "0-30 Days", count: rows.length }],
-      activeByCategory: [
-        { name: "Incident", value: rows.filter((t) => t.category === "Incident").length },
-        { name: "Service Request", value: rows.filter((t) => t.category === "Service Request").length },
-      ],
-      resolverBreakdown: [{ name: "Unassigned", value: rows.filter((t) => !t.assigned_to).length }],
+      totalTicketsLast24Hours: totalLast24h[0]?.n ?? 0,
+      unassignedTickets:       unassigned[0]?.n ?? 0,
+      incidentTickets:         incidents[0]?.n ?? 0,
+      serviceRequestTickets:   serviceRequests[0]?.n ?? 0,
+      p1Incidents:             p1Incidents[0]?.n ?? 0,
+      pendingBreachTickets:    pendingBreach[0]?.n ?? 0,
+      activeAgeing,
+      activeByCategory: categoryRows.map((r) => ({ name: r.name, value: Number(r.value) })),
+      resolverBreakdown: resolverRows.map((r) => ({ name: r.name, value: Number(r.value) })),
     });
-  });
+  } catch (err) {
+    console.error("Summary error:", err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/reports/ageing", (req, res) => { res.json({ data: [] }); });
@@ -386,29 +598,61 @@ app.get("/api/reports/detail", (req, res) => {
 
 // USERS CRUD
 app.get("/api/users", (req, res) => {
-  db.query("SELECT * FROM users", (err, results) => {
-    if (err) return res.status(500).json(err);
-    res.json({ data: results });
-  });
+  // Never return password/hashed_password columns
+  db.query(
+    "SELECT id, name, email, username, role, team, status, avatar_color, department, phone, portal_role FROM users",
+    (err, results) => {
+      if (err) return res.status(500).json(err);
+      res.json({ data: results });
+    }
+  );
 });
 
-app.post("/api/users", (req, res) => {
+app.post("/api/users", async (req, res) => {
   const { name, email, username, password, role, team, status, avatar_color } = req.body;
-  const sql = `INSERT INTO users (name,email,username,password,role,team,status,avatar_color) VALUES (?,?,?,?,?,?,?,?)`;
-  db.query(sql, [name, email, username, password, role, team, status, avatar_color], (err, result) => {
-    if (err) return res.status(500).json(err);
+  if (!name || !email || !username || !password) {
+    return res.status(400).json({ message: "Name, email, username, and password are required" });
+  }
+  try {
+    const hashed = await bcrypt.hash(password, 10);
+    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color) VALUES (?,?,?,?,?,?,?,?)`;
+    const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a"]);
     res.json({ success: true, id: result.insertId });
-  });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "A user with this email or username already exists" });
+    res.status(500).json({ message: err.message });
+  }
 });
 
-app.put("/api/users/:id", (req, res) => {
+app.put("/api/users/:id", async (req, res) => {
   const { id } = req.params;
   const { name, email, username, password, role, team, status, avatar_color } = req.body;
-  const sql = `UPDATE users SET name=?,email=?,username=?,password=?,role=?,team=?,status=?,avatar_color=? WHERE id=?`;
-  db.query(sql, [name, email, username, password, role, team, status, avatar_color, id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ success: true, affectedRows: result.affectedRows });
-  });
+  console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, hasPassword: !!(password && password.trim()) });
+  try {
+    let result;
+    if (password && password.trim()) {
+      // Update including new hashed password
+      const hashed = await bcrypt.hash(password, 10);
+      result = await query(
+        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=? WHERE id=?`,
+        [name, email, username, hashed, role, team, status, avatar_color, id]
+      );
+    } else {
+      // Update without touching the password
+      result = await query(
+        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=? WHERE id=?`,
+        [name, email, username, role, team, status, avatar_color, id]
+      );
+    }
+    console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found. No rows updated." });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[PUT /api/users/:id] error:", err.message);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.delete("/api/users/:id", (req, res) => {
@@ -497,14 +741,21 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
   try {
     const ticketId = await generateTicketId();
 
+    // Handle optional file attachment
+    const attachmentName = req.file ? req.file.originalname : null;
+    const attachmentMime = req.file ? req.file.mimetype : null;
+    const attachmentData = req.file ? req.file.buffer : null;
+
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
-       customer_name, requester_email, phone, department, user_email)
-      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?)`;
+       customer_name, requester_email, phone, department, user_email,
+       attachment_name, attachment_mime, attachment_data)
+      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?)`;
 
     const result = await query(sql, [
       ticketId, title, description, category, sub_category || null, priority,
       user.name, user.email, user.phone || null, user.department || null, user.email,
+      attachmentName, attachmentMime, attachmentData,
     ]);
 
     const newTicket = {
@@ -517,6 +768,9 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       phone: user.phone,
       department: user.department,
       created_at: new Date(),
+      attachment_name: attachmentName,
+      attachment_mime: attachmentMime,
+      attachment_data: attachmentData, // Buffer — email service uses this to attach the file
     };
 
     // Status history
@@ -540,6 +794,39 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     res.status(500).json({ message: err.message });
   }
 });
+
+// SERVE TICKET ATTACHMENT — accepts token via header OR ?token= query param (for browser links)
+app.get("/api/tickets/:id/attachment", async (req, res) => {
+  try {
+    // Accept JWT from Authorization header OR ?token= query param
+    let token = req.query.token || "";
+    if (!token) {
+      const auth = req.headers.authorization || "";
+      if (auth.startsWith("Bearer ")) token = auth.slice(7);
+    }
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+
+    const rows = await query(
+      "SELECT attachment_name, attachment_mime, attachment_data FROM tickets WHERE id = ?",
+      [req.params.id]
+    );
+    const ticket = rows[0];
+    if (!ticket || !ticket.attachment_data) {
+      return res.status(404).json({ message: "No attachment found" });
+    }
+    res.setHeader("Content-Type", ticket.attachment_mime || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename="${ticket.attachment_name || "attachment"}"`);
+    res.send(ticket.attachment_data);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 // GET SINGLE USER TICKET
 app.get("/api/user/tickets/:id", authenticateJWT, requireUser, async (req, res) => {
@@ -651,6 +938,66 @@ app.post("/api/admin/tickets/:id/comment", authenticateJWT, requireAdmin, async 
 
     res.json({ success: true });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
+// RESOLVE TICKET (admin — updates status, saves resolution, emails user)
+// ════════════════════════════════════════════════════════════════
+app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { resolvedBy, resolutionNote, department } = req.body;
+
+  if (!resolutionNote?.trim()) {
+    return res.status(400).json({ message: "Resolution note is required" });
+  }
+
+  try {
+    // Fetch existing ticket
+    const rows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
+
+    const oldTicket = rows[0];
+
+    if (oldTicket.status === "Resolved") {
+      return res.status(409).json({ message: "Ticket is already resolved" });
+    }
+
+    const resolvedByName = resolvedBy?.trim() || req.user?.name || "Admin";
+
+    // Update ticket in DB
+    await query(
+      `UPDATE tickets
+         SET status        = 'Resolved',
+             resolved_at   = NOW(),
+             resolution_note = ?,
+             resolved_by   = ?,
+             updated_at    = NOW()
+       WHERE id = ?`,
+      [resolutionNote.trim(), resolvedByName, id]
+    );
+
+    // Record status history
+    await query(
+      `INSERT INTO ticket_status_history
+         (ticket_id, changed_by, from_status, to_status, note)
+       VALUES (?, ?, ?, 'Resolved', ?)`,
+      [id, resolvedByName, oldTicket.status, resolutionNote.trim()]
+    ).catch(() => {});
+
+    // Fetch updated ticket for email
+    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const updatedTicket = updatedRows[0] || { ...oldTicket, status: "Resolved" };
+
+    // Send resolution email to user (non-blocking)
+    sendResolutionToUser(updatedTicket, resolvedByName, resolutionNote.trim())
+      .then(() => console.log(`✅ Resolution email sent for ticket #${id}`))
+      .catch((e) => console.error(`❌ Resolution email error:`, e.message));
+
+    res.json({ success: true, message: "Ticket resolved successfully" });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });

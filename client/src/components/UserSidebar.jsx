@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "../utils/helpers.js";
-import virajLogo from "../viraj.jpg";
+import virajLogo from "../viraaj.webp";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const navItems = [

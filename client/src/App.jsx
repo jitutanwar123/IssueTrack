@@ -1,25 +1,41 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar.jsx";
 import { UserSidebar } from "./components/UserSidebar.jsx";
 import { Header } from "./components/Header.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import TicketList from "./pages/TicketList.jsx";
-import CreateTicket from "./pages/CreateTicket.jsx";
-import TicketDetail from "./pages/TicketDetail.jsx";
-import Reports from "./pages/Reports.jsx";
-import Team from "./pages/Team.jsx";
-import Login from "./pages/Login.jsx";
-import UserLogin from "./pages/user/UserLogin.jsx";
-import Register from "./pages/Register.jsx";
-import UserDashboard from "./pages/user/UserDashboard.jsx";
-import MyTickets from "./pages/user/MyTickets.jsx";
-import UserCreateTicket from "./pages/user/UserCreateTicket.jsx";
-import UserTicketDetail from "./pages/user/UserTicketDetail.jsx";
-import UserProfile from "./pages/user/UserProfile.jsx";
 
-// ─── Admin Shell ────────────────────────────────────────────────
+// ─── Lazy-loaded pages (code-split per route) ───────────────────────────────
+const Dashboard        = lazy(() => import("./pages/Dashboard.jsx"));
+const TicketList       = lazy(() => import("./pages/TicketList.jsx"));
+const CreateTicket     = lazy(() => import("./pages/CreateTicket.jsx"));
+const TicketDetail     = lazy(() => import("./pages/TicketDetail.jsx"));
+const Reports          = lazy(() => import("./pages/Reports.jsx"));
+const Team             = lazy(() => import("./pages/Team.jsx"));
+const Login            = lazy(() => import("./pages/Login.jsx"));
+const UserLogin        = lazy(() => import("./pages/user/UserLogin.jsx"));
+const Register         = lazy(() => import("./pages/Register.jsx"));
+const UserDashboard    = lazy(() => import("./pages/user/UserDashboard.jsx"));
+const MyTickets        = lazy(() => import("./pages/user/MyTickets.jsx"));
+const UserCreateTicket = lazy(() => import("./pages/user/UserCreateTicket.jsx"));
+const UserTicketDetail = lazy(() => import("./pages/user/UserTicketDetail.jsx"));
+const UserProfile      = lazy(() => import("./pages/user/UserProfile.jsx"));
+const DepartmentResolve = lazy(() => import("./pages/DepartmentResolve.jsx"));
+
+// ─── Loading fallback ────────────────────────────────────────────────────────
+function LoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center text-slate-500">
+      <div className="text-center">
+        <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-500" />
+        <p className="text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Shell ────────────────────────────────────────────────────────────
 function Shell({ children }) {
   return (
     <div className="flex min-h-full bg-slate-50">
@@ -32,7 +48,7 @@ function Shell({ children }) {
   );
 }
 
-// ─── User Shell ──────────────────────────────────────────────────
+// ─── User Shell ──────────────────────────────────────────────────────────────
 function UserShell({ children }) {
   const { user } = useAuth();
   return (
@@ -63,7 +79,7 @@ function UserShell({ children }) {
   );
 }
 
-// ─── Route Guards ────────────────────────────────────────────────
+// ─── Route Guards ────────────────────────────────────────────────────────────
 function ProtectedAdminRoute({ children }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   if (loading) return <LoadingScreen />;
@@ -79,66 +95,58 @@ function ProtectedUserRoute({ children }) {
   return children;
 }
 
-function LoadingScreen() {
-  return (
-    <div className="flex min-h-screen items-center justify-center text-slate-500">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-500" />
-        <p className="text-sm">Loading...</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── App ─────────────────────────────────────────────────────────
+// ─── App ─────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <ToastProvider>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/user-login" element={<UserLogin />} />
-        <Route path="/register" element={<Register />} />
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/user-login" element={<UserLogin />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Admin routes */}
-        <Route
-          path="/*"
-          element={
-            <ProtectedAdminRoute>
-              <Shell>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/tickets" element={<TicketList />} />
-                  <Route path="/tickets/new" element={<CreateTicket />} />
-                  <Route path="/tickets/:id" element={<TicketDetail />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/team" element={<Team />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Shell>
-            </ProtectedAdminRoute>
-          }
-        />
+          {/* Admin routes */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedAdminRoute>
+                <Shell>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/tickets" element={<TicketList />} />
+                    <Route path="/tickets/new" element={<CreateTicket />} />
+                    <Route path="/tickets/:id" element={<TicketDetail />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/team" element={<Team />} />
+                    <Route path="/resolve/:ticketId" element={<DepartmentResolve />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Shell>
+              </ProtectedAdminRoute>
+            }
+          />
 
-        {/* User portal routes */}
-        <Route
-          path="/user/*"
-          element={
-            <ProtectedUserRoute>
-              <UserShell>
-                <Routes>
-                  <Route path="/dashboard" element={<UserDashboard />} />
-                  <Route path="/my-tickets" element={<MyTickets />} />
-                  <Route path="/create-ticket" element={<UserCreateTicket />} />
-                  <Route path="/ticket/:id" element={<UserTicketDetail />} />
-                  <Route path="/profile" element={<UserProfile />} />
-                  <Route path="*" element={<Navigate to="/user/dashboard" replace />} />
-                </Routes>
-              </UserShell>
-            </ProtectedUserRoute>
-          }
-        />
-      </Routes>
+          {/* User portal routes */}
+          <Route
+            path="/user/*"
+            element={
+              <ProtectedUserRoute>
+                <UserShell>
+                  <Routes>
+                    <Route path="/dashboard" element={<UserDashboard />} />
+                    <Route path="/my-tickets" element={<MyTickets />} />
+                    <Route path="/create-ticket" element={<UserCreateTicket />} />
+                    <Route path="/ticket/:id" element={<UserTicketDetail />} />
+                    <Route path="/profile" element={<UserProfile />} />
+                    <Route path="*" element={<Navigate to="/user/dashboard" replace />} />
+                  </Routes>
+                </UserShell>
+              </ProtectedUserRoute>
+            }
+          />
+        </Routes>
+      </Suspense>
     </ToastProvider>
   );
 }

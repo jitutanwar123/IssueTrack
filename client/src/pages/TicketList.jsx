@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
 import { formatDateTime } from "../utils/helpers.js";
@@ -38,6 +38,7 @@ export default function TicketList() {
     removeTicket,
   } = useTickets();
 
+  const navigate = useNavigate();
   const [draft, setDraft] = useState(ticketFilters);
 
   useEffect(() => {
@@ -86,19 +87,9 @@ export default function TicketList() {
   }
 
   async function deleteRow(ticket) {
-    console.log("DELETE CLICKED:", ticket);
-
     const ticketId = ticket.id;
-
-    if (!ticketId) {
-      alert("Ticket ID not found");
-      return;
-    }
-
-    if (!window.confirm(`Delete ticket INC${ticketId}?`)) {
-      return;
-    }
-
+    if (!ticketId) { alert("Ticket ID not found"); return; }
+    if (!window.confirm(`Delete ticket INC${ticketId}? This cannot be undone.`)) return;
     try {
       await removeTicket(ticketId);
     } catch (err) {
@@ -273,9 +264,26 @@ export default function TicketList() {
                         View
                       </Link>
 
+                      {ticket.status === "Resolved" ? (
+                        <span className="inline-flex items-center gap-1 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 cursor-default select-none">
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 0 1 0 1.414l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.414L8 12.586l7.293-7.293a1 1 0 0 1 1.414 0z" clipRule="evenodd" /></svg>
+                          Resolved
+                        </span>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/resolve/${ticket.id}`);
+                          }}
+                          className="rounded-xl border border-green-300 bg-green-600 px-3 py-2 font-semibold text-white transition hover:bg-green-700 active:scale-95"
+                        >
+                          Resolve
+                        </button>
+                      )}
+
                       <button
-                        onClick={(event) => {
-                          event.stopPropagation();
+                        onClick={(e) => {
+                          e.stopPropagation();
                           deleteRow(ticket);
                         }}
                         className="rounded-xl border border-red-200 px-3 py-2 font-semibold text-red-600 transition hover:bg-red-50"
