@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sunny-luck-production-b1f0.up.railway.app/sitemap.xml
