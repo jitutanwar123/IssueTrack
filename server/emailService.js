@@ -1,9 +1,19 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getTransporter() {
+  return nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.BREVO_SMTP_USER,
+      pass: process.env.BREVO_SMTP_PASS,
+    },
+  });
+}
 
 // ─── Priority color map ──────────────────────────────────────────
 const priorityColors = {
@@ -21,7 +31,6 @@ const statusColors = {
   Closed: "#64748b",
 };
 
-// ─── Base HTML template ──────────────────────────────────────────
 function baseTemplate(title, bodyHtml) {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -66,7 +75,6 @@ function baseTemplate(title, bodyHtml) {
 </html>`;
 }
 
-// ─── Ticket details table ────────────────────────────────────────
 function ticketTable(t) {
   const pc = priorityColors[t.priority] || { bg: "#64748b", label: t.priority };
   const sc = statusColors[t.status] || "#64748b";
@@ -91,20 +99,9 @@ function ticketTable(t) {
   return `<table class="info-table"><tbody>${rows}</tbody></table>`;
 }
 
-// ─── Helper: send email ──────────────────────────────────────────
-async function sendEmail({ to, subject, html, attachments }) {
-  return resend.emails.send({
-    from: "Viraj Ticketing <onboarding@resend.dev>",
-    to,
-    subject,
-    html,
-    ...(attachments ? { attachments } : {}),
-  });
-}
-
 // ─── 1. New ticket → Admin ───────────────────────────────────────
 export async function sendNewTicketToAdmin(ticket) {
-  if (!process.env.ADMIN_EMAIL) return;
+  if (!process.env.ADMIN_EMAIL || !process.env.BREVO_SMTP_USER) return;
   const pc = priorityColors[ticket.priority] || { label: ticket.priority };
   const html = baseTemplate(
     "New Ticket Received",
@@ -114,16 +111,21 @@ export async function sendNewTicketToAdmin(ticket) {
      <p class="section-title">Description</p>
      <div class="comment-box">${ticket.description || "—"}</div>`
   );
-  const attachments = ticket.attachment_data && ticket.attachment_name ? [{
-    filename: ticket.attachment_name,
-    content: ticket.attachment_data,
-  }] : undefined;
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html, attachments });
+  const mailOptions = {
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: process.env.ADMIN_EMAIL,
+    subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  };
+  if (ticket.attachment_data && ticket.attachment_name) {
+    mailOptions.attachments = [{ filename: ticket.attachment_name, content: ticket.attachment_data, contentType: ticket.attachment_mime || "application/octet-stream" }];
+  }
+  await getTransporter().sendMail(mailOptions);
 }
 
 // ─── 2. Ticket confirmation → User ──────────────────────────────
 export async function sendTicketConfirmationToUser(ticket) {
-  if (!ticket.requester_email) return;
+  if (!ticket.requester_email || !process.env.BREVO_SMTP_USER) return;
   const slaMap = { P1: "4 hours", P2: "8 hours", P3: "24 hours", P4: "72 hours" };
   const sla = slaMap[ticket.priority] || "48 hours";
   const html = baseTemplate(
@@ -135,12 +137,17 @@ export async function sendTicketConfirmationToUser(ticket) {
        <strong>Expected SLA:</strong> ${sla} response time for ${ticket.priority} priority tickets.
      </div>`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: ticket.requester_email,
+    subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`,
+    html,
+  });
 }
 
 // ─── 3. Status update → User ─────────────────────────────────────
 export async function sendStatusUpdateToUser(ticket, newStatus, adminNote) {
-  if (!ticket.requester_email) return;
+  if (!ticket.requester_email || !process.env.BREVO_SMTP_USER) return;
   const sc = statusColors[newStatus] || "#64748b";
   const html = baseTemplate(
     "Ticket Status Updated",
@@ -152,12 +159,17 @@ export async function sendStatusUpdateToUser(ticket, newStatus, adminNote) {
      ${ticketTable({ ...ticket, status: newStatus })}
      ${adminNote ? `<p class="section-title">Admin Note</p><div class="comment-box">${adminNote}</div>` : ""}`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[TICKET UPDATE] ${ticket.ticket_id || ticket.id} — Status changed to ${newStatus}`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: ticket.requester_email,
+    subject: `[TICKET UPDATE] ${ticket.ticket_id || ticket.id} — Status changed to ${newStatus}`,
+    html,
+  });
 }
 
 // ─── 4. Admin comment → User ─────────────────────────────────────
 export async function sendAdminCommentToUser(ticket, comment) {
-  if (!ticket.requester_email) return;
+  if (!ticket.requester_email || !process.env.BREVO_SMTP_USER) return;
   const html = baseTemplate(
     "Admin has responded to your ticket",
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">💬 The support team has responded</p>
@@ -166,12 +178,17 @@ export async function sendAdminCommentToUser(ticket, comment) {
      <div class="comment-box">${comment}</div>
      ${ticketTable(ticket)}`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[REPLY] ${ticket.ticket_id || ticket.id} — Admin has responded`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: ticket.requester_email,
+    subject: `[REPLY] ${ticket.ticket_id || ticket.id} — Admin has responded`,
+    html,
+  });
 }
 
 // ─── 5. User comment → Admin ─────────────────────────────────────
 export async function sendUserCommentToAdmin(ticket, comment, userName) {
-  if (!process.env.ADMIN_EMAIL) return;
+  if (!process.env.ADMIN_EMAIL || !process.env.BREVO_SMTP_USER) return;
   const html = baseTemplate(
     "User has replied to a ticket",
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">💬 User Follow-up on Ticket</p>
@@ -180,12 +197,17 @@ export async function sendUserCommentToAdmin(ticket, comment, userName) {
      <div class="comment-box">${comment}</div>
      ${ticketTable(ticket)}`
   );
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[USER REPLY] ${ticket.ticket_id || ticket.id} — ${userName} has responded`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: process.env.ADMIN_EMAIL,
+    subject: `[USER REPLY] ${ticket.ticket_id || ticket.id} — ${userName} has responded`,
+    html,
+  });
 }
 
 // ─── 6. Ticket assigned → Assignee ──────────────────────────────
 export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
-  if (!assigneeEmail) return;
+  if (!assigneeEmail || !process.env.BREVO_SMTP_USER) return;
   const pc = priorityColors[ticket.priority] || { bg: "#64748b", label: ticket.priority };
   const html = baseTemplate(
     "A Ticket Has Been Assigned to You",
@@ -193,12 +215,17 @@ export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A support ticket has been created and assigned to you by the admin.</p>
      ${ticketTable(ticket)}`
   );
-  await sendEmail({ to: assigneeEmail, subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: assigneeEmail,
+    subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
 }
 
 // ─── 7. Admin-created ticket → Admin ────────────────────────────
 export async function sendAdminCreatedTicketToAdmin(ticket) {
-  if (!process.env.ADMIN_EMAIL) return;
+  if (!process.env.ADMIN_EMAIL || !process.env.BREVO_SMTP_USER) return;
   const pc = priorityColors[ticket.priority] || { label: ticket.priority };
   const html = baseTemplate(
     "Ticket Created by Admin",
@@ -208,12 +235,17 @@ export async function sendAdminCreatedTicketToAdmin(ticket) {
      <p class="section-title">Description</p>
      <div class="comment-box">${ticket.description || "—"}</div>`
   );
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[TICKET CREATED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: process.env.ADMIN_EMAIL,
+    subject: `[TICKET CREATED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
 }
 
 // ─── 8. Ticket resolved → User ───────────────────────────────────
 export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
-  if (!ticket.requester_email) return;
+  if (!ticket.requester_email || !process.env.BREVO_SMTP_USER) return;
   const resolvedAt = ticket.resolved_at
     ? new Date(ticket.resolved_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
     : new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
@@ -229,5 +261,10 @@ export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
      </div>
      ${ticketTable({ ...ticket, status: "Resolved" })}`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`, html });
+  await getTransporter().sendMail({
+    from: `"Viraj Ticketing" <${process.env.BREVO_SMTP_USER}>`,
+    to: ticket.requester_email,
+    subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`,
+    html,
+  });
 }
