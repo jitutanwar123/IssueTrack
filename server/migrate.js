@@ -11,6 +11,33 @@ const db = await mysql.createConnection({
 });
 
 console.log("✅ Connected. Running migrations...");
+   // Create base tables first
+await db.execute(`CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  hashed_password VARCHAR(255),
+  phone VARCHAR(20) DEFAULT NULL,
+  department VARCHAR(100) DEFAULT NULL,
+  portal_role ENUM('admin','user') DEFAULT 'user',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+await db.execute(`CREATE TABLE IF NOT EXISTS tickets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ticket_id VARCHAR(50) DEFAULT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  status VARCHAR(100) DEFAULT 'open',
+  priority VARCHAR(50) DEFAULT 'medium',
+  department VARCHAR(100) DEFAULT NULL,
+  user_email VARCHAR(255) DEFAULT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  resolved_at DATETIME DEFAULT NULL
+)`);
+
+console.log("✅ Base tables ready.");
 
 // Helper: check if column exists
 async function columnExists(table, column) {
