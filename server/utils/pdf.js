@@ -201,7 +201,7 @@ export function buildTicketPdf(ticket, comments = [], events = []) {
         if (i % 2 === 0) doc.rect(margin, rowY, contentW, rowH).fillColor(LIGHT).fill();
 
         const from  = event.from_value ? ` from "${event.from_value}"` : "";
-        const to    = event.to_value   ? ` → "${event.to_value}"`      : "";
+        const to    = event.to_value   ? ` to "${event.to_value}"`      : "";
         const field = event.field      ? ` [${event.field}]`           : "";
         const line  = `${event.actor_name} ${event.action}${field}${from}${to}`;
 
@@ -219,6 +219,7 @@ export function buildTicketPdf(ticket, comments = [], events = []) {
     }
 
     // ── FOOTER ───────────────────────────────────────────────────
+    doc.flushPages();
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
