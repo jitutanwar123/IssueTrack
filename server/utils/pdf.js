@@ -1,5 +1,5 @@
-import pkg from "pdfkit";
-const { default: PDFDocument } = pkg;
+import PDFKit from "pdfkit";
+const PDFDocument = PDFKit.default ?? PDFKit;
 import { formatDateTime } from "./helpers.js";
 
 export function buildTicketPdf(ticket, comments = [], events = []) {
