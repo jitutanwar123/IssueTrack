@@ -7,6 +7,11 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import { buildTicketPdf } from "./utils/pdf.js";
 
+function toMySQLDateTime(value) {
+  if (!value) return null;
+  return value.replace("T", " ").slice(0, 19);
+}
+
 import {
   sendNewTicketToAdmin,
   sendTicketConfirmationToUser,
