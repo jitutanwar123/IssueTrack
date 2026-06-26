@@ -77,7 +77,7 @@ export function ticketPdfHandler(ctx) {
     }
     const comments = listComments(ticket.ticket_id);
     const timeline = getTicketTimeline(ticket.ticket_id);
-    const pdf = buildTicketPdf(ticket, comments, timeline);
+    const pdf = await buildTicketPdf(ticket, comments, timeline);
     ctx.binary(res, 200, pdf, "application/pdf", {
       "Content-Disposition": `attachment; filename="${ticket.ticket_id}.pdf"`,
     });
