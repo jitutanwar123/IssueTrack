@@ -78,13 +78,10 @@ export default function TicketList() {
   }
 
   function nextPage(page) {
-    setTicketFilters({ page });
-
-    refreshTickets({
-      ...ticketFilters,
-      page,
-    }).catch(() => {});
-  }
+  const updated = { ...ticketFilters, page };
+  setTicketFilters(updated);
+  refreshTickets(updated).catch(() => {});
+}
 
   async function deleteRow(ticket) {
     const ticketId = ticket.id;
