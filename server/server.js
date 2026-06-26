@@ -305,7 +305,7 @@ app.get("/api/tickets/next-id", async (req, res) => {
 // GET SINGLE TICKET (admin — includes comments + timeline)
 app.get("/api/tickets/:id", (req, res) => {
   const { id } = req.params;
-  db.query("SELECT * FROM tickets WHERE id = ?", [id], async (err, results) => {
+  db.query("SELECT * FROM tickets WHERE ticket_id = ?", [id], async (err, results) => {
     if (err) return res.status(500).json(err);
     if (results.length === 0) return res.status(404).json({ message: "Ticket not found" });
 
@@ -439,7 +439,7 @@ app.put("/api/tickets/:id", async (req, res) => {
   } = req.body;
 
   // Get old ticket for status comparison
-  const oldRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+  const oldRows = await query("SELECT * FROM tickets WHERE ticket_id = ?", [id]).catch(() => []);
   const oldTicket = oldRows[0];
 
   const sql = `UPDATE tickets SET
@@ -448,7 +448,7 @@ app.put("/api/tickets/:id", async (req, res) => {
     requested_by=?, assigned_to=?,
     expected_closure_date=?, actual_closure_date=?,
     response_time=?, resolution_time=?, location=?, workstream=?, workgroup=?, service=?
-    WHERE id=?`;
+    WHERE ticket_id=?`;
 
   db.query(sql, [
     title, description, category, sub_category, priority, status,
@@ -477,7 +477,7 @@ app.put("/api/tickets/:id", async (req, res) => {
 // DELETE TICKET
 app.delete("/api/tickets/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM tickets WHERE id = ?", [id], (err, result) => {
+  db.query("DELETE FROM tickets WHERE ticket_id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
     if (result.affectedRows === 0) return res.status(404).json({ message: "Ticket not found" });
     res.json({ success: true, message: "Ticket deleted successfully" });
