@@ -255,7 +255,7 @@ export default function TicketList() {
                   <td className="px-5 py-4 text-sm">
                     <div className="flex gap-2">
                       <Link
-                        to={`/tickets/${ticket.ticket_id}`}
+                        to={`/tickets/${ticket.id}`}
                         className="rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-100"
                       >
                         View
@@ -270,7 +270,7 @@ export default function TicketList() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/resolve/${ticket.ticket_id}`);
+                            navigate(`/resolve/${ticket.id}`);
                           }}
                           className="rounded-xl border border-green-300 bg-green-600 px-3 py-2 font-semibold text-white transition hover:bg-green-700 active:scale-95"
                         >
