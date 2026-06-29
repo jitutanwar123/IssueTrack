@@ -381,7 +381,7 @@ app.get("/api/tickets", (req, res) => {
   if (workgroup)    { whereSql += " AND workgroup = ?";        params.push(workgroup); }
   if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
 
-  const dataSql  = `SELECT * FROM tickets ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  const dataSql  = `SELECT * FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
 
   // Run both queries in parallel using the promise-based interface
