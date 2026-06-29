@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../utils/api.js";
 
-const roles = ["Administrator", "Infrastructure Manager", "System Administrator", "Network Administrator", "Help Desk Engineer", "Technical Support Engineer", "Agent", "Viewer"];
+const roles = ["Administrator", "Infrastructure Manager", "System Administrator", "Network Administrator", "Help Desk Engineer", "Technical Support Engineer"];
 const portalRoles = [
   { value: "user",     label: "User (End user portal)" },
   { value: "it_staff", label: "IT Staff (Sub-branch portal)" },
@@ -111,7 +111,6 @@ export default function Team() {
             ["email", "Email"],
             ["username", "Username"],
             ["password", "Password"],
-            ["team", "Team"],
             ["avatar_color", "Avatar Color"],
           ].map(([field, label]) => (
             <label key={field} className="block">
