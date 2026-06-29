@@ -118,9 +118,6 @@ export default function StaffLogin() {
           <div className="flex flex-col justify-center bg-white p-10">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">IT Staff Sign In</h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Enter your work email and password to access your staff portal.
-              </p>
             </div>
 
             <form onSubmit={submit} autoComplete="off" className="space-y-5">
