@@ -708,6 +708,30 @@ app.get("/api/reports/summary", async (req, res) => {
   }
 });
 
+// ─── Full ticket export endpoint (no pagination, used by Excel export) ───────
+app.get("/api/reports/export", authenticateJWT, (req, res) => {
+  const { from, to, category, assignee, status, priority } = req.query;
+  const conditions = [];
+  const params = [];
+  if (from)     { conditions.push("DATE(created_at) >= ?"); params.push(from); }
+  if (to)       { conditions.push("DATE(created_at) <= ?"); params.push(to); }
+  if (category) { conditions.push("category = ?");          params.push(category); }
+  if (status)   { conditions.push("status = ?");            params.push(status); }
+  if (priority) { conditions.push("priority = ?");          params.push(priority); }
+  if (assignee) { conditions.push("(assigned_to LIKE ? OR assigned_to_name LIKE ?)"); params.push(`%${assignee}%`, `%${assignee}%`); }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const cols = `ticket_id, title, category, sub_category, priority, status,
+    customer_name, requester_email, phone, location,
+    assigned_to, department, workstream, workgroup, service,
+    response_time, resolution_time,
+    expected_closure_date, actual_closure_date,
+    created_at, updated_at`;
+  db.query(`SELECT ${cols} FROM tickets ${where} ORDER BY created_at DESC`, params, (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    res.json({ data: rows });
+  });
+});
+
 app.get("/api/reports/ageing", (req, res) => { res.json({ data: [] }); });
 
 app.get("/api/reports/detail", (req, res) => {
