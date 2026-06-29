@@ -1,7 +1,7 @@
 const API_BASE =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-function getToken() {
+export function getToken() {
   return localStorage.getItem("welserve_token") || "";
 }
 

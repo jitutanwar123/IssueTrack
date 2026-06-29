@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { api } from "../../utils/api.js";
+import { api, getToken } from "../../utils/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { formatDateTime } from "../../utils/helpers.js";
@@ -230,6 +230,54 @@ export default function StaffTicketDetail() {
               )}
             </div>
           </div>
+
+          {/* Attachment */}
+          {ticket.attachment_name && (
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attachment</h2>
+              </div>
+              <div className="p-5">
+                {ticket.attachment_mime?.startsWith("image/") ? (
+                  // Show image inline
+                  <div className="space-y-3">
+                    <img
+                      src={api.ticketAttachmentUrl(ticket.id)}
+                      alt={ticket.attachment_name}
+                      className="max-h-80 w-auto rounded-xl border border-slate-200 object-contain"
+                    />
+                    <a
+                      href={api.ticketAttachmentUrl(ticket.id)}
+                      download={ticket.attachment_name}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download {ticket.attachment_name}
+                    </a>
+                  </div>
+                ) : (
+                  // Non-image: show download button
+                  <a
+                    href={api.ticketAttachmentUrl(ticket.id)}
+                    download={ticket.attachment_name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                  >
+                    <svg className="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                    {ticket.attachment_name}
+                    <span className="text-xs text-slate-400">{ticket.attachment_mime}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Comments */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
