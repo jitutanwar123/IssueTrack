@@ -177,53 +177,64 @@ app.get("/", (req, res) => {
 
 // ─── Email diagnostics endpoint (Railway debug) ──────────────────
 app.get("/api/test-email", async (req, res) => {
-  const resendKey  = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_EMAIL;
+  const brevoKey  = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.GMAIL_USER;
+  const adminEmail= process.env.ADMIN_EMAIL;
 
   const config = {
-    RESEND_API_KEY: resendKey  ? "✅ set (hidden)"      : "❌ NOT SET",
-    ADMIN_EMAIL:    adminEmail ? `✅ ${adminEmail}`     : "❌ NOT SET",
+    BREVO_API_KEY:    brevoKey   ? "✅ set (hidden)"    : "❌ NOT SET",
+    BREVO_FROM_EMAIL: fromEmail  ? `✅ ${fromEmail}`    : "❌ NOT SET",
+    ADMIN_EMAIL:      adminEmail ? `✅ ${adminEmail}`   : "❌ NOT SET",
   };
 
-  if (!resendKey) {
+  if (!brevoKey || !fromEmail) {
     return res.status(500).json({
       success: false,
-      message: "RESEND_API_KEY is not set in Railway environment variables. Add it from https://resend.com",
+      message: "BREVO_API_KEY or BREVO_FROM_EMAIL not set in Railway variables.",
       config,
     });
   }
 
   try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(resendKey);
-
-    const { data, error } = await resend.emails.send({
-      from: "Viraj IT Support <onboarding@resend.dev>",
-      to: adminEmail || "delivered@resend.dev",
-      subject: "✅ Railway Email Test — IssueTrack",
-      html: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
-        <h2 style="color:#22c55e">Email is working! ✅</h2>
-        <p>Your Railway deployment can successfully send emails via Resend.</p>
-        <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
-      </div>`,
+    const to = adminEmail || fromEmail;
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept":       "application/json",
+        "content-type": "application/json",
+        "api-key":      brevoKey,
+      },
+      body: JSON.stringify({
+        sender:      { name: "Viraj IT Support", email: fromEmail },
+        to:          [{ email: to }],
+        subject:     "✅ Railway Email Test — IssueTrack (Brevo)",
+        htmlContent: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
+          <h2 style="color:#22c55e">Email is working! ✅</h2>
+          <p>Your Railway deployment can send emails via Brevo to <strong>any</strong> recipient.</p>
+          <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+        </div>`,
+      }),
     });
 
-    if (error) throw new Error(error.message || JSON.stringify(error));
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Brevo ${response.status}: ${data.message || JSON.stringify(data)}`);
 
     res.json({
       success: true,
-      message: `✅ Test email sent successfully via Resend${adminEmail ? ` to ${adminEmail}` : ""}`,
-      resend_id: data?.id,
+      message: `✅ Test email sent to ${to} via Brevo`,
+      messageId: data.messageId,
       config,
     });
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `❌ Resend Error: ${err.message}`,
+      message: `❌ Brevo Error: ${err.message}`,
       config,
-      hint: err.message.includes("API key")
-        ? "Your RESEND_API_KEY is invalid. Get one at https://resend.com/api-keys"
-        : "Check that RESEND_API_KEY is correctly set in Railway Variables.",
+      hint: err.message.includes("401") || err.message.includes("unauthorized")
+        ? "BREVO_API_KEY is invalid. Get one at https://app.brevo.com/settings/keys/api"
+        : err.message.includes("sender")
+        ? "BREVO_FROM_EMAIL is not verified in Brevo. Go to Senders & IPs → verify the email."
+        : "Check Railway env vars and redeploy.",
     });
   }
 });
