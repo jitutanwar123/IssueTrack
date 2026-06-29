@@ -78,11 +78,6 @@ export default function UserLogin() {
                 <span style={{ color: "#67e8f9" }}>User Support</span>
               </h1>
 
-              <p className="mt-4 text-sm leading-relaxed" style={{ color: "rgba(203,213,225,0.8)" }}>
-                Submit, track and follow up on your support tickets anytime.
-                Our IT team is here to help you.
-              </p>
-
               <div className="mt-8 space-y-3">
                 {[
                   { icon: "🎫", text: "Raise incidents, service requests & change tickets" },
@@ -204,25 +199,11 @@ export default function UserLogin() {
               </button>
 
               {/* Links */}
-              <div className="pt-4 border-t border-slate-100 space-y-2 text-xs text-slate-500 text-center">
-                <div>
-                  New here?{" "}
-                  <Link to="/register" className="font-semibold text-cyan-600 hover:text-cyan-700 transition-colors">
-                    Create an account →
-                  </Link>
-                </div>
-                <div>
-                  Admin?{" "}
-                  <Link to="/login" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors">
-                    Admin Portal →
-                  </Link>
-                </div>
-                <div>
-                  IT Staff?{" "}
-                  <Link to="/staff-login" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors">
-                    Staff Portal →
-                  </Link>
-                </div>
+              <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
+                New here?{" "}
+                <Link to="/register" className="font-semibold text-cyan-600 hover:text-cyan-700 transition-colors">
+                  Create an account →
+                </Link>
               </div>
             </form>
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { clearToken } from "../../utils/api.js";
 import virajLogo from "../../viraaj.webp";
@@ -84,10 +84,6 @@ export default function StaffLogin() {
                 Viraj Profiles<br />
                 <span style={{ color: "#c4b5fd" }}>Staff Workspace</span>
               </h1>
-
-              <p className="mt-4 text-sm leading-relaxed" style={{ color: "rgba(203,213,225,0.8)" }}>
-                View and resolve tickets assigned to your IT sub-branch. Track resolution history and communicate with users.
-              </p>
 
               <div className="mt-8 space-y-3">
                 {[
@@ -192,20 +188,6 @@ export default function StaffLogin() {
                 ) : "Sign In to Staff Portal"}
               </button>
 
-              <div className="pt-4 border-t border-slate-100 text-center space-y-2 text-xs text-slate-500">
-                <div>
-                  Admin?{" "}
-                  <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
-                    Admin Portal →
-                  </Link>
-                </div>
-                <div>
-                  End user?{" "}
-                  <Link to="/user-login" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
-                    User Portal →
-                  </Link>
-                </div>
-              </div>
             </form>
           </div>
         </div>

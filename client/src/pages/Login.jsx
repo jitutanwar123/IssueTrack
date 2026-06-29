@@ -108,11 +108,6 @@ export default function Login() {
                 <span style={{ color: "#93c5fd" }}>IT Command Center</span>
               </h1>
 
-              <p className="mt-4 text-sm leading-relaxed" style={{ color: "rgba(203,213,225,0.8)" }}>
-                Incident, service request, problem and change tracking designed
-                for faster triage, better visibility, and clean audit trails.
-              </p>
-
               <div className="mt-8 space-y-3">
                 {FEATURES.map((f, i) => (
                   <div
