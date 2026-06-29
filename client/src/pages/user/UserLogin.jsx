@@ -123,11 +123,19 @@ export default function UserLogin() {
               </Link>
             </div>
 
-            <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
-              Admin?{" "}
-              <Link to="/login" className="font-medium text-slate-600 hover:text-slate-900">
-                Admin Login
-              </Link>
+            <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-400 space-y-1.5">
+              <div>
+                Admin?{" "}
+                <Link to="/login" className="font-medium text-slate-600 hover:text-slate-900">
+                  Admin Login
+                </Link>
+              </div>
+              <div>
+                IT Staff?{" "}
+                <Link to="/staff-login" className="font-medium text-cyan-600 hover:text-cyan-800">
+                  Staff Portal Login →
+                </Link>
+              </div>
             </div>
           </form>
         </div>

@@ -115,6 +115,7 @@ export const api = {
   deleteUser: (id) => request(`/users/${id}`, { method: "DELETE" }),
 
   // ── IT Staff Portal ───────────────────────────────────────────
+  staffMembers: () => request("/staff/members"),
   staffTickets: (params = {}) => {
     const search = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {

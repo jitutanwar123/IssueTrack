@@ -808,9 +808,22 @@ app.get("/api/user/tickets", authenticateJWT, requireUser, async (req, res) => {
 });
 
 // CREATE TICKET (user — triggers emails)
+// GET: Public list of IT staff members — used by user portal Assign To dropdown
+app.get("/api/staff/members", authenticateJWT, async (req, res) => {
+  try {
+    const rows = await query(
+      "SELECT id, name, role, department FROM users WHERE portal_role = 'it_staff' ORDER BY role, name",
+      []
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attachment"), async (req, res) => {
   const user = req.user;
-  const { title, description, category, sub_category, priority } = req.body;
+  const { title, description, category, sub_category, priority, assigned_to } = req.body;
 
   if (!title || !category || !priority) {
     return res.status(400).json({ message: "Title, category, and priority are required" });
@@ -827,12 +840,13 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
        customer_name, requester_email, phone, department, user_email,
-       attachment_name, attachment_mime, attachment_data)
-      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?)`;
+       assigned_to, attachment_name, attachment_mime, attachment_data)
+      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?)`;
 
     const result = await query(sql, [
       ticketId, title, description, category, sub_category || null, priority,
       user.name, user.email, user.phone || null, user.department || null, user.email,
+      assigned_to || null,
       attachmentName, attachmentMime, attachmentData,
     ]);
 
@@ -845,10 +859,11 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       requester_email: user.email,
       phone: user.phone,
       department: user.department,
+      assigned_to: assigned_to || null,
       created_at: new Date(),
       attachment_name: attachmentName,
       attachment_mime: attachmentMime,
-      attachment_data: attachmentData, // Buffer — email service uses this to attach the file
+      attachment_data: attachmentData,
     };
 
     // Status history
@@ -863,8 +878,22 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       .then(() => console.log(`✅ Admin email sent for ${ticketId}`))
       .catch((e) => console.error(`❌ Admin email error:`, e.message));
     sendTicketConfirmationToUser(newTicket)
-      .then(() => console.log(`✅ User email sent to ${user.email} for ${ticketId}`))
+      .then(() => console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`))
       .catch((e) => console.error(`❌ User email error:`, e.message));
+
+    // If assigned to a staff member, email them too
+    if (assigned_to) {
+      query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to])
+        .then((rows) => {
+          const assigneeEmail = rows[0]?.email;
+          if (assigneeEmail) {
+            return sendTicketAssignedToAssignee(newTicket, assigneeEmail)
+              .then(() => console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`))
+              .catch((e) => console.error(`❌ Assignment email error:`, e.message));
+          }
+        })
+        .catch(() => {});
+    }
 
     res.json({ success: true, data: newTicket });
   } catch (err) {

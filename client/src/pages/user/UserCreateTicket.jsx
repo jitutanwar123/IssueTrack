@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api } from "../../utils/api.js";
@@ -32,11 +32,20 @@ export default function UserCreateTicket() {
     category: "",
     sub_category: "",
     priority: "",
+    assigned_to: "",
   });
   const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [dragging, setDragging] = useState(false);
+  const [staffMembers, setStaffMembers] = useState([]);
+
+  // Fetch IT staff list for the assign-to dropdown
+  useEffect(() => {
+    api.staffMembers()
+      .then((res) => setStaffMembers(res.data || []))
+      .catch(() => {}); // silently fail — dropdown just stays empty
+  }, []);
 
   function setField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -173,6 +182,28 @@ export default function UserCreateTicket() {
                     {subOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* Assign To — IT sub-branch */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Assign To — IT Sub-Branch
+                </label>
+                <select
+                  value={form.assigned_to}
+                  onChange={(e) => setField("assigned_to", e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-400"
+                >
+                  <option value="">— Select IT Staff Member (optional) —</option>
+                  {staffMembers.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name} — {s.role}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  Select the IT team member who handles your type of issue. They will receive an email notification.
+                </p>
               </div>
 
               {/* Attachment */}
