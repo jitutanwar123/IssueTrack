@@ -21,6 +21,7 @@ import {
   sendResolutionToUser,
   sendTicketAssignedToAssignee,
   sendAdminCreatedTicketToAdmin,
+  sendSubBranchResolutionToAdmin,
 } from "./emailService.js";
 
 dotenv.config();
@@ -63,16 +64,23 @@ db.connect((err) => {
     "ALTER TABLE tickets ADD COLUMN attachment_name VARCHAR(255) DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN attachment_mime VARCHAR(100) DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN attachment_data LONGBLOB DEFAULT NULL",
+    // IT Staff portal role support
+    "ALTER TABLE users ADD COLUMN department VARCHAR(100) DEFAULT NULL",
+    // Expand portal_role to support it_staff
+    "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
   ];
   migrationCols.forEach((sql) => {
     db.query(sql, (migErr) => {
-      if (migErr && migErr.errno !== 1060) {
+      if (migErr && migErr.errno !== 1060 && migErr.errno !== 1060) {
         // errno 1060 = "Duplicate column name" — column already exists, that's fine
-        console.warn("⚠️  Migration warning:", migErr.message);
+        // Other MODIFY errors are also silently handled (e.g. column already correct type)
+        if (!migErr.message?.includes("Duplicate column") && migErr.errno !== 1060) {
+          console.warn("⚠️  Migration warning:", migErr.message);
+        }
       }
     });
   });
-  console.log("✅ Migration queued (resolved_at, resolution_note, resolved_by, attachment columns)");
+  console.log("✅ Migration queued (resolved_at, resolution_note, resolved_by, attachment columns, it_staff role)");
 
 });
 
@@ -107,6 +115,21 @@ function requireAdmin(req, res, next) {
     role === "Admin" ||
     role === "Administrator";
   if (!isAdmin) return res.status(403).json({ message: "Admin access required" });
+  next();
+}
+
+// Allow IT staff OR admin (staff can only access their own tickets)
+function requireStaff(req, res, next) {
+  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+  const pr = req.user?.portal_role || "";
+  const role = req.user?.role || "";
+  const ok =
+    pr === "it_staff" ||
+    pr === "admin" ||
+    role === "admin" ||
+    role === "Admin" ||
+    role === "Administrator";
+  if (!ok) return res.status(403).json({ message: "Staff access required" });
   next();
 }
 
@@ -475,6 +498,23 @@ app.put("/api/tickets/:id", async (req, res) => {
       ).catch(() => {});
     }
 
+    // If assigned_to changed, look up new assignee email and notify them
+    const oldAssigned = oldTicket?.assigned_to || "";
+    const newAssigned = assigned_to || "";
+    if (newAssigned && newAssigned !== oldAssigned) {
+      query("SELECT email FROM users WHERE name = ? LIMIT 1", [newAssigned])
+        .then((rows) => {
+          const assigneeEmail = rows[0]?.email;
+          if (assigneeEmail) {
+            const updatedTicket = { ...oldTicket, ...req.body, assigned_to: newAssigned };
+            return sendTicketAssignedToAssignee(updatedTicket, assigneeEmail)
+              .then(() => console.log(`✅ Assignment email sent to ${assigneeEmail} (update) for ticket #${id}`))
+              .catch((e) => console.error(`❌ Assignment email error on update:`, e.message));
+          }
+        })
+        .catch(() => {});
+    }
+
     res.json({ success: true, affectedRows: result.affectedRows });
   });
 });
@@ -623,14 +663,15 @@ app.get("/api/users", (req, res) => {
 });
 
 app.post("/api/users", async (req, res) => {
-  const { name, email, username, password, role, team, status, avatar_color } = req.body;
+  const { name, email, username, password, role, team, status, avatar_color, portal_role, department } = req.body;
   if (!name || !email || !username || !password) {
     return res.status(400).json({ message: "Name, email, username, and password are required" });
   }
   try {
     const hashed = await bcrypt.hash(password, 10);
-    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color) VALUES (?,?,?,?,?,?,?,?)`;
-    const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a"]);
+    const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
+    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department) VALUES (?,?,?,?,?,?,?,?,?,?)`;
+    const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null]);
     res.json({ success: true, id: result.insertId });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "A user with this email or username already exists" });
@@ -640,22 +681,23 @@ app.post("/api/users", async (req, res) => {
 
 app.put("/api/users/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, email, username, password, role, team, status, avatar_color } = req.body;
-  console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, hasPassword: !!(password && password.trim()) });
+  const { name, email, username, password, role, team, status, avatar_color, portal_role, department } = req.body;
+  console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, portal_role, department, hasPassword: !!(password && password.trim()) });
+  const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
   try {
     let result;
     if (password && password.trim()) {
       // Update including new hashed password
       const hashed = await bcrypt.hash(password, 10);
       result = await query(
-        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=? WHERE id=?`,
-        [name, email, username, hashed, role, team, status, avatar_color, id]
+        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=? WHERE id=?`,
+        [name, email, username, hashed, role, team, status, avatar_color, resolvedPortalRole, department || null, id]
       );
     } else {
       // Update without touching the password
       result = await query(
-        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=? WHERE id=?`,
-        [name, email, username, role, team, status, avatar_color, id]
+        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=? WHERE id=?`,
+        [name, email, username, role, team, status, avatar_color, resolvedPortalRole, department || null, id]
       );
     }
     console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
@@ -1034,6 +1076,135 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
     res.json({ success: true, message: "Ticket resolved successfully" });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
+// IT STAFF PORTAL ROUTES
+// ════════════════════════════════════════════════════════════════
+
+// GET: Staff's assigned tickets (only tickets where assigned_to = logged-in staff name)
+app.get("/api/staff/tickets", authenticateJWT, requireStaff, async (req, res) => {
+  try {
+    const staffName = req.user.name;
+    const { status, priority, search } = req.query;
+    let sql = "SELECT * FROM tickets WHERE assigned_to = ?";
+    const params = [staffName];
+    if (status)   { sql += " AND status = ?";                            params.push(status); }
+    if (priority) { sql += " AND priority = ?";                          params.push(priority); }
+    if (search)   { sql += " AND (title LIKE ? OR ticket_id LIKE ?)";    params.push(`%${search}%`, `%${search}%`); }
+    sql += " ORDER BY created_at DESC";
+    const rows = await query(sql, params);
+    res.json({ data: rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET: Staff's resolved ticket history (count + list)
+app.get("/api/staff/resolved-history", authenticateJWT, requireStaff, async (req, res) => {
+  try {
+    const staffName = req.user.name;
+    const rows = await query(
+      `SELECT id, ticket_id, title, category, priority, resolved_at, resolution_note, customer_name
+       FROM tickets
+       WHERE resolved_by = ? AND status = 'Resolved'
+       ORDER BY resolved_at DESC`,
+      [staffName]
+    );
+    res.json({ data: rows, count: rows.length });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET: Single assigned ticket for staff
+app.get("/api/staff/tickets/:id", authenticateJWT, requireStaff, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const staffName = req.user.name;
+    // Admin can view any ticket; staff can only view assigned ones
+    const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
+    const rows = isAdmin
+      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
+      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+    if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
+    const ticket = rows[0];
+    const comments = await query(
+      "SELECT * FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC", [id]
+    ).catch(() => []);
+    const timeline = await query(
+      "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC", [id]
+    ).catch(() => []);
+    res.json({ data: ticket, comments, timeline });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PUT: Staff resolves their assigned ticket — emails user + admin
+app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (req, res) => {
+  const { id } = req.params;
+  const { resolutionNote } = req.body;
+  if (!resolutionNote?.trim()) {
+    return res.status(400).json({ message: "Resolution note is required" });
+  }
+  try {
+    const staffName = req.user.name;
+    const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
+    const rows = isAdmin
+      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
+      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+    if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
+    const oldTicket = rows[0];
+    if (oldTicket.status === "Resolved") {
+      return res.status(409).json({ message: "Ticket is already resolved" });
+    }
+    await query(
+      `UPDATE tickets SET status='Resolved', resolved_at=NOW(), resolution_note=?, resolved_by=?, updated_at=NOW() WHERE id=?`,
+      [resolutionNote.trim(), staffName, id]
+    );
+    await query(
+      `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note) VALUES (?,?,?,'Resolved',?)`,
+      [id, staffName, oldTicket.status, resolutionNote.trim()]
+    ).catch(() => {});
+    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const updatedTicket = updatedRows[0] || { ...oldTicket, status: "Resolved" };
+    // Email user: your ticket has been resolved
+    sendResolutionToUser(updatedTicket, staffName, resolutionNote.trim())
+      .then(() => console.log(`✅ Resolution email sent to user for ticket #${id}`))
+      .catch((e) => console.error(`❌ User resolution email error:`, e.message));
+    // Email admin: sub-branch has resolved a ticket
+    sendSubBranchResolutionToAdmin(updatedTicket, staffName, resolutionNote.trim())
+      .then(() => console.log(`✅ Sub-branch resolution notification sent to admin for ticket #${id}`))
+      .catch((e) => console.error(`❌ Admin resolution notification error:`, e.message));
+    res.json({ success: true, message: "Ticket resolved successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST: Staff adds comment to their assigned ticket
+app.post("/api/staff/tickets/:id/comment", authenticateJWT, requireStaff, async (req, res) => {
+  const { id } = req.params;
+  const { body } = req.body;
+  if (!body?.trim()) return res.status(400).json({ message: "Comment cannot be empty" });
+  try {
+    const staffName = req.user.name;
+    const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator";
+    const rows = isAdmin
+      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
+      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+    if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
+    await query(
+      "INSERT INTO ticket_comments (ticket_id, author_name, author_email, author_role, body) VALUES (?,?,?,?,?)",
+      [id, staffName, req.user?.email || null, "admin", body.trim()]
+    );
+    sendAdminCommentToUser(rows[0], body.trim()).catch(() => {});
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });

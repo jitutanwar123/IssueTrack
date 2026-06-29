@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
       user?.role === "admin" ||
       user?.role === "Admin",
     isUser: user?.portal_role === "user",
+    isStaff: user?.portal_role === "it_staff",
     login,
     logout,
   };

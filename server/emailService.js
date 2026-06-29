@@ -231,3 +231,22 @@ export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
   );
   await sendEmail({ to: ticket.requester_email, subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`, html });
 }
+
+// ─── 9. Sub-branch resolved ticket → Admin ───────────────────────
+export async function sendSubBranchResolutionToAdmin(ticket, resolvedBy, resolutionNote) {
+  if (!process.env.ADMIN_EMAIL) return;
+  const resolvedAt = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  const html = baseTemplate(
+    "Sub-Branch Ticket Resolved",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">✅ A sub-branch member has resolved a ticket</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">IT Staff member <strong>${resolvedBy}</strong> has resolved the following ticket.</p>
+     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin:16px 0;">
+       <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#15803d;">Resolution Details</p>
+       <p><strong>Resolved By:</strong> ${resolvedBy}</p>
+       <p><strong>Resolved At:</strong> ${resolvedAt}</p>
+       <p><strong>Resolution Note:</strong> ${resolutionNote}</p>
+     </div>
+     ${ticketTable({ ...ticket, status: "Resolved" })}`
+  );
+  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[SUB-BRANCH RESOLVED] ${ticket.ticket_id || ticket.id} — Resolved by ${resolvedBy}`, html });
+}

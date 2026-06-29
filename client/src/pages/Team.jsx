@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import { api } from "../utils/api.js";
 
-const roles = ["Admin", "Agent", "Viewer"];
+const roles = ["Administrator", "Infrastructure Manager", "System Administrator", "Network Administrator", "Help Desk Engineer", "Technical Support Engineer", "Agent", "Viewer"];
+const portalRoles = [
+  { value: "user",     label: "User (End user portal)" },
+  { value: "it_staff", label: "IT Staff (Sub-branch portal)" },
+  { value: "admin",    label: "Admin (Full access)" },
+];
+const departments = ["IT", "HR", "Finance", "Operations", "Sales", "Marketing", "Administration"];
 
 export default function Team() {
   const [users, setUsers] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", username: "", password: "", role: "Agent", team: "", status: "Available", avatar_color: "#0f172a" });
+  const [form, setForm] = useState({
+    name: "", email: "", username: "", password: "",
+    role: "Help Desk Engineer", team: "", status: "Available",
+    avatar_color: "#0f172a", portal_role: "it_staff", department: "IT",
+  });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -34,6 +44,8 @@ export default function Team() {
       team: user.team || "",
       status: user.status || "Available",
       avatar_color: user.avatar_color || "#0f172a",
+      portal_role: user.portal_role || "user",
+      department: user.department || "IT",
     });
   }
 
@@ -53,7 +65,11 @@ export default function Team() {
         setSuccess("Member added successfully!");
       }
       setEditingId(null);
-      setForm({ name: "", email: "", username: "", password: "", role: "Agent", team: "", status: "Available", avatar_color: "#0f172a" });
+      setForm({
+        name: "", email: "", username: "", password: "",
+        role: "Help Desk Engineer", team: "", status: "Available",
+        avatar_color: "#0f172a", portal_role: "it_staff", department: "IT",
+      });
       await load();
     } catch (err) {
       console.error("[Team] submit error:", err);
@@ -96,7 +112,7 @@ export default function Team() {
             </label>
           ))}
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Role</span>
+            <span className="mb-2 block text-sm font-medium text-slate-700">Role / Position</span>
             <select
               value={form.role}
               onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
@@ -106,6 +122,33 @@ export default function Team() {
                 <option key={role} value={role}>
                   {role}
                 </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-700">Portal Access</span>
+            <select
+              value={form.portal_role}
+              onChange={(event) => setForm((current) => ({ ...current, portal_role: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+            >
+              {portalRoles.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              IT Staff = sub-branch portal at /staff-login
+            </p>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-700">Department</span>
+            <select
+              value={form.department}
+              onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+            >
+              {departments.map((d) => (
+                <option key={d} value={d}>{d}</option>
               ))}
             </select>
           </label>
@@ -128,7 +171,11 @@ export default function Team() {
                 type="button"
                 onClick={() => {
                   setEditingId(null);
-                  setForm({ name: "", email: "", username: "", password: "", role: "Agent", team: "", status: "Available", avatar_color: "#0f172a" });
+                  setForm({
+                    name: "", email: "", username: "", password: "",
+                    role: "Help Desk Engineer", team: "", status: "Available",
+                    avatar_color: "#0f172a", portal_role: "it_staff", department: "IT",
+                  });
                 }}
                 className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
               >
@@ -148,6 +195,7 @@ export default function Team() {
                 <tr>
                   <th className="px-5 py-4">Name</th>
                   <th className="px-5 py-4">Role</th>
+                  <th className="px-5 py-4">Portal Access</th>
                   <th className="px-5 py-4">Team</th>
                   <th className="px-5 py-4">Status</th>
                   <th className="px-5 py-4">Actions</th>
@@ -161,6 +209,17 @@ export default function Team() {
                       <div className="text-sm text-slate-500">{user.email}</div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-700">{user.role}</td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        user.portal_role === "admin"
+                          ? "bg-purple-100 text-purple-700"
+                          : user.portal_role === "it_staff"
+                          ? "bg-cyan-100 text-cyan-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}>
+                        {user.portal_role === "it_staff" ? "IT Staff" : user.portal_role || "user"}
+                      </span>
+                    </td>
                     <td className="px-5 py-4 text-sm text-slate-700">{user.team}</td>
                     <td className="px-5 py-4 text-sm text-slate-700">{user.status}</td>
                     <td className="px-5 py-4">

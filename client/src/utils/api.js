@@ -114,6 +114,21 @@ export const api = {
   updateUser: (id, payload) => request(`/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteUser: (id) => request(`/users/${id}`, { method: "DELETE" }),
 
+  // ── IT Staff Portal ───────────────────────────────────────────
+  staffTickets: (params = {}) => {
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") search.set(key, value);
+    });
+    return request(`/staff/tickets?${search.toString()}`);
+  },
+  staffTicket: (id) => request(`/staff/tickets/${id}`),
+  staffResolvedHistory: () => request("/staff/resolved-history"),
+  resolveStaffTicket: (id, payload) =>
+    request(`/staff/tickets/${id}/resolve`, { method: "PUT", body: JSON.stringify(payload) }),
+  addStaffComment: (id, body) =>
+    request(`/staff/tickets/${id}/comment`, { method: "POST", body: JSON.stringify({ body }) }),
+
   // ── Reports ───────────────────────────────────────────────────
   reportSummary: (params = {}) => {
     const search = new URLSearchParams();
