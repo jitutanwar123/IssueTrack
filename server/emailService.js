@@ -7,19 +7,19 @@ dotenv.config();
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
   },
 });
 
-const FROM = process.env.EMAIL_FROM || `Viraj IT Support <${process.env.EMAIL_USER}>`;
+const FROM = process.env.EMAIL_FROM || `Viraj IT Support <${process.env.GMAIL_USER}>`;
 
 // ─── Startup diagnostic ──────────────────────────────────────────
 console.log("📧 Email config check:");
-console.log("  EMAIL_USER  :", process.env.EMAIL_USER  ? `✅ ${process.env.EMAIL_USER}` : "❌ NOT SET");
-console.log("  EMAIL_PASS  :", process.env.EMAIL_PASS  ? "✅ set"                        : "❌ NOT SET");
-console.log("  EMAIL_FROM  :", process.env.EMAIL_FROM  ? `✅ ${process.env.EMAIL_FROM}` : "⚠️  using default");
-console.log("  ADMIN_EMAIL :", process.env.ADMIN_EMAIL ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET — admin emails will be skipped!");
+console.log("  GMAIL_USER         :", process.env.GMAIL_USER         ? `✅ ${process.env.GMAIL_USER}`  : "❌ NOT SET");
+console.log("  GMAIL_APP_PASSWORD :", process.env.GMAIL_APP_PASSWORD ? "✅ set"                        : "❌ NOT SET");
+console.log("  EMAIL_FROM         :", process.env.EMAIL_FROM         ? `✅ ${process.env.EMAIL_FROM}`  : "⚠️  using default");
+console.log("  ADMIN_EMAIL        :", process.env.ADMIN_EMAIL        ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET — admin emails will be skipped!");
 
 // Test Gmail SMTP connection on startup
 transporter.verify((error) => {
