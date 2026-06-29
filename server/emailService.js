@@ -14,6 +14,13 @@ const transporter = nodemailer.createTransport({
 
 const FROM = process.env.EMAIL_FROM || `Viraj IT Support <${process.env.EMAIL_USER}>`;
 
+// ─── Startup diagnostic ──────────────────────────────────────────
+console.log("📧 Email config check:");
+console.log("  EMAIL_USER  :", process.env.EMAIL_USER  ? `✅ ${process.env.EMAIL_USER}` : "❌ NOT SET");
+console.log("  EMAIL_PASS  :", process.env.EMAIL_PASS  ? "✅ set"                        : "❌ NOT SET");
+console.log("  EMAIL_FROM  :", process.env.EMAIL_FROM  ? `✅ ${process.env.EMAIL_FROM}` : "⚠️  using default");
+console.log("  ADMIN_EMAIL :", process.env.ADMIN_EMAIL ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET — admin emails will be skipped!");
+
 // ─── Priority color map ──────────────────────────────────────────
 const priorityColors = {
   P1: { bg: "#dc2626", label: "P1 — Critical" },
