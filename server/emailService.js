@@ -90,7 +90,8 @@ function ticketTable(t) {
 }
 
 // ─── Core send via Brevo REST API ───────────────────────────────
-async function sendEmail({ to, subject, html }) {
+// attachments: [{ name: string, content: Buffer|string, type: string }]
+async function sendEmail({ to, subject, html, attachments = [] }) {
   if (!BREVO_API_KEY) {
     console.warn("⚠️  BREVO_API_KEY not set — skipping email to", to);
     return;
@@ -100,12 +101,23 @@ async function sendEmail({ to, subject, html }) {
     return;
   }
 
-  const body = JSON.stringify({
+  const payload = {
     sender:      { name: FROM_NAME, email: FROM_EMAIL },
     to:          [{ email: to }],
     subject,
     htmlContent: html,
-  });
+  };
+
+  // Brevo accepts base64-encoded attachments
+  if (attachments.length > 0) {
+    payload.attachment = attachments.map(({ name, content, type }) => ({
+      name,
+      content: Buffer.isBuffer(content)
+        ? content.toString("base64")
+        : content,         // already base64 string
+      type: type || "application/octet-stream",
+    }));
+  }
 
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method:  "POST",
@@ -114,7 +126,7 @@ async function sendEmail({ to, subject, html }) {
       "content-type": "application/json",
       "api-key":      BREVO_API_KEY,
     },
-    body,
+    body: JSON.stringify(payload),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -123,6 +135,18 @@ async function sendEmail({ to, subject, html }) {
   }
   console.log(`📧 Email sent to ${to} via Brevo — messageId: ${data.messageId}`);
   return data;
+}
+
+// ─── Helper: attachment section HTML ────────────────────────────
+function attachmentSection(ticket) {
+  if (!ticket.attachment_name) return "";
+  return `
+    <p class="section-title">📎 Attachment</p>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin:12px 0;font-size:14px;color:#374151;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">📄</span>
+      <span><strong>${ticket.attachment_name}</strong></span>
+    </div>
+    <p style="font-size:12px;color:#94a3b8;margin:4px 0 0;">The file is attached to this email.</p>`;
 }
 
 // ─── 1. New ticket → Admin ───────────────────────────────────────
@@ -134,8 +158,20 @@ export async function sendNewTicketToAdmin(ticket) {
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A user has submitted a new ticket and is awaiting your attention.</p>
      ${ticketTable(ticket)}
      <p class="section-title">Description</p>
-     <div class="comment-box">${ticket.description || "—"}</div>`);
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
+     <div class="comment-box">${ticket.description || "—"}</div>
+     ${attachmentSection(ticket)}`);
+
+  // Build attachment list for email
+  const attachments = ticket.attachment_data
+    ? [{ name: ticket.attachment_name, content: ticket.attachment_data, type: ticket.attachment_mime }]
+    : [];
+
+  await sendEmail({
+    to: process.env.ADMIN_EMAIL,
+    subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+    attachments,
+  });
 }
 
 // ─── 2. Ticket confirmation → User ──────────────────────────────
@@ -149,8 +185,20 @@ export async function sendTicketConfirmationToUser(ticket) {
      ${ticketTable(ticket)}
      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;color:#166534;">
        <strong>Expected SLA:</strong> ${sla} response time for ${ticket.priority} priority tickets.
-     </div>`);
-  await sendEmail({ to: ticket.requester_email, subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`, html });
+     </div>
+     ${attachmentSection(ticket)}`);
+
+  // Echo the attachment back to the user so they have a copy
+  const attachments = ticket.attachment_data
+    ? [{ name: ticket.attachment_name, content: ticket.attachment_data, type: ticket.attachment_mime }]
+    : [];
+
+  await sendEmail({
+    to: ticket.requester_email,
+    subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`,
+    html,
+    attachments,
+  });
 }
 
 // ─── 3. Status update → User ─────────────────────────────────────
