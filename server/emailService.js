@@ -21,6 +21,16 @@ console.log("  EMAIL_PASS  :", process.env.EMAIL_PASS  ? "✅ set"              
 console.log("  EMAIL_FROM  :", process.env.EMAIL_FROM  ? `✅ ${process.env.EMAIL_FROM}` : "⚠️  using default");
 console.log("  ADMIN_EMAIL :", process.env.ADMIN_EMAIL ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET — admin emails will be skipped!");
 
+// Test Gmail SMTP connection on startup
+transporter.verify((error) => {
+  if (error) {
+    console.error("❌ Gmail SMTP connection FAILED:", error.message);
+    console.error("   Fix: Check EMAIL_USER and EMAIL_PASS in Railway Variables");
+  } else {
+    console.log("✅ Gmail SMTP connection SUCCESS — emails will work!");
+  }
+});
+
 // ─── Priority color map ──────────────────────────────────────────
 const priorityColors = {
   P1: { bg: "#dc2626", label: "P1 — Critical" },
