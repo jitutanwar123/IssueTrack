@@ -256,6 +256,7 @@ export default function TicketList() {
                     <div className="flex gap-2">
                       <Link
                         to={`/tickets/${ticket.id}`}
+                        aria-label={`View ticket ${ticket.ticket_id || ticket.id}`}
                         className="rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-100"
                       >
                         View
