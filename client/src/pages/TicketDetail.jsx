@@ -3,12 +3,14 @@ import { useParams } from "react-router-dom";
 import { CommentBox } from "../components/CommentBox.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { api } from "../utils/api.js";
+import { useTickets } from "../context/TicketContext.jsx";
 import { fromInputDateTime, formatDateTime, formatMinutes, toInputDateTime } from "../utils/helpers.js";
 
 const statuses = ["Open", "Assigned", "Work In Progress", "On Hold - Change", "On Hold - Customer", "On Hold - Infra", "Closed", "Cancelled"];
 
 export default function TicketDetail() {
   const { id } = useParams();
+  const { refreshTickets } = useTickets();
   console.log("ROUTE ID =", id);
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
@@ -94,6 +96,7 @@ export default function TicketDetail() {
         service: form.service || "",
       };
       await api.updateTicket(id, payload);
+      await refreshTickets();
       await load();
     } catch (err) {
       setError(err.message);
