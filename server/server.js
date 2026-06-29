@@ -175,6 +175,69 @@ app.get("/", (req, res) => {
   res.send("Server Running");
 });
 
+// ─── Email diagnostics endpoint (Railway debug) ──────────────────
+app.get("/api/test-email", async (req, res) => {
+  const gmailUser        = process.env.GMAIL_USER;
+  const gmailPass        = process.env.GMAIL_APP_PASSWORD;
+  const adminEmail       = process.env.ADMIN_EMAIL;
+
+  const config = {
+    GMAIL_USER:         gmailUser        ? `✅ ${gmailUser}`        : "❌ NOT SET",
+    GMAIL_APP_PASSWORD: gmailPass        ? "✅ set (hidden)"        : "❌ NOT SET",
+    ADMIN_EMAIL:        adminEmail       ? `✅ ${adminEmail}`       : "❌ NOT SET",
+  };
+
+  if (!gmailUser || !gmailPass) {
+    return res.status(500).json({
+      success: false,
+      message: "GMAIL_USER or GMAIL_APP_PASSWORD is not set in Railway environment variables.",
+      config,
+    });
+  }
+
+  try {
+    const nodemailer = (await import("nodemailer")).default;
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: gmailUser, pass: gmailPass },
+    });
+
+    await transporter.verify();
+
+    if (adminEmail) {
+      await transporter.sendMail({
+        from: `"Viraj IT Support" <${gmailUser}>`,
+        to: adminEmail,
+        subject: "✅ Railway Email Test — IssueTrack",
+        html: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
+          <h2 style="color:#22c55e">Email is working! ✅</h2>
+          <p>Your Railway deployment can successfully send emails.</p>
+          <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+        </div>`,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: adminEmail
+        ? `✅ SMTP verified & test email sent to ${adminEmail}`
+        : "✅ SMTP verified but ADMIN_EMAIL not set — no email sent",
+      config,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: `❌ SMTP Error: ${err.message}`,
+      config,
+      hint: err.message.includes("Invalid login")
+        ? "Your Gmail App Password is wrong. Re-generate it at Google Account → Security → App Passwords."
+        : err.message.includes("Username and Password not accepted")
+        ? "Enable 2FA on your Gmail account first, then create an App Password."
+        : "Check Railway env vars are saved and redeploy.",
+    });
+  }
+});
+
 // ════════════════════════════════════════════════════════════════
 // EXISTING ADMIN ROUTES (unchanged)
 // ════════════════════════════════════════════════════════════════
