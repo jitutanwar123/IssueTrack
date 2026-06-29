@@ -96,7 +96,9 @@ export default function TicketDetail() {
         service: form.service || "",
       };
       await api.updateTicket(id, payload);
+      console.log("SAVE PAYLOAD:", JSON.stringify(payload));
       await refreshTickets();
+      console.log("TICKETS AFTER REFRESH:", JSON.stringify(tickets?.slice(0,2)));
       await load();
     } catch (err) {
       setError(err.message);
