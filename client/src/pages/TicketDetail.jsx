@@ -85,7 +85,7 @@ export default function TicketDetail() {
         requested_by: form.requested_by || "",
         assigned_to: form.assigned_to || "",
         requested_by_id: form.requested_by_id || null,
-        assigned_to_id: form.assigned_to_id || null,
+        assigned_to_id: form.assigned_to_id ? Number(form.assigned_to_id) : null,
         expected_closure_date: form.expected_closure_date ? fromInputDateTime(form.expected_closure_date) : "",
         actual_closure_date: form.actual_closure_date ? fromInputDateTime(form.actual_closure_date) : "",
         response_time: Number(form.response_time || 0),
