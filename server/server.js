@@ -198,8 +198,12 @@ app.get("/api/test-email", async (req, res) => {
   try {
     const nodemailer = (await import("nodemailer")).default;
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, // STARTTLS — Railway blocks port 465
       auth: { user: gmailUser, pass: gmailPass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
     });
 
     await transporter.verify();
