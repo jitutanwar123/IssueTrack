@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import * as XLSX from "xlsx";
 import { AvgResolutionBarChart, PriorityBarChart, ResolutionLineChart, StatusPieChart } from "../components/Charts.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
-import { downloadCsv } from "../utils/helpers.js";
 
 export default function Reports() {
   const { loadReports } = useTickets();
@@ -37,38 +37,79 @@ export default function Reports() {
     loadData({ ...filters });
   }
 
-  function exportCsv() {
+  function exportExcel() {
     const now = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
-    const rows = [
-      // Header
-      [`Viraj Profiles Limited – Ticket Report`, `Generated: ${now}`],
-      [],
+    const wb = XLSX.utils.book_new();
 
-      // By Status section
-      ["TICKETS BY STATUS"],
-      ["Status", "Count"],
-      ...data.byStatus.map((row) => [row.name, row.value]),
-      [],
+    // Helper: build a section block [title row, header row, ...data rows]
+    function makeSection(title, headers, rows) {
+      return [
+        [title],          // section title
+        headers,          // column headers
+        ...rows,          // data
+        [],               // blank spacer
+      ];
+    }
 
-      // By Priority section
-      ["TICKETS BY PRIORITY"],
-      ["Priority", "Count"],
-      ...data.byPriority.map((row) => [row.name, row.value]),
+    const allRows = [
+      // Workbook title
+      [`Viraj Profiles Limited — Ticket Report`],
+      [`Generated: ${now}`],
       [],
-
-      // Resolved per day section
-      ["TICKETS RESOLVED PER DAY"],
-      ["Date", "Resolved Count"],
-      ...data.resolvedPerDay.map((row) => [row.name, row.value]),
-      [],
-
-      // Avg resolution section
-      ["AVERAGE RESOLUTION TIME PER ASSIGNEE"],
-      ["Assignee", "Avg Minutes"],
-      ...data.avgResolutionByAssignee.map((row) => [row.name, row.value]),
+      ...makeSection(
+        "TICKETS BY STATUS",
+        ["Status", "Count"],
+        data.byStatus.map((r) => [r.name, r.value])
+      ),
+      ...makeSection(
+        "TICKETS BY PRIORITY",
+        ["Priority", "Count"],
+        data.byPriority.map((r) => [r.name, r.value])
+      ),
+      ...makeSection(
+        "TICKETS RESOLVED PER DAY",
+        ["Date", "Resolved Count"],
+        data.resolvedPerDay.map((r) => [r.name, r.value])
+      ),
+      ...makeSection(
+        "AVERAGE RESOLUTION TIME PER ASSIGNEE",
+        ["Assignee", "Avg Time (Minutes)"],
+        data.avgResolutionByAssignee.map((r) => [r.name, r.value])
+      ),
     ];
 
-    downloadCsv(`Viraj-Ticket-Report-${now}.csv`, rows);
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+    // Bold the title and section header rows
+    const boldRows = new Set();
+    boldRows.add(0); // "Viraj Profiles Limited..."
+    let cursor = 3;  // after title block
+    ["TICKETS BY STATUS", "TICKETS BY PRIORITY", "TICKETS RESOLVED PER DAY", "AVERAGE RESOLUTION TIME PER ASSIGNEE"].forEach((title, i) => {
+      boldRows.add(cursor);       // section title
+      boldRows.add(cursor + 1);   // column headers
+      const sectionLengths = [
+        data.byStatus.length,
+        data.byPriority.length,
+        data.resolvedPerDay.length,
+        data.avgResolutionByAssignee.length,
+      ];
+      cursor += 2 + sectionLengths[i] + 1; // title + headers + data rows + spacer
+    });
+
+    // Apply bold style to those rows (SheetJS community edition supports cell styles via sheet_add_aoa)
+    Object.keys(ws).forEach((addr) => {
+      if (addr.startsWith("!")) return;
+      const rowIndex = XLSX.utils.decode_cell(addr).r;
+      if (boldRows.has(rowIndex)) {
+        ws[addr].s = { font: { bold: true } };
+      }
+    });
+
+    // Auto column width
+    ws["!cols"] = [{ wch: 42 }, { wch: 20 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Ticket Report");
+    XLSX.writeFile(wb, `Viraj-Ticket-Report-${now}.xlsx`);
   }
 
   return (
@@ -79,7 +120,7 @@ export default function Reports() {
           <p className="mt-1 text-sm text-slate-500">Operational charts and exportable summary views.</p>
         </div>
         <button
-          onClick={exportCsv}
+          onClick={exportExcel}
           className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 flex items-center gap-2"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -87,7 +128,7 @@ export default function Reports() {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          Export CSV
+          Export Excel
         </button>
       </div>
 
