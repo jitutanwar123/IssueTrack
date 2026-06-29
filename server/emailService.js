@@ -1,9 +1,18 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ─── Gmail SMTP transporter ──────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const FROM = process.env.EMAIL_FROM || `Viraj IT Support <${process.env.EMAIL_USER}>`;
 
 // ─── Priority color map ──────────────────────────────────────────
 const priorityColors = {
@@ -91,15 +100,18 @@ function ticketTable(t) {
   return `<table class="info-table"><tbody>${rows}</tbody></table>`;
 }
 
-// ─── Helper: send email ──────────────────────────────────────────
+// ─── Helper: send email via Gmail SMTP ──────────────────────────
 async function sendEmail({ to, subject, html, attachments }) {
-  return resend.emails.send({
-    from: "Viraj Ticketing <onboarding@resend.dev>",
+  const mailOptions = {
+    from: FROM,
     to,
     subject,
     html,
-    ...(attachments ? { attachments } : {}),
-  });
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
+  };
+  const info = await transporter.sendMail(mailOptions);
+  console.log(`📧 Email sent to ${to} — MessageId: ${info.messageId}`);
+  return info;
 }
 
 // ─── 1. New ticket → Admin ───────────────────────────────────────
@@ -190,7 +202,7 @@ export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
   const html = baseTemplate(
     "A Ticket Has Been Assigned to You",
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">📌 A new ticket has been assigned to you</p>
-     <p style="color:#64748b;font-size:14px;margin:0 0 16px">A support ticket has been created and assigned to you by the admin.</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">A support ticket has been assigned to you. Please log in to your staff portal to view and resolve it.</p>
      ${ticketTable(ticket)}`
   );
   await sendEmail({ to: assigneeEmail, subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
