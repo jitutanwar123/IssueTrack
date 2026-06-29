@@ -33,26 +33,26 @@ export default function StaffLogin() {
   return (
     <main className="flex min-h-screen items-center justify-center login-bg px-4 py-8">
       <div
-        className="w-full max-w-md rounded-3xl bg-white px-10 py-10"
-        style={{ boxShadow: "0 32px 80px rgba(15,23,42,0.14), 0 0 0 1px rgba(15,23,42,0.06)" }}
+        className="w-full max-w-md rounded-3xl px-10 py-10"
+        style={{ background: "#0f172a", boxShadow: "0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06)" }}
       >
         {/* Logo + Company */}
         <div className="mb-8 flex flex-col items-center text-center">
           <img src={virajLogo} alt="Viraj Profiles Limited" className="h-16 w-auto object-contain mb-4" />
-          <h1 className="text-lg font-bold text-slate-900 tracking-tight">Viraj Profiles Limited</h1>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">IT Staff Portal</p>
+          <h1 className="text-lg font-bold text-white tracking-tight">Viraj Profiles Limited</h1>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "rgba(148,163,184,0.7)" }}>IT Staff Portal</p>
         </div>
 
         {/* Divider */}
-        <div className="mb-6 border-t border-slate-100" />
+        <div className="mb-6" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }} />
 
         {/* Heading */}
-        <h2 className="mb-5 text-xl font-bold text-slate-900">IT Staff Sign In</h2>
+        <h2 className="mb-5 text-xl font-bold text-white">IT Staff Sign In</h2>
 
         <form onSubmit={submit} autoComplete="off" className="space-y-4">
           {/* Work Email */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(148,163,184,0.8)" }}>
               Work Email
             </label>
             <input
@@ -63,13 +63,14 @@ export default function StaffLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="pro-input"
+              className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none transition-all duration-200 placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500/40"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(148,163,184,0.8)" }}>
               Password
             </label>
             <div className="relative">
@@ -81,7 +82,8 @@ export default function StaffLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pro-input pr-10"
+                className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm font-medium text-white outline-none transition-all duration-200 placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500/40"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
               />
               <button
                 type="button"
