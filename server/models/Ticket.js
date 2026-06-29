@@ -341,7 +341,8 @@ export function updateTicket(ticketId, data, actor = {}) {
     next.closed_at,
     ticketId
   );
-
+  const check = db.prepare("SELECT assigned_to, assigned_to_id FROM tickets WHERE ticket_id = ?").get(ticketId);
+  console.log("DB AFTER UPDATE:", check);
   for (const field of changedFields) {
     addTicketEvent(ticketId, {
       actor_id: actor.id || null,
