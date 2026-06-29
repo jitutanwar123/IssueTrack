@@ -711,25 +711,68 @@ app.get("/api/reports/summary", async (req, res) => {
 app.get("/api/reports/ageing", (req, res) => { res.json({ data: [] }); });
 
 app.get("/api/reports/detail", (req, res) => {
-  const { from, to } = req.query;
-  let sql = "SELECT * FROM tickets";
-  let params = [];
-  if (from && to) { sql += " WHERE DATE(created_at) BETWEEN ? AND ?"; params.push(from, to); }
+  const { from, to, category, assignee } = req.query;
+
+  // Build WHERE clauses dynamically for all filters
+  const conditions = [];
+  const params = [];
+
+  if (from) { conditions.push("DATE(created_at) >= ?"); params.push(from); }
+  if (to)   { conditions.push("DATE(created_at) <= ?"); params.push(to); }
+  if (category) { conditions.push("category = ?"); params.push(category); }
+  if (assignee) { conditions.push("(assigned_to LIKE ? OR assigned_to_name LIKE ?)"); params.push(`%${assignee}%`, `%${assignee}%`); }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const sql = `SELECT * FROM tickets ${where}`;
+
   db.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).json(err);
+    if (err) return res.status(500).json({ message: err.message });
+
+    // ── 1. Tickets by Status ───────────────────────────────────────
     const statusMap = {};
     const priorityMap = {};
+    const resolvedPerDayMap = {};
+    const resolutionMap = {};
+
     rows.forEach((t) => {
-      const s = t.status || "Unknown"; const p = t.priority || "Unknown";
+      // Status count
+      const s = t.status || "Unknown";
       statusMap[s] = (statusMap[s] || 0) + 1;
+
+      // Priority count
+      const p = t.priority || "Unknown";
       priorityMap[p] = (priorityMap[p] || 0) + 1;
+
+      // Resolved per day — only closed/resolved tickets with a closure date
+      if (["Closed", "Resolved"].includes(t.status) && t.actual_closure_date) {
+        const day = new Date(t.actual_closure_date).toLocaleDateString("en-GB", {
+          day: "2-digit", month: "short", timeZone: "Asia/Kolkata",
+        });
+        resolvedPerDayMap[day] = (resolvedPerDayMap[day] || 0) + 1;
+      }
+
+      // Avg resolution time per assignee — closed/resolved tickets with a closure date
+      if (["Closed", "Resolved"].includes(t.status) && t.actual_closure_date) {
+        const key = t.assigned_to_name || t.assigned_to || "Unassigned";
+        const minutes = Number(t.resolution_time || 0) ||
+          Math.max(1, Math.round(
+            (new Date(t.actual_closure_date) - new Date(t.created_at)) / 60000
+          ));
+        if (!resolutionMap[key]) resolutionMap[key] = { total: 0, count: 0 };
+        resolutionMap[key].total += minutes;
+        resolutionMap[key].count += 1;
+      }
     });
+
     res.json({
       data: {
         byStatus: Object.entries(statusMap).map(([name, value]) => ({ name, value })),
         byPriority: Object.entries(priorityMap).map(([name, value]) => ({ name, value })),
-        resolvedPerDay: [],
-        avgResolutionByAssignee: [],
+        resolvedPerDay: Object.entries(resolvedPerDayMap).map(([name, value]) => ({ name, value })),
+        avgResolutionByAssignee: Object.entries(resolutionMap).map(([name, { total, count }]) => ({
+          name,
+          value: Math.round(total / count),
+        })),
       },
     });
   });
