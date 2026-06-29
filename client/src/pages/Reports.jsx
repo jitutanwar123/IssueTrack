@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import * as XLSX from "xlsx";
 import { AvgResolutionBarChart, PriorityBarChart, ResolutionLineChart, StatusPieChart } from "../components/Charts.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
+import { exportReportExcel } from "../utils/excelExport.js";
 
 export default function Reports() {
   const { loadReports } = useTickets();
@@ -38,78 +38,7 @@ export default function Reports() {
   }
 
   function exportExcel() {
-    const now = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
-    const wb = XLSX.utils.book_new();
-
-    // Helper: build a section block [title row, header row, ...data rows]
-    function makeSection(title, headers, rows) {
-      return [
-        [title],          // section title
-        headers,          // column headers
-        ...rows,          // data
-        [],               // blank spacer
-      ];
-    }
-
-    const allRows = [
-      // Workbook title
-      [`Viraj Profiles Limited — Ticket Report`],
-      [`Generated: ${now}`],
-      [],
-      ...makeSection(
-        "TICKETS BY STATUS",
-        ["Status", "Count"],
-        data.byStatus.map((r) => [r.name, r.value])
-      ),
-      ...makeSection(
-        "TICKETS BY PRIORITY",
-        ["Priority", "Count"],
-        data.byPriority.map((r) => [r.name, r.value])
-      ),
-      ...makeSection(
-        "TICKETS RESOLVED PER DAY",
-        ["Date", "Resolved Count"],
-        data.resolvedPerDay.map((r) => [r.name, r.value])
-      ),
-      ...makeSection(
-        "AVERAGE RESOLUTION TIME PER ASSIGNEE",
-        ["Assignee", "Avg Time (Minutes)"],
-        data.avgResolutionByAssignee.map((r) => [r.name, r.value])
-      ),
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(allRows);
-
-    // Bold the title and section header rows
-    const boldRows = new Set();
-    boldRows.add(0); // "Viraj Profiles Limited..."
-    let cursor = 3;  // after title block
-    ["TICKETS BY STATUS", "TICKETS BY PRIORITY", "TICKETS RESOLVED PER DAY", "AVERAGE RESOLUTION TIME PER ASSIGNEE"].forEach((title, i) => {
-      boldRows.add(cursor);       // section title
-      boldRows.add(cursor + 1);   // column headers
-      const sectionLengths = [
-        data.byStatus.length,
-        data.byPriority.length,
-        data.resolvedPerDay.length,
-        data.avgResolutionByAssignee.length,
-      ];
-      cursor += 2 + sectionLengths[i] + 1; // title + headers + data rows + spacer
-    });
-
-    // Apply bold style to those rows (SheetJS community edition supports cell styles via sheet_add_aoa)
-    Object.keys(ws).forEach((addr) => {
-      if (addr.startsWith("!")) return;
-      const rowIndex = XLSX.utils.decode_cell(addr).r;
-      if (boldRows.has(rowIndex)) {
-        ws[addr].s = { font: { bold: true } };
-      }
-    });
-
-    // Auto column width
-    ws["!cols"] = [{ wch: 42 }, { wch: 20 }];
-
-    XLSX.utils.book_append_sheet(wb, ws, "Ticket Report");
-    XLSX.writeFile(wb, `Viraj-Ticket-Report-${now}.xlsx`);
+    exportReportExcel(data).catch(console.error);
   }
 
   return (
@@ -121,12 +50,12 @@ export default function Reports() {
         </div>
         <button
           onClick={exportExcel}
-          className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 flex items-center gap-2"
+          className="rounded-2xl px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 flex items-center gap-2"
+          style={{ background: "linear-gradient(135deg,#1d6f42,#157347)", boxShadow: "0 4px 14px rgba(21,115,71,0.35)" }}
         >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
+          {/* Excel icon */}
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 17l2-3-2-3H10l1.25 2L12.5 11H14l-2 3 2 3h-1.5L11 15l-1.25 2H8.5z"/>
           </svg>
           Export Excel
         </button>
