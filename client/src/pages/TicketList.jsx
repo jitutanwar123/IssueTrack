@@ -245,7 +245,7 @@ export default function TicketList() {
                   </td>
 
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    {ticket.assigned_to_name || "Unassigned"}
+                    {ticket.assigned_to_name || ticket.assigned_to || "Unassigned"}
                   </td>
 
                   <td className="px-5 py-4 text-sm text-slate-600">
