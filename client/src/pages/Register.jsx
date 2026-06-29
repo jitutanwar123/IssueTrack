@@ -3,14 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../utils/api.js";
 import virajLogo from "../viraaj.webp";
 
-const DEPARTMENTS = [
-  "IT", "HR", "Finance", "Operations", "Sales", "Marketing",
-  "Production", "Quality", "Maintenance", "Administration", "Other",
-];
-
 export default function Register() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", department: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -146,23 +141,6 @@ export default function Register() {
               className={inputClass}
               style={inputStyle}
             />
-          </div>
-
-          {/* Department */}
-          <div>
-            <label className={labelClass} style={labelStyle}>Department</label>
-            <select
-              id="reg-department"
-              value={form.department}
-              onChange={(e) => setField("department", e.target.value)}
-              className={inputClass}
-              style={{ ...inputStyle, appearance: "none" }}
-            >
-              <option value="" style={{ background: "#0f172a" }}>Select department</option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d} style={{ background: "#0f172a" }}>{d}</option>
-              ))}
-            </select>
           </div>
 
           {/* Error */}

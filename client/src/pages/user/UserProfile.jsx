@@ -43,7 +43,7 @@ export default function UserProfile() {
               {initials}
             </div>
             <h3 className="mt-4 text-xl font-bold text-slate-900">{user?.name}</h3>
-            <p className="text-sm text-slate-500">{user?.department || "User"}</p>
+            <p className="text-sm text-slate-500">{user?.email}</p>
             <span className="mt-2 inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
               ● Active User
             </span>
@@ -56,7 +56,6 @@ export default function UserProfile() {
               {[
                 { icon: "mail", label: "Email", value: user?.email },
                 { icon: "phone", label: "Phone", value: user?.phone || "Not set" },
-                { icon: "building", label: "Department", value: user?.department || "Not set" },
               ].map(({ icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
                   <FieldIcon name={icon} />

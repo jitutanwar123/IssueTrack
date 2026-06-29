@@ -125,7 +125,6 @@ export default function UserCreateTicket() {
               <ReadOnlyField label="Your Name" value={user?.name} />
               <ReadOnlyField label="Email Address" value={user?.email} />
               <ReadOnlyField label="Phone" value={user?.phone || "—"} />
-              <ReadOnlyField label="Department" value={user?.department || "—"} />
             </div>
           </div>
 

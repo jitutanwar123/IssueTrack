@@ -216,7 +216,6 @@ export default function UserTicketDetail() {
                 ["Priority", ticket.priority],
                 ["Status", ticket.status],
                 ["Assigned To", ticket.assigned_to || "Unassigned"],
-                ["Department", ticket.department],
                 ["Location", ticket.location],
                 ["Created", formatDateTime(ticket.created_at)],
               ].filter(([, v]) => v).map(([label, value]) => (
