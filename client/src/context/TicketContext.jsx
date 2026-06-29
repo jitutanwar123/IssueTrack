@@ -130,7 +130,8 @@ export function TicketProvider({ children }) {
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
-    loadTickets().catch(() => {});
+    // loadTickets() is intentionally omitted here — the listQuery effect below
+    // fires on mount and handles the initial fetch, avoiding a duplicate request.
     loadSummary().catch(() => {});
 
     // Auto-refresh SUMMARY only every 60 s (tickets are large; reload on user action)

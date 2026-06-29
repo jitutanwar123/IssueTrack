@@ -381,7 +381,12 @@ app.get("/api/tickets", (req, res) => {
   if (workgroup)    { whereSql += " AND workgroup = ?";        params.push(workgroup); }
   if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
 
-  const dataSql  = `SELECT * FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
+  // Exclude attachment_data (LONGBLOB) — fetched only via /api/tickets/:id/attachment
+  const cols = `id, ticket_id, title, description, category, sub_category, priority, status,
+    customer_name, requester_email, phone, department, location, user_email,
+    assigned_to, created_at, updated_at, resolved_at, resolution_note, resolved_by,
+    attachment_name, attachment_mime`;
+  const dataSql  = `SELECT ${cols} FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
 
   // Run both queries in parallel using the promise-based interface
