@@ -7,13 +7,14 @@ dotenv.config();
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
-  secure: false, // STARTTLS — Railway blocks port 465
+  secure: false, // STARTTLS
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
   tls: { rejectUnauthorized: false },
   connectionTimeout: 10000,
+  family: 4, // force IPv4 — Railway blocks IPv6 SMTP
 });
 
 const FROM = process.env.EMAIL_FROM || `Viraj IT Support <${process.env.GMAIL_USER}>`;

@@ -200,10 +200,11 @@ app.get("/api/test-email", async (req, res) => {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
-      secure: false, // STARTTLS — Railway blocks port 465
+      secure: false,
       auth: { user: gmailUser, pass: gmailPass },
       tls: { rejectUnauthorized: false },
       connectionTimeout: 10000,
+      family: 4, // force IPv4 — Railway blocks IPv6 SMTP
     });
 
     await transporter.verify();
