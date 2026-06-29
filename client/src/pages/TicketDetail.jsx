@@ -3,14 +3,12 @@ import { useParams } from "react-router-dom";
 import { CommentBox } from "../components/CommentBox.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { api } from "../utils/api.js";
-import { useTickets } from "../context/TicketContext.jsx";
 import { fromInputDateTime, formatDateTime, formatMinutes, toInputDateTime } from "../utils/helpers.js";
 
 const statuses = ["Open", "Assigned", "Work In Progress", "On Hold - Change", "On Hold - Customer", "On Hold - Infra", "Closed", "Cancelled"];
 
 export default function TicketDetail() {
   const { id } = useParams();
-  const { refreshTickets, tickets } = useTickets();
   console.log("ROUTE ID =", id);
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
@@ -35,7 +33,6 @@ export default function TicketDetail() {
   useEffect(() => {
     load().catch((err) => setError(err.message));
     api.users().then((res) => setUsers(res.data || [])).catch(() => {})
-    api.users().then((res) => { console.log("USERS:", res); setUsers(res.data || []); }).catch((err) => console.log("USERS ERROR:", err));
   }, [id]);
 
   const sections = useMemo(
@@ -86,7 +83,7 @@ export default function TicketDetail() {
         requested_by: form.requested_by || "",
         assigned_to: form.assigned_to || "",
         requested_by_id: form.requested_by_id || null,
-        assigned_to_id: form.assigned_to_id ? Number(form.assigned_to_id) : null,
+        assigned_to_id: form.assigned_to_id || null,
         expected_closure_date: form.expected_closure_date ? fromInputDateTime(form.expected_closure_date) : "",
         actual_closure_date: form.actual_closure_date ? fromInputDateTime(form.actual_closure_date) : "",
         response_time: Number(form.response_time || 0),
@@ -97,9 +94,6 @@ export default function TicketDetail() {
         service: form.service || "",
       };
       await api.updateTicket(id, payload);
-      console.log("SAVE PAYLOAD:", JSON.stringify(payload));
-      await refreshTickets();
-      console.log("TICKETS AFTER REFRESH:", JSON.stringify(tickets?.slice(0,2)));
       await load();
     } catch (err) {
       setError(err.message);
