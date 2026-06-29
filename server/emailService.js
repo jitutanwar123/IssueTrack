@@ -6,9 +6,12 @@ dotenv.config();
 // ─── Resend client (uses HTTPS port 443 — works on Railway) ──────
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM =
-  process.env.EMAIL_FROM ||
-  "Viraj IT Support <onboarding@resend.dev>";
+// Resend free plan only allows sending from onboarding@resend.dev
+// unless you verify a custom domain at resend.com/domains
+const emailFrom = process.env.EMAIL_FROM || "";
+const FROM = emailFrom && !emailFrom.includes("@gmail.com")
+  ? emailFrom
+  : "Viraj IT Support <onboarding@resend.dev>";
 
 // ─── Startup diagnostic ──────────────────────────────────────────
 console.log("📧 Email config check (Resend):");
