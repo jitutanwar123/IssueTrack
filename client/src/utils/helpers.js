@@ -57,23 +57,28 @@ export function buildQuery(params = {}) {
 }
 
 export function downloadCsv(filename, rows) {
+  // UTF-8 BOM ensures Excel opens the file with correct encoding
+  const BOM = "\uFEFF";
   const csv = rows
     .map((row) =>
       row
         .map((cell) => {
           const value = cell === null || cell === undefined ? "" : String(cell);
+          // Escape double-quotes and wrap in quotes
           return `"${value.replaceAll('"', '""')}"`;
         })
         .join(",")
     )
-    .join("\n");
+    .join("\r\n"); // Windows line endings for Excel compatibility
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  document.body.appendChild(anchor);
   anchor.click();
+  document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 }
 
