@@ -278,7 +278,7 @@ app.get("/api/tickets", (req, res) => {
   if (workgroup)    { whereSql += " AND workgroup = ?";        params.push(workgroup); }
   if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
 
-  const dataSql  = `SELECT * FROM tickets ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  const dataSql  = `SELECT t.*, COALESCE(u.name, t.assigned_to) AS assigned_to_name FROM tickets t LEFT JOIN users u ON u.id = t.assigned_to_id ${whereSql} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
 
   // Run both queries in parallel using the promise-based interface
@@ -450,7 +450,7 @@ app.put("/api/tickets/:id", async (req, res) => {
   const sql = `UPDATE tickets SET
     title=?, description=?, category=?, sub_category=?, priority=?, status=?,
     customer_name=?, requester_email=?, phone=?, department=?,
-    requested_by=?, assigned_to=?,
+    requested_by=?, assigned_to=?, assigned_to_id=?,
     expected_closure_date=?, actual_closure_date=?,
     response_time=?, resolution_time=?, location=?, workstream=?, workgroup=?, service=?
     WHERE id=?`;
@@ -458,7 +458,7 @@ app.put("/api/tickets/:id", async (req, res) => {
   db.query(sql, [
     title, description, category, sub_category, priority, status,
     customer_name, requester_email, phone, department,
-    requested_by, assigned_to,
+    requested_by, assigned_to, assigned_to_id || null,
     expected_closure_date || null, actual_closure_date || null,
     response_time || 0, resolution_time || 0, location, workstream, workgroup, service,
     id,
