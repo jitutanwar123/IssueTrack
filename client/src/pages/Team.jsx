@@ -20,6 +20,19 @@ export default function Team() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Auto-dismiss notifications after 3 seconds
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(""), 3000);
+    return () => clearTimeout(t);
+  }, [success]);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(""), 4000);
+    return () => clearTimeout(t);
+  }, [error]);
+
   async function load() {
   const response = await api.users();
 
