@@ -265,18 +265,18 @@ app.get("/api/tickets", (req, res) => {
   const offset = (page - 1) * limit;
 
   let whereSql = "WHERE 1=1";
-  let params = [];
+let params = [];
 
-  if (search)       { whereSql += " AND (title LIKE ? OR ticket_id LIKE ?)"; params.push(`%${search}%`, `%${search}%`); }
-  if (status)       { whereSql += " AND status = ?";           params.push(status); }
-  if (priority)     { whereSql += " AND priority = ?";         params.push(priority); }
-  if (category)     { whereSql += " AND category = ?";         params.push(category); }
-  if (assignee)     { whereSql += " AND assigned_to = ?";      params.push(assignee); }
-  if (location)     { whereSql += " AND location = ?";         params.push(location); }
-  if (sub_category) { whereSql += " AND sub_category = ?";     params.push(sub_category); }
-  if (service)      { whereSql += " AND service = ?";          params.push(service); }
-  if (workgroup)    { whereSql += " AND workgroup = ?";        params.push(workgroup); }
-  if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
+if (search)       { whereSql += " AND (t.title LIKE ? OR t.ticket_id LIKE ?)"; params.push(`%${search}%`, `%${search}%`); }
+if (status)       { whereSql += " AND t.status = ?";           params.push(status); }
+if (priority)     { whereSql += " AND t.priority = ?";         params.push(priority); }
+if (category)     { whereSql += " AND t.category = ?";         params.push(category); }
+if (assignee)     { whereSql += " AND t.assigned_to = ?";      params.push(assignee); }
+if (location)     { whereSql += " AND t.location = ?";         params.push(location); }
+if (sub_category) { whereSql += " AND t.sub_category = ?";     params.push(sub_category); }
+if (service)      { whereSql += " AND t.service = ?";          params.push(service); }
+if (workgroup)    { whereSql += " AND t.workgroup = ?";        params.push(workgroup); }
+if (customer_name){ whereSql += " AND t.customer_name = ?";    params.push(customer_name); }
 
   const dataSql  = `SELECT t.*, COALESCE(u.name, t.assigned_to) AS assigned_to_name FROM tickets t LEFT JOIN users u ON u.id = t.assigned_to_id ${whereSql} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
