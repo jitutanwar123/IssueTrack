@@ -38,7 +38,7 @@ export default function Reports() {
   }
 
   function exportExcel() {
-    exportReportExcel(data).catch(console.error);
+    exportReportExcel(filters).catch(console.error);
   }
 
   return (
