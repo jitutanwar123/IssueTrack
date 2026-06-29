@@ -10,7 +10,7 @@ const statuses = ["Open", "Assigned", "Work In Progress", "On Hold - Change", "O
 
 export default function TicketDetail() {
   const { id } = useParams();
-  const { refreshTickets } = useTickets();
+  const { refreshTickets, tickets } = useTickets();
   console.log("ROUTE ID =", id);
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
@@ -35,6 +35,7 @@ export default function TicketDetail() {
   useEffect(() => {
     load().catch((err) => setError(err.message));
     api.users().then((res) => setUsers(res.data || [])).catch(() => {})
+    api.users().then((res) => { console.log("USERS:", res); setUsers(res.data || []); }).catch((err) => console.log("USERS ERROR:", err));
   }, [id]);
 
   const sections = useMemo(
