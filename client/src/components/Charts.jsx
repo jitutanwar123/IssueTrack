@@ -31,6 +31,18 @@ function Panel({ title, subtitle, children, className = "" }) {
   );
 }
 
+function EmptyState({ message = "No data available for this period" }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+      <svg viewBox="0 0 24 24" className="h-10 w-10 text-slate-200" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M3 3v18h18" />
+        <path d="M7 16l4-4 4 4 4-4" strokeDasharray="2 2" />
+      </svg>
+      <p className="text-sm text-slate-400">{message}</p>
+    </div>
+  );
+}
+
 export function AgeingChart({ data }) {
   return (
     <Panel title="Active Tickets - Ageing" subtitle="Grouped by age since creation">
@@ -82,75 +94,94 @@ export function ResolverChart({ data }) {
 }
 
 export function StatusPieChart({ data = [] }) {
-  if (!Array.isArray(data) || data.length === 0) {
-    return (
-      <div className="p-6 text-center text-slate-500">
-        No chart data available
-      </div>
-    );
-  }
-
+  const hasData = Array.isArray(data) && data.length > 0;
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          outerRadius={100}
-          fill="#8884d8"
-          label
-        />
-        <Tooltip />
-      </PieChart>
-    </ResponsiveContainer>
+    <Panel title="Tickets by Status" subtitle="Current distribution across all statuses">
+      {hasData ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={100}
+              paddingAngle={3}
+              label
+            >
+              {data.map((entry, index) => (
+                <Cell key={entry.name} fill={colors[index % colors.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyState />
+      )}
+    </Panel>
   );
 }
 
-export function PriorityBarChart({ data }) {
+export function PriorityBarChart({ data = [] }) {
+  const hasData = Array.isArray(data) && data.length > 0;
   return (
     <Panel title="Tickets by Priority" subtitle="High-risk and SLA-sensitive work">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} />
-          <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
-          <Tooltip />
-          <Bar dataKey="value" fill="#f97316" radius={[10, 10, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {hasData ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} />
+            <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
+            <Tooltip />
+            <Bar dataKey="value" fill="#f97316" radius={[10, 10, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyState />
+      )}
     </Panel>
   );
 }
 
-export function ResolutionLineChart({ data }) {
+export function ResolutionLineChart({ data = [] }) {
+  const hasData = Array.isArray(data) && data.length > 0;
   return (
     <Panel title="Tickets Resolved per Day" subtitle="Closure trend over the selected period">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} />
-          <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="value" stroke="#0f172a" strokeWidth={3} dot={{ r: 4 }} />
-        </LineChart>
-      </ResponsiveContainer>
+      {hasData ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} />
+            <YAxis allowDecimals={false} tick={{ fill: "#64748b", fontSize: 12 }} />
+            <Tooltip />
+            <Line type="monotone" dataKey="value" stroke="#0f172a" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyState message="No resolved tickets in the selected period" />
+      )}
     </Panel>
   );
 }
 
-export function AvgResolutionBarChart({ data }) {
+export function AvgResolutionBarChart({ data = [] }) {
+  const hasData = Array.isArray(data) && data.length > 0;
   return (
     <Panel title="Average Resolution Time per Assignee" subtitle="Minutes across resolved work">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} interval={0} angle={-18} textAnchor="end" height={70} />
-          <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
-          <Tooltip />
-          <Bar dataKey="value" fill="#22c55e" radius={[10, 10, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {hasData ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} interval={0} angle={-18} textAnchor="end" height={70} />
+            <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
+            <Tooltip formatter={(val) => [`${val} min`, "Avg Resolution"]} />
+            <Bar dataKey="value" fill="#22c55e" radius={[10, 10, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyState message="No resolution data for the selected period" />
+      )}
     </Panel>
   );
 }
