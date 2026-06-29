@@ -177,68 +177,53 @@ app.get("/", (req, res) => {
 
 // ─── Email diagnostics endpoint (Railway debug) ──────────────────
 app.get("/api/test-email", async (req, res) => {
-  const gmailUser        = process.env.GMAIL_USER;
-  const gmailPass        = process.env.GMAIL_APP_PASSWORD;
-  const adminEmail       = process.env.ADMIN_EMAIL;
+  const resendKey  = process.env.RESEND_API_KEY;
+  const adminEmail = process.env.ADMIN_EMAIL;
 
   const config = {
-    GMAIL_USER:         gmailUser        ? `✅ ${gmailUser}`        : "❌ NOT SET",
-    GMAIL_APP_PASSWORD: gmailPass        ? "✅ set (hidden)"        : "❌ NOT SET",
-    ADMIN_EMAIL:        adminEmail       ? `✅ ${adminEmail}`       : "❌ NOT SET",
+    RESEND_API_KEY: resendKey  ? "✅ set (hidden)"      : "❌ NOT SET",
+    ADMIN_EMAIL:    adminEmail ? `✅ ${adminEmail}`     : "❌ NOT SET",
   };
 
-  if (!gmailUser || !gmailPass) {
+  if (!resendKey) {
     return res.status(500).json({
       success: false,
-      message: "GMAIL_USER or GMAIL_APP_PASSWORD is not set in Railway environment variables.",
+      message: "RESEND_API_KEY is not set in Railway environment variables. Add it from https://resend.com",
       config,
     });
   }
 
   try {
-    const nodemailer = (await import("nodemailer")).default;
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: { user: gmailUser, pass: gmailPass },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      family: 4, // force IPv4 — Railway blocks IPv6 SMTP
+    const { Resend } = await import("resend");
+    const resend = new Resend(resendKey);
+
+    const { data, error } = await resend.emails.send({
+      from: "Viraj IT Support <onboarding@resend.dev>",
+      to: adminEmail || "delivered@resend.dev",
+      subject: "✅ Railway Email Test — IssueTrack",
+      html: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
+        <h2 style="color:#22c55e">Email is working! ✅</h2>
+        <p>Your Railway deployment can successfully send emails via Resend.</p>
+        <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+      </div>`,
     });
 
-    await transporter.verify();
-
-    if (adminEmail) {
-      await transporter.sendMail({
-        from: `"Viraj IT Support" <${gmailUser}>`,
-        to: adminEmail,
-        subject: "✅ Railway Email Test — IssueTrack",
-        html: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
-          <h2 style="color:#22c55e">Email is working! ✅</h2>
-          <p>Your Railway deployment can successfully send emails.</p>
-          <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
-        </div>`,
-      });
-    }
+    if (error) throw new Error(error.message || JSON.stringify(error));
 
     res.json({
       success: true,
-      message: adminEmail
-        ? `✅ SMTP verified & test email sent to ${adminEmail}`
-        : "✅ SMTP verified but ADMIN_EMAIL not set — no email sent",
+      message: `✅ Test email sent successfully via Resend${adminEmail ? ` to ${adminEmail}` : ""}`,
+      resend_id: data?.id,
       config,
     });
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `❌ SMTP Error: ${err.message}`,
+      message: `❌ Resend Error: ${err.message}`,
       config,
-      hint: err.message.includes("Invalid login")
-        ? "Your Gmail App Password is wrong. Re-generate it at Google Account → Security → App Passwords."
-        : err.message.includes("Username and Password not accepted")
-        ? "Enable 2FA on your Gmail account first, then create an App Password."
-        : "Check Railway env vars are saved and redeploy.",
+      hint: err.message.includes("API key")
+        ? "Your RESEND_API_KEY is invalid. Get one at https://resend.com/api-keys"
+        : "Check that RESEND_API_KEY is correctly set in Railway Variables.",
     });
   }
 });

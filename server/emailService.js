@@ -1,40 +1,28 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// ─── Gmail SMTP transporter ──────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // STARTTLS
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  tls: { rejectUnauthorized: false },
-  connectionTimeout: 10000,
-  family: 4, // force IPv4 — Railway blocks IPv6 SMTP
-});
+// ─── Resend client (uses HTTPS port 443 — works on Railway) ──────
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = process.env.EMAIL_FROM || `Viraj IT Support <${process.env.GMAIL_USER}>`;
+const FROM =
+  process.env.EMAIL_FROM ||
+  "Viraj IT Support <onboarding@resend.dev>";
 
 // ─── Startup diagnostic ──────────────────────────────────────────
-console.log("📧 Email config check:");
-console.log("  GMAIL_USER         :", process.env.GMAIL_USER         ? `✅ ${process.env.GMAIL_USER}`  : "❌ NOT SET");
-console.log("  GMAIL_APP_PASSWORD :", process.env.GMAIL_APP_PASSWORD ? "✅ set"                        : "❌ NOT SET");
-console.log("  EMAIL_FROM         :", process.env.EMAIL_FROM         ? `✅ ${process.env.EMAIL_FROM}`  : "⚠️  using default");
-console.log("  ADMIN_EMAIL        :", process.env.ADMIN_EMAIL        ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET — admin emails will be skipped!");
-
-// Test Gmail SMTP connection on startup
-transporter.verify((error) => {
-  if (error) {
-    console.error("❌ Gmail SMTP connection FAILED:", error.message);
-    console.error("   Fix: Check EMAIL_USER and EMAIL_PASS in Railway Variables");
-  } else {
-    console.log("✅ Gmail SMTP connection SUCCESS — emails will work!");
-  }
-});
+console.log("📧 Email config check (Resend):");
+console.log(
+  "  RESEND_API_KEY :",
+  process.env.RESEND_API_KEY ? "✅ set" : "❌ NOT SET"
+);
+console.log(
+  "  ADMIN_EMAIL    :",
+  process.env.ADMIN_EMAIL
+    ? `✅ ${process.env.ADMIN_EMAIL}`
+    : "❌ NOT SET — admin emails will be skipped!"
+);
+console.log("  FROM           :", FROM);
 
 // ─── Priority color map ──────────────────────────────────────────
 const priorityColors = {
@@ -122,18 +110,17 @@ function ticketTable(t) {
   return `<table class="info-table"><tbody>${rows}</tbody></table>`;
 }
 
-// ─── Helper: send email via Gmail SMTP ──────────────────────────
-async function sendEmail({ to, subject, html, attachments }) {
-  const mailOptions = {
+// ─── Helper: send email via Resend ──────────────────────────────
+async function sendEmail({ to, subject, html }) {
+  const { data, error } = await resend.emails.send({
     from: FROM,
     to,
     subject,
     html,
-    ...(attachments && attachments.length > 0 ? { attachments } : {}),
-  };
-  const info = await transporter.sendMail(mailOptions);
-  console.log(`📧 Email sent to ${to} — MessageId: ${info.messageId}`);
-  return info;
+  });
+  if (error) throw new Error(error.message || JSON.stringify(error));
+  console.log(`📧 Email sent to ${to} — id: ${data?.id}`);
+  return data;
 }
 
 // ─── 1. New ticket → Admin ───────────────────────────────────────
@@ -148,11 +135,11 @@ export async function sendNewTicketToAdmin(ticket) {
      <p class="section-title">Description</p>
      <div class="comment-box">${ticket.description || "—"}</div>`
   );
-  const attachments = ticket.attachment_data && ticket.attachment_name ? [{
-    filename: ticket.attachment_name,
-    content: ticket.attachment_data,
-  }] : undefined;
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html, attachments });
+  await sendEmail({
+    to: process.env.ADMIN_EMAIL,
+    subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
 }
 
 // ─── 2. Ticket confirmation → User ──────────────────────────────
@@ -169,7 +156,11 @@ export async function sendTicketConfirmationToUser(ticket) {
        <strong>Expected SLA:</strong> ${sla} response time for ${ticket.priority} priority tickets.
      </div>`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`, html });
+  await sendEmail({
+    to: ticket.requester_email,
+    subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`,
+    html,
+  });
 }
 
 // ─── 3. Status update → User ─────────────────────────────────────
@@ -186,7 +177,11 @@ export async function sendStatusUpdateToUser(ticket, newStatus, adminNote) {
      ${ticketTable({ ...ticket, status: newStatus })}
      ${adminNote ? `<p class="section-title">Admin Note</p><div class="comment-box">${adminNote}</div>` : ""}`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[TICKET UPDATE] ${ticket.ticket_id || ticket.id} — Status changed to ${newStatus}`, html });
+  await sendEmail({
+    to: ticket.requester_email,
+    subject: `[TICKET UPDATE] ${ticket.ticket_id || ticket.id} — Status changed to ${newStatus}`,
+    html,
+  });
 }
 
 // ─── 4. Admin comment → User ─────────────────────────────────────
@@ -200,7 +195,11 @@ export async function sendAdminCommentToUser(ticket, comment) {
      <div class="comment-box">${comment}</div>
      ${ticketTable(ticket)}`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[REPLY] ${ticket.ticket_id || ticket.id} — Admin has responded`, html });
+  await sendEmail({
+    to: ticket.requester_email,
+    subject: `[REPLY] ${ticket.ticket_id || ticket.id} — Admin has responded`,
+    html,
+  });
 }
 
 // ─── 5. User comment → Admin ─────────────────────────────────────
@@ -214,7 +213,11 @@ export async function sendUserCommentToAdmin(ticket, comment, userName) {
      <div class="comment-box">${comment}</div>
      ${ticketTable(ticket)}`
   );
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[USER REPLY] ${ticket.ticket_id || ticket.id} — ${userName} has responded`, html });
+  await sendEmail({
+    to: process.env.ADMIN_EMAIL,
+    subject: `[USER REPLY] ${ticket.ticket_id || ticket.id} — ${userName} has responded`,
+    html,
+  });
 }
 
 // ─── 6. Ticket assigned → Assignee ──────────────────────────────
@@ -227,7 +230,11 @@ export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A support ticket has been assigned to you. Please log in to your staff portal to view and resolve it.</p>
      ${ticketTable(ticket)}`
   );
-  await sendEmail({ to: assigneeEmail, subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
+  await sendEmail({
+    to: assigneeEmail,
+    subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
 }
 
 // ─── 7. Admin-created ticket → Admin ────────────────────────────
@@ -242,7 +249,11 @@ export async function sendAdminCreatedTicketToAdmin(ticket) {
      <p class="section-title">Description</p>
      <div class="comment-box">${ticket.description || "—"}</div>`
   );
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[TICKET CREATED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
+  await sendEmail({
+    to: process.env.ADMIN_EMAIL,
+    subject: `[TICKET CREATED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
 }
 
 // ─── 8. Ticket resolved → User ───────────────────────────────────
@@ -263,7 +274,11 @@ export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
      </div>
      ${ticketTable({ ...ticket, status: "Resolved" })}`
   );
-  await sendEmail({ to: ticket.requester_email, subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`, html });
+  await sendEmail({
+    to: ticket.requester_email,
+    subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`,
+    html,
+  });
 }
 
 // ─── 9. Sub-branch resolved ticket → Admin ───────────────────────
@@ -282,5 +297,9 @@ export async function sendSubBranchResolutionToAdmin(ticket, resolvedBy, resolut
      </div>
      ${ticketTable({ ...ticket, status: "Resolved" })}`
   );
-  await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[SUB-BRANCH RESOLVED] ${ticket.ticket_id || ticket.id} — Resolved by ${resolvedBy}`, html });
+  await sendEmail({
+    to: process.env.ADMIN_EMAIL,
+    subject: `[SUB-BRANCH RESOLVED] ${ticket.ticket_id || ticket.id} — Resolved by ${resolvedBy}`,
+    html,
+  });
 }
