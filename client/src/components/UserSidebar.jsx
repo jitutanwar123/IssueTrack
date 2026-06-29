@@ -1,105 +1,145 @@
 import { NavLink } from "react-router-dom";
-import { cn } from "../utils/helpers.js";
 import virajLogo from "../viraaj.webp";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const navItems = [
-  { to: "/user/dashboard", label: "Dashboard", icon: "grid" },
-  { to: "/user/my-tickets", label: "My Tickets", icon: "ticket" },
-  { to: "/user/create-ticket", label: "Create Ticket", icon: "plus" },
-  { to: "/user/profile", label: "Profile", icon: "user" },
+  { to: "/user/dashboard",     label: "Dashboard",     icon: "grid"   },
+  { to: "/user/my-tickets",    label: "My Tickets",    icon: "ticket" },
+  { to: "/user/create-ticket", label: "Create Ticket", icon: "plus"   },
+  { to: "/user/profile",       label: "My Profile",    icon: "user"   },
 ];
 
 function Icon({ name }) {
-  const common = "h-5 w-5";
+  const cls = "h-4 w-4 shrink-0";
   switch (name) {
     case "grid":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
       );
     case "ticket":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 7a2 2 0 0 0 2 2 2 2 0 0 1 0 4 2 2 0 0 0-2 2v2h16v-2a2 2 0 0 0-2-2 2 2 0 0 1 0-4 2 2 0 0 0 2-2V5H4Z" />
         </svg>
       );
     case "plus":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v8M8 12h8" />
         </svg>
       );
     case "user":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="7" r="4" />
           <path d="M5 21v-1a7 7 0 0 1 14 0v1" />
         </svg>
       );
-    default:
-      return null;
+    default: return null;
   }
 }
 
 export function UserSidebar() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-60 bg-navy overflow-y-auto z-50 flex flex-col">
-      <div className="px-6 py-6">
-        <img
-          src={virajLogo}
-          alt="Viraj Profiles"
-          className="w-full max-w-[180px] h-auto object-contain"
-        />
+    <aside
+      className="fixed left-0 top-0 h-screen z-50 flex flex-col overflow-y-auto"
+      style={{
+        width: "var(--sidebar-width, 15rem)",
+        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
+        borderRight: "1px solid rgba(255,255,255,0.05)",
+      }}
+    >
+      {/* Logo */}
+      <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <img src={virajLogo} alt="Viraj Profiles" className="w-full max-w-[160px] h-auto object-contain" />
       </div>
 
-      {/* User Portal label */}
-      <div className="mx-4 mb-4 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 px-3 py-2 text-center">
-        <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">User Portal</span>
-      </div>
-
-      <nav className="flex-1 px-4">
-        <div className="space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
-                  isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
-                )
-              }
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
+      {/* Portal badge */}
+      <div className="px-4 pt-4 pb-2">
+        <div
+          className="flex items-center gap-2 rounded-lg px-3 py-2"
+          style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.2)" }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-accent-400 animate-pulse-slow" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent-400">User Support Portal</span>
         </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-3 space-y-0.5">
+        <p className="sidebar-section-label mt-2 mb-1.5">Navigation</p>
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                isActive ? "text-white" : "hover:text-white"
+              }`
+            }
+            style={({ isActive }) => ({
+              background: isActive ? "rgba(6,182,212,0.15)" : "transparent",
+              color: isActive ? "#ffffff" : "rgba(148,163,184,0.85)",
+            })}
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
+                    style={{ background: "#22d3ee" }}
+                  />
+                )}
+                <span style={{ color: isActive ? "#22d3ee" : "inherit" }}>
+                  <Icon name={item.icon} />
+                </span>
+                {item.label}
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
-      <div className="px-4 py-4">
+      {/* User + Logout */}
+      <div className="px-4 py-4 space-y-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        {user?.name && (
+          <div className="flex items-center gap-3 px-2">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #0891b2, #06b6d4)" }}
+            >
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-sm font-semibold text-white">{user.name}</div>
+              <div className="text-[10px]" style={{ color: "rgba(148,163,184,0.6)" }}>{user.department || "User"}</div>
+            </div>
+          </div>
+        )}
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition"
+          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 hover:text-white"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(148,163,184,0.7)",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}
         >
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
           Sign Out
         </button>
-      </div>
-
-      <div className="px-6 py-4 text-xs text-slate-400">
-        Submit and track your support tickets with ease.
       </div>
     </aside>
   );

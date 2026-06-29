@@ -87,14 +87,14 @@ const WORKGROUPS = [
 
 function FilterSelect({ label, value, onChange, options }) {
   return (
-    <label className="min-w-0">
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <label className="min-w-0 block">
+      <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
         {label}
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+        className="pro-select"
       >
         <option value="">All {label}</option>
         {options.map((item) => (
@@ -144,127 +144,96 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* ── Hero ── */}
-      <section className="rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-2xl">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <section className="hero-banner rounded-2xl p-6 text-white shadow-elevated relative overflow-hidden">
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
+              style={{ background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd" }}>
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
               Operations Snapshot
             </div>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight">Live ticket control room</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-300">
+            <h2 className="text-2xl font-bold tracking-tight">Live Ticket Control Room</h2>
+            <p className="mt-2 max-w-xl text-sm" style={{ color: "rgba(203,213,225,0.75)" }}>
               Monitor open work, SLA risk, and resolver load across incident and service request queues.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5">
             <Link
               to="/tickets/new"
-              className="rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-navy transition hover:bg-cyan-300"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px hover:shadow-lg"
+              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 4px 16px rgba(37,99,235,0.35)" }}
             >
-              Create Ticket
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New Ticket
             </Link>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/10 disabled:opacity-60"
+              style={{ borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }}
             >
               {refreshing ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Refreshing...
+                  Refreshing…
                 </>
               ) : (
                 <>
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                   </svg>
-                  Refresh Stats
+                  Refresh
                 </>
               )}
             </button>
           </div>
         </div>
         {lastRefreshed && (
-          <div className="mt-2 text-right text-xs text-slate-400">
-            ✓ Last refreshed at {lastRefreshed.toLocaleTimeString("en-IN")}
+          <div className="relative z-10 mt-3 text-right text-[11px]" style={{ color: "rgba(148,163,184,0.7)" }}>
+            ✓ Updated at {lastRefreshed.toLocaleTimeString("en-IN")}
           </div>
         )}
       </section>
 
       {/* ── Stats Cards ── */}
-      <section className="grid gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <StatsCard title="Total Tickets (24h)" value={summary?.totalTicketsLast24Hours ?? 0} />
-        <StatsCard title="Unassigned"           value={summary?.unassignedTickets ?? 0} />
-        <StatsCard title="Incidents"            value={summary?.incidentTickets ?? 0} />
-        <StatsCard title="Service Requests"     value={summary?.serviceRequestTickets ?? 0} />
-        <StatsCard title="P1 Incidents"         value={summary?.p1Incidents ?? 0} />
-        <StatsCard title="Pending / Breach"     value={summary?.pendingBreachTickets ?? 0} />
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatsCard title="Total (24h)"       value={summary?.totalTicketsLast24Hours ?? 0} accentIndex={0} />
+        <StatsCard title="Unassigned"         value={summary?.unassignedTickets ?? 0}       accentIndex={3} />
+        <StatsCard title="Incidents"          value={summary?.incidentTickets ?? 0}          accentIndex={0} />
+        <StatsCard title="Service Requests"   value={summary?.serviceRequestTickets ?? 0}   accentIndex={1} />
+        <StatsCard title="P1 Incidents"       value={summary?.p1Incidents ?? 0}              accentIndex={3} />
+        <StatsCard title="Pending / Breach"   value={summary?.pendingBreachTickets ?? 0}     accentIndex={2} />
       </section>
 
       {/* ── Filters ── */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-        <div className="grid gap-4 xl:grid-cols-6">
-          {/* EXPANDED: static India locations */}
-          <FilterSelect
-            label="Locations"
-            value={dashboardFilters.location}
-            onChange={(value) => setDashboardFilters({ location: value })}
-            options={INDIA_LOCATIONS}
-          />
-
-          {/* Dynamic: from ticket data */}
-          <FilterSelect
-            label="Classifications"
-            value={dashboardFilters.category}
-            onChange={(value) => setDashboardFilters({ category: value })}
-            options={dynamicOptions.category}
-          />
-          <FilterSelect
-            label="Sub-Categories"
-            value={dashboardFilters.sub_category}
-            onChange={(value) => setDashboardFilters({ sub_category: value })}
-            options={dynamicOptions.sub_category}
-          />
-
-          {/* EXPANDED: static IT + HR/Admin services */}
-          <FilterSelect
-            label="Services"
-            value={dashboardFilters.service}
-            onChange={(value) => setDashboardFilters({ service: value })}
-            options={SERVICES}
-          />
-
-          {/* EXPANDED: static IT + HR/Admin workgroups */}
-          <FilterSelect
-            label="Workgroups"
-            value={dashboardFilters.workgroup}
-            onChange={(value) => setDashboardFilters({ workgroup: value })}
-            options={WORKGROUPS}
-          />
-
-          {/* Dynamic: from ticket data */}
-          <FilterSelect
-            label="Customers"
-            value={dashboardFilters.customer}
-            onChange={(value) => setDashboardFilters({ customer: value })}
-            options={dynamicOptions.customer}
-          />
-
-          <button
-            onClick={() =>
-              setDashboardFilters({
-                location: "",
-                category: "",
-                sub_category: "",
-                service: "",
-                workgroup: "",
-                customer: "",
-              })
-            }
-            className="self-end rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Reset Filters
-          </button>
+      <section
+        className="rounded-2xl bg-white p-4"
+        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+          </svg>
+          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Filters</h3>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+          <FilterSelect label="Locations"      value={dashboardFilters.location}     onChange={(v) => setDashboardFilters({ location: v })}      options={INDIA_LOCATIONS} />
+          <FilterSelect label="Classifications" value={dashboardFilters.category}     onChange={(v) => setDashboardFilters({ category: v })}      options={dynamicOptions.category} />
+          <FilterSelect label="Sub-Categories" value={dashboardFilters.sub_category} onChange={(v) => setDashboardFilters({ sub_category: v })} options={dynamicOptions.sub_category} />
+          <FilterSelect label="Services"        value={dashboardFilters.service}      onChange={(v) => setDashboardFilters({ service: v })}       options={SERVICES} />
+          <FilterSelect label="Workgroups"      value={dashboardFilters.workgroup}    onChange={(v) => setDashboardFilters({ workgroup: v })}     options={WORKGROUPS} />
+          <FilterSelect label="Customers"       value={dashboardFilters.customer}     onChange={(v) => setDashboardFilters({ customer: v })}      options={dynamicOptions.customer} />
+          <div className="flex items-end">
+            <button
+              onClick={() => setDashboardFilters({ location:"", category:"", sub_category:"", service:"", workgroup:"", customer:"" })}
+              className="btn-secondary w-full text-xs"
+            >
+              Reset Filters
+            </button>
+          </div>
         </div>
       </section>
 
@@ -276,16 +245,19 @@ export default function Dashboard() {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <ResolverChart data={summary?.resolverBreakdown || []} />
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-soft">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-slate-900">Recent Tickets</h3>
+        <div
+          className="rounded-2xl bg-white overflow-hidden"
+          style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+        >
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+            <h3 className="text-sm font-bold text-slate-900">Recent Tickets</h3>
+            <Link to="/tickets" className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 transition-colors">
+              View all →
+            </Link>
           </div>
-          <div className="grid gap-3 p-4">
+          <div className="p-4 space-y-2">
             {tickets.slice(0, 5).map((ticket, index) => (
-              <TicketCard
-                key={ticket.id || ticket.ticket_id || index}
-                ticket={ticket}
-              />
+              <TicketCard key={ticket.id || ticket.ticket_id || index} ticket={ticket} />
             ))}
           </div>
         </div>

@@ -14,16 +14,19 @@ import {
   YAxis,
 } from "recharts";
 
-const colors = ["#0284c7", "#f97316", "#eab308", "#22c55e", "#ef4444", "#64748b", "#7c3aed", "#14b8a6"];
+const colors = ["#2563eb", "#06b6d4", "#7c3aed", "#059669", "#d97706", "#dc2626", "#64748b", "#0891b2"];
 
 function Panel({ title, subtitle, children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white shadow-soft ${className}`}>
-      <div className="border-b border-slate-200 px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-        {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+    <div
+      className={`overflow-hidden rounded-2xl bg-white ${className}`}
+      style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+    >
+      <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+        {subtitle ? <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p> : null}
       </div>
-      <div className="h-[320px] px-4 py-4">{children}</div>
+      <div className="h-[300px] px-4 py-4">{children}</div>
     </div>
   );
 }

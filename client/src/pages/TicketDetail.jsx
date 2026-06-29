@@ -127,44 +127,95 @@ export default function TicketDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{ticket.ticket_id}</div>
-          <h2 className="mt-1 text-2xl font-bold text-slate-900">{ticket.title}</h2>
-          <div className="mt-2 flex flex-wrap gap-2">
+    <div className="space-y-5">
+      {/* Ticket header bar */}
+      <div
+        className="flex flex-col gap-4 rounded-2xl bg-white p-5 lg:flex-row lg:items-start lg:justify-between"
+        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-mono text-[10px] font-bold tracking-wider text-slate-400 bg-slate-100 rounded px-2 py-0.5">
+              {ticket.ticket_id}
+            </span>
             <StatusBadge status={ticket.priority} type="priority" />
             <StatusBadge status={ticket.status} />
           </div>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">{ticket.title}</h2>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {statuses.map((status) => (
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Status quick-change */}
+          <div className="flex flex-wrap gap-1.5">
+            {statuses.map((status) => (
+              <button
+                key={status}
+                onClick={() => setField("status", status)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                  form.status === status
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300"
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 pl-2" style={{ borderLeft: "1px solid #e2e8f0" }}>
             <button
-              key={status}
-              onClick={() => setField("status", status)}
-              className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
-                form.status === status ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+              onClick={() => save()}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 3px 12px rgba(37,99,235,0.3)" }}
             >
-              {status}
+              {saving ? (
+                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13" /><polyline points="7 3 7 8 15 8" />
+                </svg>
+              )}
+              {saving ? "Saving…" : "Save"}
             </button>
-          ))}
-          <button onClick={() => save()} disabled={saving} className="rounded-2xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-navy transition hover:bg-cyan-300">
-            {saving ? "Saving..." : "Save"}
-          </button>
-          <button onClick={downloadPdf} className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-            Download PDF
-          </button>
+            <button
+              onClick={downloadPdf}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:-translate-y-px"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 
-      {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+      {error ? (
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c" }}>
+          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+          {error}
+        </div>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h3 className="text-base font-semibold text-slate-900">Ticket Details</h3>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
+        <div className="space-y-5">
+          {/* Ticket details form */}
+          <section
+            className="rounded-2xl bg-white overflow-hidden"
+            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <h3 className="text-sm font-bold text-slate-900">Ticket Details</h3>
+            </div>
+            <div className="p-5 grid gap-4 md:grid-cols-2">
               {sections.map(([field, label]) => (
                 <Field
                   key={field}
@@ -175,9 +226,9 @@ export default function TicketDetail() {
                   multiline={field === "description"}
                 />
               ))}
-            {/* Assignee dropdown */}
+              {/* Assignee dropdown */}
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">Assigned To</span>
+                <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Assigned To</span>
                 <select
                   value={form.assigned_to_id || ""}
                   onChange={(e) => {
@@ -188,7 +239,7 @@ export default function TicketDetail() {
                       assigned_to: selected ? selected.name : "",
                     }));
                   }}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+                  className="pro-select"
                 >
                   <option value="">— Unassigned —</option>
                   {users.map((u) => (
@@ -200,42 +251,70 @@ export default function TicketDetail() {
               </label>
             </div>
           </section>
-          
-          {/* Attachment (if any) */}
+
+          {/* Attachment */}
           {ticket.attachment_name && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-              <h3 className="mb-3 text-base font-semibold text-slate-900">Attachment</h3>
-              <a
-                href={api.ticketAttachmentUrl(ticket.id)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                {ticket.attachment_name}
-              </a>
+            <section
+              className="rounded-2xl bg-white overflow-hidden"
+              style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+            >
+              <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <h3 className="text-sm font-bold text-slate-900">Attachment</h3>
+              </div>
+              <div className="p-5">
+                <a
+                  href={api.ticketAttachmentUrl(ticket.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  {ticket.attachment_name}
+                </a>
+              </div>
             </section>
           )}
 
-
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h3 className="text-base font-semibold text-slate-900">Timeline / Activity</h3>
-            <div className="mt-4 space-y-3">
+          {/* Timeline */}
+          <section
+            className="rounded-2xl bg-white overflow-hidden"
+            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <h3 className="text-sm font-bold text-slate-900">Timeline / Activity</h3>
+            </div>
+            <div className="p-5 space-y-3">
+              {timeline.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-4">No activity yet.</p>
+              )}
               {timeline.map((entry) => (
-                <div key={`${entry.type}-${entry.id}`} className="rounded-2xl bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-slate-900">{entry.actor_name}</div>
-                    <div className="text-xs text-slate-500">{formatDateTime(entry.created_at)}</div>
+                <div key={`${entry.type}-${entry.id}`} className="flex gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full mt-0.5" style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+                    {entry.type === "comment" ? (
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="9 11 12 14 22 4" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {entry.type === "comment"
-                      ? `Commented: ${entry.body}`
-                      : `${entry.action} ${entry.field || ""}${entry.from_value ? ` from ${entry.from_value}` : ""}${entry.to_value ? ` to ${entry.to_value}` : ""}`}
-                  </p>
+                  <div className="flex-1 min-w-0 rounded-xl p-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-800">{entry.actor_name}</span>
+                      <span className="text-[10px] text-slate-400 shrink-0">{formatDateTime(entry.created_at)}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                      {entry.type === "comment"
+                        ? `“${entry.body}”`
+                        : `${entry.action} ${entry.field || ""}${entry.from_value ? ` from ${entry.from_value}` : ""}${entry.to_value ? ` → ${entry.to_value}` : ""}`}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -243,10 +322,16 @@ export default function TicketDetail() {
 
         </div>
 
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h3 className="text-base font-semibold text-slate-900">Audit Trail</h3>
-            <dl className="mt-4 space-y-3 text-sm">
+        {/* Right sidebar */}
+        <div className="space-y-5">
+          <section
+            className="rounded-2xl bg-white overflow-hidden"
+            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <h3 className="text-sm font-bold text-slate-900">Audit Trail</h3>
+            </div>
+            <dl className="p-5 space-y-3">
               <AuditItem label="Created By" value={ticket.created_by} time={ticket.created_at} />
               <AuditItem label="Assigned To" value={ticket.assigned_to_name || ticket.assigned_to} time={ticket.updated_at} />
               <AuditItem label="Last Modified By" value={ticket.last_modified_by} time={ticket.updated_at} />
@@ -265,19 +350,20 @@ export default function TicketDetail() {
 function Field({ label, value, onChange, type = "text", multiline = false }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</span>
       {multiline ? (
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="min-h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+          rows={4}
+          className="w-full rounded-xl border border-slate-200 bg-slate-50/30 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 focus:border-brand-500 focus:bg-white focus:ring-[3px] focus:ring-brand-500/10 resize-none"
         />
       ) : (
         <input
           type={type}
           value={type === "datetime-local" ? value || "" : value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+          className="w-full rounded-xl border border-slate-200 bg-slate-50/30 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-all duration-200 focus:border-brand-500 focus:bg-white focus:ring-[3px] focus:ring-brand-500/10"
         />
       )}
     </label>
@@ -286,10 +372,10 @@ function Field({ label, value, onChange, type = "text", multiline = false }) {
 
 function AuditItem({ label, value, time }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="mt-1 font-medium text-slate-900">{value || "-"}</dd>
-      {time ? <div className="mt-1 text-xs text-slate-500">{formatDateTime(time)}</div> : null}
+    <div className="rounded-xl px-3.5 py-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+      <dt className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</dt>
+      <dd className="mt-1 text-sm font-semibold text-slate-900">{value || "—"}</dd>
+      {time ? <div className="mt-0.5 text-[10px] text-slate-400">{formatDateTime(time)}</div> : null}
     </div>
   );
 }

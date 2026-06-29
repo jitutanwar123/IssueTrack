@@ -1,93 +1,145 @@
 import { NavLink } from "react-router-dom";
-import { cn } from "../utils/helpers.js";
-import virajLogo from "../viraaj.webp";   // adjust path if needed
+import virajLogo from "../viraaj.webp";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: "grid" },
-  { to: "/tickets", label: "Tickets", icon: "ticket" },
-  { to: "/tickets/new", label: "Create Ticket", icon: "plus" },
-  { to: "/reports", label: "Reports", icon: "chart" },
-  { to: "/team", label: "Team", icon: "users" },
+  { to: "/", label: "Dashboard", icon: "grid", section: null },
+  { to: "/tickets", label: "Tickets", icon: "ticket", section: "Tickets" },
+  { to: "/tickets/new", label: "New Ticket", icon: "plus", section: null },
+  { to: "/reports", label: "Reports", icon: "chart", section: "Analytics" },
+  { to: "/team", label: "Team", icon: "users", section: null },
 ];
 
 function Icon({ name }) {
-  const common = "h-5 w-5";
+  const cls = "h-4 w-4 shrink-0";
   switch (name) {
     case "grid":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
       );
     case "ticket":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 7a2 2 0 0 0 2 2 2 2 0 0 1 0 4 2 2 0 0 0-2 2v2h16v-2a2 2 0 0 0-2-2 2 2 0 0 1 0-4 2 2 0 0 0 2-2V5H4Z" />
         </svg>
       );
     case "plus":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v8M8 12h8" />
         </svg>
       );
     case "chart":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M4 19V5M4 19h16" strokeLinecap="round" />
-          <path d="M8 17v-6M12 17V8M16 17v-3" strokeLinecap="round" />
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19V5M4 19h16" />
+          <path d="M8 17v-6M12 17V8M16 17v-3" />
         </svg>
       );
     case "users":
       return (
-        <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1" />
           <circle cx="9" cy="7" r="3" />
-          <path d="M21 20v-1a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a3 3 0 0 1 0 5.74" />
+          <path d="M21 20v-1a4 4 0 0 0-3-3.87M16 3.13a3 3 0 0 1 0 5.74" />
         </svg>
       );
-    default:
-      return null;
+    default: return null;
   }
 }
 
 export function Sidebar() {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-60 bg-navy overflow-y-auto z-50">
-      <div className="px-6 py-6">
-  <img
-    src={virajLogo}
-    alt="Viraj Profiles"
-    className="w-full max-w-[180px] h-auto object-contain"
-  />
-</div>
-      <nav className="flex-1 px-4">
-        <div className="space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
-                  isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
-                )
-              }
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
+    <aside
+      className="fixed left-0 top-0 h-screen overflow-y-auto z-50 flex flex-col"
+      style={{
+        width: "var(--sidebar-width, 15rem)",
+        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
+        borderRight: "1px solid rgba(255,255,255,0.05)",
+      }}
+    >
+      {/* Logo area */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <img
+          src={virajLogo}
+          alt="Viraj Profiles"
+          className="w-full max-w-[160px] h-auto object-contain"
+        />
+      </div>
+
+      {/* Portal label */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.2)" }}>
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse-slow" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-400">Admin Command Center</span>
         </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-3 space-y-0.5">
+        {/* Overview section */}
+        <p className="sidebar-section-label mt-2 mb-1.5">Overview</p>
+        {navItems.slice(0, 1).map((item) => (
+          <SidebarLink key={item.to} item={item} />
+        ))}
+
+        <p className="sidebar-section-label mt-4 mb-1.5">Manage</p>
+        {navItems.slice(1, 3).map((item) => (
+          <SidebarLink key={item.to} item={item} />
+        ))}
+
+        <p className="sidebar-section-label mt-4 mb-1.5">Analytics</p>
+        {navItems.slice(3).map((item) => (
+          <SidebarLink key={item.to} item={item} />
+        ))}
       </nav>
-      <div className="px-6 py-6 text-xs text-slate-400">
-        Desk-first layout for incident, service request, and change workflows.
+
+      {/* Footer */}
+      <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(148,163,184,0.4)" }}>
+          Incident · Service Request · Change · Problem
+        </p>
       </div>
     </aside>
   );
-} 
+}
+
+function SidebarLink({ item }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === "/"}
+      className={({ isActive }) =>
+        `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+          isActive
+            ? "text-white"
+            : "hover:text-white"
+        }`
+      }
+      style={({ isActive }) => ({
+        background: isActive ? "rgba(37,99,235,0.18)" : "transparent",
+        color: isActive ? "#ffffff" : "rgba(148,163,184,0.85)",
+      })}
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
+              style={{ background: "#60a5fa" }}
+            />
+          )}
+          <span style={{ color: isActive ? "#60a5fa" : "inherit" }}>
+            <Icon name={item.icon} />
+          </span>
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  );
+}
