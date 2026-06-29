@@ -130,11 +130,12 @@ export default function TicketDetail() {
     <div className="space-y-5">
       {/* Ticket header bar */}
       <div
-        className="flex flex-col gap-4 rounded-2xl bg-white p-5 lg:flex-row lg:items-start lg:justify-between"
+        className="rounded-2xl bg-white p-5 space-y-4"
         style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
       >
+        {/* Row 1: ticket meta + title */}
         <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="font-mono text-[10px] font-bold tracking-wider text-slate-400 bg-slate-100 rounded px-2 py-0.5">
               {ticket.ticket_id}
             </span>
@@ -144,9 +145,10 @@ export default function TicketDetail() {
           <h2 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">{ticket.title}</h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {/* Status quick-change */}
-          <div className="flex flex-wrap gap-1.5">
+        {/* Row 2: status quick-change + Save/PDF actions */}
+        <div className="flex flex-wrap items-center gap-3" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+          {/* Status buttons */}
+          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
             {statuses.map((status) => (
               <button
                 key={status}
@@ -162,7 +164,8 @@ export default function TicketDetail() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 pl-2" style={{ borderLeft: "1px solid #e2e8f0" }}>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => save()}
               disabled={saving}
