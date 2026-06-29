@@ -82,6 +82,21 @@ db.connect((err) => {
   });
   console.log("✅ Migration queued (resolved_at, resolution_note, resolved_by, attachment columns, it_staff role)");
 
+  // ─── Renumber ticket_ids to be sequential (INC1, INC2, …) ──────
+  // Runs on every boot: fixes gaps caused by deleted tickets
+  db.query("SELECT id FROM tickets ORDER BY id ASC", (err, rows) => {
+    if (err || !rows || rows.length === 0) return;
+    rows.forEach((row, index) => {
+      const correctId = `INC${index + 1}`;
+      db.query(
+        "UPDATE tickets SET ticket_id = ? WHERE id = ? AND ticket_id != ?",
+        [correctId, row.id, correctId],
+        () => {} // silently ignore
+      );
+    });
+    console.log(`✅ Ticket IDs renumbered (${rows.length} tickets)`);
+  });
+
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || "viraj_jwt_secret_change_me";
@@ -150,8 +165,9 @@ function query(sql, params = []) {
 
 // ─── Helper: auto-generate ticket ID ────────────────────────────
 async function generateTicketId() {
-  const rows = await query("SELECT MAX(id) as maxId FROM tickets");
-  const next = (rows[0]?.maxId || 0) + 1;
+  // Count existing tickets so IDs stay sequential even after deletes
+  const rows = await query("SELECT COUNT(*) as total FROM tickets");
+  const next = (rows[0]?.total || 0) + 1;
   return `INC${next}`;
 }
 
