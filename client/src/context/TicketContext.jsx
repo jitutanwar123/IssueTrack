@@ -44,7 +44,12 @@ export function TicketProvider({ children }) {
     setLoadingTickets(true);
     setError("");
     try {
-      const response = await api.tickets({ ...ticketFilters, ...overrides });
+      // Always send the current limit so the server doesn't default to 25
+      const response = await api.tickets({
+        limit: pagination.limit,
+        ...ticketFilters,
+        ...overrides,
+      });
       setTickets(response.data);
       setPagination(response.pagination);
       return response;
