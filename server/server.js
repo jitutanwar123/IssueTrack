@@ -1006,15 +1006,15 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
     }
 
     const target = targetRows[0];
-    if (String(target.id) === String(currentTicket.assigned_to_id)) {
+    if (String(currentTicket.assigned_to || "") === String(target.name || "")) {
       return res.status(409).json({ message: "Ticket is already assigned to that staff member" });
     }
 
     await query(
       `UPDATE tickets
-       SET assigned_to = ?, assigned_to_id = ?, updated_at = NOW()
+       SET assigned_to = ?, updated_at = NOW()
        WHERE id = ?`,
-      [target.name, target.id, id]
+      [target.name, id]
     );
 
     await query(
@@ -1032,7 +1032,7 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
     ).catch(() => {});
 
     const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
-    const updatedTicket = updatedRows[0] || { ...currentTicket, assigned_to: target.name, assigned_to_id: target.id };
+    const updatedTicket = updatedRows[0] || { ...currentTicket, assigned_to: target.name };
 
     sendTicketTransferredToAssignee(updatedTicket, target.email, actorName)
       .then(() => console.log(`✅ Transfer email sent to ${target.email} for ticket #${id}`))
