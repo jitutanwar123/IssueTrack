@@ -69,6 +69,8 @@ db.connect((err) => {
     "ALTER TABLE users ADD COLUMN department VARCHAR(100) DEFAULT NULL",
     // Expand portal_role to support it_staff
     "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
+    // Speed up staff queue lookups
+    "ALTER TABLE tickets ADD INDEX idx_tickets_assigned_created (assigned_to, created_at)",
   ];
   migrationCols.forEach((sql) => {
     db.query(sql, (migErr) => {
