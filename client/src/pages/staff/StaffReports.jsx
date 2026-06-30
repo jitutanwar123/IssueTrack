@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api } from "../../utils/api.js";
-import { exportReportExcel } from "../../utils/excelExport.js";
+import { exportStaffReportExcel } from "../../utils/excelExport.js";
 import { formatMinutes } from "../../utils/helpers.js";
 
 // ── Colour palette ──────────────────────────────────────────────────────────
@@ -119,8 +119,8 @@ export default function StaffReports() {
 
   function handleExport() {
     if (!data?.tickets?.length) return;
-    // Build a fake "filters" object for the excel exporter with assignee locked to this staff
-    exportReportExcel({ assignee: user?.name, ...filters }).catch(console.error);
+    // Export the tickets already loaded for this staff member so the sheet matches the view.
+    exportStaffReportExcel(user?.name, data.tickets).catch(console.error);
   }
 
   const s = data?.summary || {};
