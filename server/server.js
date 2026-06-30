@@ -74,10 +74,11 @@ db.connect((err) => {
   ];
   migrationCols.forEach((sql) => {
     db.query(sql, (migErr) => {
-      if (migErr && migErr.errno !== 1060 && migErr.errno !== 1060) {
+      if (migErr && migErr.errno !== 1060 && migErr.errno !== 1061) {
         // errno 1060 = "Duplicate column name" — column already exists, that's fine
+        // errno 1061 = "Duplicate key name" — index already exists, that's fine
         // Other MODIFY errors are also silently handled (e.g. column already correct type)
-        if (!migErr.message?.includes("Duplicate column") && migErr.errno !== 1060) {
+        if (!migErr.message?.includes("Duplicate column") && !migErr.message?.includes("Duplicate key") && migErr.errno !== 1060 && migErr.errno !== 1061) {
           console.warn("⚠️  Migration warning:", migErr.message);
         }
       }
@@ -1351,6 +1352,82 @@ app.get("/api/staff/tickets", authenticateJWT, requireStaff, async (req, res) =>
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PATCH: Staff updates ticket status on assigned ticket
+app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async (req, res) => {
+  const { id } = req.params;
+  const { status, note = "", resolutionNote = "" } = req.body || {};
+
+  if (!status) {
+    return res.status(400).json({ message: "Status is required" });
+  }
+
+  try {
+    const staffName = req.user.name;
+    const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
+
+    const rows = isAdmin
+      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
+      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Ticket not found or not assigned to you" });
+    }
+
+    const current = rows[0];
+    if ((current.status || "") === status) {
+      return res.status(409).json({ message: "Ticket already has that status" });
+    }
+
+    const cleanNote = (resolutionNote || note || "").trim();
+
+    if (status === "Resolved") {
+      await query(
+        `UPDATE tickets
+           SET status = ?, resolved_at = NOW(), resolved_by = ?, resolution_note = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [status, staffName, cleanNote || current.resolution_note || "", id]
+      );
+    } else {
+      await query(
+        `UPDATE tickets
+           SET status = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [status, id]
+      );
+    }
+
+    await query(
+      `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note)
+       VALUES (?,?,?,?,?)`,
+      [
+        current.ticket_id,
+        staffName,
+        current.status || "Unknown",
+        status,
+        cleanNote,
+      ]
+    ).catch(() => {});
+
+    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const updatedTicket = updatedRows[0] || { ...current, status };
+
+    if (status === "Resolved") {
+      sendResolutionToUser(updatedTicket, staffName, cleanNote || "Resolved by staff")
+        .then(() => console.log(`✅ Staff resolution email sent for ticket #${id}`))
+        .catch((e) => console.error(`❌ Staff resolution email error:`, e.message));
+    } else {
+      sendStatusUpdateToUser(updatedTicket, status, cleanNote || null)
+        .then(() => console.log(`✅ Staff status update email sent for ticket #${id}`))
+        .catch((e) => console.error(`❌ Staff status email error:`, e.message));
+    }
+
+    res.json({ success: true, data: updatedTicket });
+  } catch (err) {
+    console.error("Staff status update error:", err);
     res.status(500).json({ message: err.message });
   }
 });

@@ -163,6 +163,8 @@ export const api = {
   },
   resolveStaffTicket: (id, payload) =>
     request(`/staff/tickets/${id}/resolve`, { method: "PUT", body: JSON.stringify(payload) }),
+  updateStaffTicketStatus: (id, payload) =>
+    request(`/staff/tickets/${id}/status`, { method: "PATCH", body: JSON.stringify(payload) }),
   transferStaffTicket: (id, payload) =>
     request(`/staff/tickets/${id}/transfer`, { method: "POST", body: JSON.stringify(payload) }),
   addStaffComment: (id, body) =>
