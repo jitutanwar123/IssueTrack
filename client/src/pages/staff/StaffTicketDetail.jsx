@@ -159,7 +159,11 @@ export default function StaffTicketDetail() {
   async function handleResolve(event) {
     event.preventDefault();
     if (!resolutionNote.trim()) {
-      setResolveError("Resolution note is required.");
+      setResolveError(
+        statusDraft === "Reject"
+          ? "Rejection reason is required."
+          : "Resolution note is required."
+      );
       return;
     }
     if (ticket?.status === "Closed") {
@@ -170,13 +174,14 @@ export default function StaffTicketDetail() {
     setResolveError("");
     try {
       await api.updateStaffTicketStatus(id, {
-        status: "Resolved",
+        status: statusDraft,
         resolutionNote: resolutionNote.trim(),
+        note: statusDraft === "Reject" ? resolutionNote.trim() : "",
       });
       await loadTicket();
       setShowResolve(false);
     } catch (err) {
-      setResolveError(err.message || "Failed to resolve ticket.");
+      setResolveError(err.message || `Failed to ${statusDraft === "Reject" ? "reject" : "resolve"} ticket.`);
     } finally {
       setResolving(false);
     }
@@ -227,6 +232,14 @@ export default function StaffTicketDetail() {
 
   const isResolved = ticket?.status === "Resolved";
   const isClosed = ticket?.status === "Closed";
+  const isOutcomeAction = showResolve && (statusDraft === "Resolved" || statusDraft === "Reject");
+  const outcomeTitle = statusDraft === "Reject" ? "Rejection" : "Resolution";
+  const outcomeSubtitle =
+    statusDraft === "Reject"
+      ? "Use this when the ticket cannot be handled by your team and should be rejected with a clear reason."
+      : "Add a detailed resolution note before marking the ticket as resolved.";
+  const outcomeButtonLabel = statusDraft === "Reject" ? "Submit Rejection" : "Submit Resolution";
+  const outcomeButtonBusyLabel = statusDraft === "Reject" ? "Rejecting..." : "Resolving...";
 
   if (loading) {
     return (
@@ -282,9 +295,6 @@ export default function StaffTicketDetail() {
               <StatusBadge status={ticket.priority} type="priority" />
               <StatusBadge status={ticket.status} />
             </div>
-            <p className="max-w-3xl text-sm text-slate-500">
-              Keep the ticket moving, update the stage, add notes, or transfer it to the right team member.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -303,11 +313,26 @@ export default function StaffTicketDetail() {
               <button
                 onClick={() => {
                   setStatusDraft("Resolved");
-                  setShowResolve((current) => !current);
+                  setResolutionNote("");
+                  setResolveError("");
+                  setShowResolve(true);
                 }}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
               >
                 Resolve
+              </button>
+            )}
+            {!isResolved && !isClosed && (
+              <button
+                onClick={() => {
+                  setStatusDraft("Reject");
+                  setResolutionNote("");
+                  setResolveError("");
+                  setShowResolve(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500"
+              >
+                Reject
               </button>
             )}
           </div>
@@ -362,16 +387,27 @@ export default function StaffTicketDetail() {
           </div>
         )}
 
-        {showResolve && (
-            <form onSubmit={handleResolve} className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+        {isOutcomeAction && (
+            <form
+              onSubmit={handleResolve}
+              className={`mt-5 rounded-2xl p-5 ${
+                statusDraft === "Reject"
+                  ? "border border-rose-100 bg-rose-50/70"
+                  : "border border-emerald-100 bg-emerald-50/60"
+              }`}
+            >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Resolution</h3>
+                <h3 className="text-sm font-bold text-slate-900">{outcomeTitle}</h3>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Add a detailed resolution note before marking the ticket as resolved.
+                  {outcomeSubtitle}
                 </p>
               </div>
-              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-emerald-700">
+              <span
+                className={`rounded-full bg-white px-3 py-1 text-[11px] font-semibold ${
+                  statusDraft === "Reject" ? "text-rose-700" : "text-emerald-700"
+                }`}
+              >
                 Final stage
               </span>
             </div>
@@ -380,20 +416,33 @@ export default function StaffTicketDetail() {
                 {resolveError}
               </div>
             )}
+            <label className="mt-4 block">
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                {statusDraft === "Reject" ? "Rejection Reason" : "Resolution Note"}
+              </span>
             <textarea
               value={resolutionNote}
               onChange={(e) => setResolutionNote(e.target.value)}
               rows={4}
-              placeholder="Describe the root cause, what you changed, and how it was fixed..."
-              className="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/10 resize-none"
+              placeholder={
+                statusDraft === "Reject"
+                  ? "Explain why the ticket cannot be accepted or resolved here..."
+                  : "Describe the root cause, what you changed, and how it was fixed..."
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:ring-2 resize-none focus:border-emerald-400 focus:ring-emerald-400/10"
             />
+            </label>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="submit"
                 disabled={resolving || ticket?.status === "Closed"}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition disabled:opacity-60 ${
+                  statusDraft === "Reject"
+                    ? "bg-rose-600 hover:bg-rose-500"
+                    : "bg-emerald-600 hover:bg-emerald-500"
+                }`}
               >
-                {resolving ? "Resolving..." : "Submit Resolution"}
+                {resolving ? outcomeButtonBusyLabel : outcomeButtonLabel}
               </button>
               <button
                 type="button"

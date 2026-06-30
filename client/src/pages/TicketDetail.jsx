@@ -138,7 +138,6 @@ export default function TicketDetail() {
 
   if (!ticket) return null;
 
-  const readOnly = true;
   const closed = String(ticket.status || "").toLowerCase() === "closed";
 
   return (
@@ -185,11 +184,7 @@ export default function TicketDetail() {
           </span>
           <StatusBadge status={ticket.priority} type="priority" />
           <StatusBadge status={ticket.status} />
-          {readOnly && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">View only</span>}
         </div>
-        <p className="mt-3 max-w-3xl text-sm text-slate-500">
-          Admin access is read-only here. Use delete only if the record must be removed.
-        </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
