@@ -15,6 +15,7 @@ export default function StaffTicketDetail() {
   const [timeline, setTimeline]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
+  const [staffMembers, setStaffMembers] = useState([]);
 
   // Resolve form
   const [showResolve, setShowResolve] = useState(false);
@@ -22,6 +23,12 @@ export default function StaffTicketDetail() {
   const [resolving, setResolving]     = useState(false);
   const [resolveError, setResolveError] = useState("");
   const [resolved, setResolved]       = useState(false);
+
+  // Transfer form
+  const [transferToId, setTransferToId] = useState("");
+  const [transferNote, setTransferNote] = useState("");
+  const [transferring, setTransferring] = useState(false);
+  const [transferError, setTransferError] = useState("");
 
   // Comment form
   const [commentBody, setCommentBody] = useState("");
@@ -43,6 +50,12 @@ export default function StaffTicketDetail() {
   }
 
   useEffect(() => { load(); }, [id]);
+
+  useEffect(() => {
+    api.staffMembers()
+      .then((res) => setStaffMembers(res.data || []))
+      .catch(() => setStaffMembers([]));
+  }, []);
 
   async function handleResolve(e) {
     e.preventDefault();
@@ -74,6 +87,27 @@ export default function StaffTicketDetail() {
       alert(err.message || "Failed to add comment");
     } finally {
       setAddingComment(false);
+    }
+  }
+
+  async function handleTransfer(e) {
+    e.preventDefault();
+    if (!transferToId) {
+      setTransferError("Please choose a staff member.");
+      return;
+    }
+    setTransferring(true);
+    setTransferError("");
+    try {
+      await api.transferStaffTicket(id, {
+        assigneeId: Number(transferToId),
+        note: transferNote.trim(),
+      });
+      navigate("/staff/dashboard");
+    } catch (err) {
+      setTransferError(err.message || "Failed to transfer ticket.");
+    } finally {
+      setTransferring(false);
     }
   }
 
@@ -185,6 +219,67 @@ export default function StaffTicketDetail() {
                     className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                   >
                     Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Transfer form */}
+            {!isResolved && (
+              <form onSubmit={handleTransfer} className="mt-4 space-y-3 rounded-xl border border-sky-100 bg-sky-50/70 p-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">Transfer to another staff member</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Use this when the ticket was assigned to the wrong person. The ticket will move to the selected staff member and disappear from your queue.
+                  </p>
+                </div>
+                {transferError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-600">
+                    {transferError}
+                  </div>
+                )}
+                <div className="grid gap-3 md:grid-cols-[1fr_1fr]">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Assign To</span>
+                    <select
+                      value={transferToId}
+                      onChange={(e) => setTransferToId(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
+                    >
+                      <option value="">Select staff member</option>
+                      {staffMembers
+                        .filter((member) => String(member.id) !== String(user?.id))
+                        .map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.name}{member.department ? ` (${member.department})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Handoff Note</span>
+                    <input
+                      value={transferNote}
+                      onChange={(e) => setTransferNote(e.target.value)}
+                      placeholder="Optional note for the new assignee"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
+                    />
+                  </label>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={transferring || !staffMembers.length}
+                    className="rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:opacity-60"
+                  >
+                    {transferring ? "Transferring…" : "Transfer Ticket"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setTransferToId(""); setTransferNote(""); setTransferError(""); }}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                  >
+                    Clear
                   </button>
                 </div>
               </form>

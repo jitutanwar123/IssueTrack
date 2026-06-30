@@ -134,6 +134,8 @@ export const api = {
   },
   resolveStaffTicket: (id, payload) =>
     request(`/staff/tickets/${id}/resolve`, { method: "PUT", body: JSON.stringify(payload) }),
+  transferStaffTicket: (id, payload) =>
+    request(`/staff/tickets/${id}/transfer`, { method: "POST", body: JSON.stringify(payload) }),
   addStaffComment: (id, body) =>
     request(`/staff/tickets/${id}/comment`, { method: "POST", body: JSON.stringify({ body }) }),
 

@@ -20,6 +20,7 @@ import {
   sendUserCommentToAdmin,
   sendResolutionToUser,
   sendTicketAssignedToAssignee,
+  sendTicketTransferredToAssignee,
   sendAdminCreatedTicketToAdmin,
   sendSubBranchResolutionToAdmin,
 } from "./emailService.js";
@@ -969,6 +970,77 @@ app.get("/api/staff/members", authenticateJWT, async (req, res) => {
     );
     res.json({ data: rows });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST: Staff transfer/reassign ticket to another staff member
+app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async (req, res) => {
+  const { id } = req.params;
+  const { assigneeId, note } = req.body;
+
+  if (!assigneeId) {
+    return res.status(400).json({ message: "Target staff member is required" });
+  }
+
+  try {
+    const actorName = req.user.name;
+    const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
+
+    const currentRows = isAdmin
+      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
+      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, actorName]);
+
+    if (currentRows.length === 0) {
+      return res.status(404).json({ message: "Ticket not found or not assigned to you" });
+    }
+
+    const currentTicket = currentRows[0];
+    const targetRows = await query(
+      "SELECT id, name, email FROM users WHERE id = ? AND portal_role = 'it_staff' LIMIT 1",
+      [assigneeId]
+    );
+
+    if (targetRows.length === 0) {
+      return res.status(404).json({ message: "Target staff member not found" });
+    }
+
+    const target = targetRows[0];
+    if (String(target.id) === String(currentTicket.assigned_to_id)) {
+      return res.status(409).json({ message: "Ticket is already assigned to that staff member" });
+    }
+
+    await query(
+      `UPDATE tickets
+       SET assigned_to = ?, assigned_to_id = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [target.name, target.id, id]
+    );
+
+    await query(
+      `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note)
+       VALUES (?,?,?,?,?)`,
+      [
+        currentTicket.ticket_id,
+        actorName,
+        `Assigned: ${currentTicket.assigned_to || "Unassigned"}`,
+        `Assigned: ${target.name}`,
+        note?.trim()
+          ? `Transferred by ${actorName}. Note: ${note.trim()}`
+          : `Transferred by ${actorName}`,
+      ]
+    ).catch(() => {});
+
+    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
+    const updatedTicket = updatedRows[0] || { ...currentTicket, assigned_to: target.name, assigned_to_id: target.id };
+
+    sendTicketTransferredToAssignee(updatedTicket, target.email, actorName)
+      .then(() => console.log(`✅ Transfer email sent to ${target.email} for ticket #${id}`))
+      .catch((e) => console.error(`❌ Transfer email error:`, e.message));
+
+    res.json({ success: true, message: "Ticket transferred successfully", data: updatedTicket });
+  } catch (err) {
+    console.error("Transfer error:", err);
     res.status(500).json({ message: err.message });
   }
 });

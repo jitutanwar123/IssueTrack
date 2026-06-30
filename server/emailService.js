@@ -239,6 +239,23 @@ export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
   await sendEmail({ to: assigneeEmail, subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
 }
 
+// ─── 6b. Staff transfer → New assignee ───────────────────────────
+export async function sendTicketTransferredToAssignee(ticket, assigneeEmail, transferredBy) {
+  if (!assigneeEmail) return;
+  const pc = priorityColors[ticket.priority] || { bg: "#64748b", label: ticket.priority };
+  const html = baseTemplate("A Ticket Has Been Transferred to You",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">🔁 A ticket has been transferred to you</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">
+       <strong>${transferredBy || "Another staff member"}</strong> has handed this ticket over to you. Please review it in your staff portal.
+     </p>
+     ${ticketTable(ticket)}`);
+  await sendEmail({
+    to: assigneeEmail,
+    subject: `[TICKET TRANSFERRED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
+    html,
+  });
+}
+
 // ─── 7. Admin-created ticket → Admin ────────────────────────────
 export async function sendAdminCreatedTicketToAdmin(ticket) {
   if (!process.env.ADMIN_EMAIL) return;
