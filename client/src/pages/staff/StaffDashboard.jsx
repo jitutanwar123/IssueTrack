@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
@@ -32,17 +32,25 @@ function StatCard({ label, value, color, bg, border }) {
 
 export default function StaffDashboard() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
 
-  async function load(params = {}) {
+  useEffect(() => {
+    const nextStatus = searchParams.get("status") || "";
+    setStatusFilter((current) => (current === nextStatus ? current : nextStatus));
+  }, [searchParams]);
+
+  async function load() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.staffTickets(params);
+      const res = await api.staffTickets();
       setTickets(res.data || []);
     } catch (err) {
       setError(err.message || "Failed to load tickets");
@@ -55,7 +63,8 @@ export default function StaffDashboard() {
 
   function applyFilters(e) {
     e.preventDefault();
-    load({ search: search || undefined, status: statusFilter || undefined });
+    setSearchParams(statusFilter ? { status: statusFilter } : {});
+    setActiveSearch(search.trim());
   }
 
   // Computed stats
@@ -63,6 +72,26 @@ export default function StaffDashboard() {
   const inProgress = tickets.filter((t) => t.status === "Work In Progress" || t.status === "Assigned").length;
   const onHold     = tickets.filter((t) => t.status?.startsWith("On Hold")).length;
   const resolved   = tickets.filter((t) => t.status === "Resolved").length;
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesStatus =
+      !statusFilter ||
+      (statusFilter === "In Progress"
+        ? ["Assigned", "Work In Progress", "In Progress"].includes(ticket.status)
+        : statusFilter === "On Hold"
+          ? ticket.status?.startsWith("On Hold")
+          : ticket.status === statusFilter);
+    const term = activeSearch.toLowerCase();
+    const matchesSearch =
+      !term ||
+      ticket.title?.toLowerCase().includes(term) ||
+      (ticket.ticket_id || "").toLowerCase().includes(term);
+    return matchesStatus && matchesSearch;
+  });
+
+  function ticketStatusLink(status) {
+    const next = status === "In Progress" ? "Work In Progress" : status;
+    return `/staff/dashboard?status=${encodeURIComponent(next)}`;
+  }
 
   const firstName = user?.name?.split(" ")[0] || "Staff";
 
@@ -82,10 +111,18 @@ export default function StaffDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Open"        value={open}       color="#2563eb" bg="#eff6ff" border="#bfdbfe" />
-        <StatCard label="In Progress" value={inProgress} color="#d97706" bg="#fffbeb" border="#fde68a" />
-        <StatCard label="On Hold"     value={onHold}     color="#7c3aed" bg="#f5f3ff" border="#ddd6fe" />
-        <StatCard label="Resolved"    value={resolved}   color="#059669" bg="#f0fdf4" border="#bbf7d0" />
+        <Link to={ticketStatusLink("Open")} className="block">
+          <StatCard label="Open" value={open} color="#2563eb" bg="#eff6ff" border="#bfdbfe" />
+        </Link>
+        <Link to={ticketStatusLink("In Progress")} className="block">
+          <StatCard label="In Progress" value={inProgress} color="#d97706" bg="#fffbeb" border="#fde68a" />
+        </Link>
+        <Link to={ticketStatusLink("On Hold")} className="block">
+          <StatCard label="On Hold" value={onHold} color="#7c3aed" bg="#f5f3ff" border="#ddd6fe" />
+        </Link>
+        <Link to={ticketStatusLink("Resolved")} className="block">
+          <StatCard label="Resolved" value={resolved} color="#059669" bg="#f0fdf4" border="#bbf7d0" />
+        </Link>
       </div>
 
       {/* Filters */}
@@ -123,7 +160,7 @@ export default function StaffDashboard() {
         </button>
         <button
           type="button"
-          onClick={() => { setSearch(""); setStatusFilter(""); load(); }}
+          onClick={() => { setSearch(""); setStatusFilter(""); setActiveSearch(""); setSearchParams({}); load(); }}
           className="btn-secondary"
         >
           Clear
@@ -140,7 +177,7 @@ export default function StaffDashboard() {
             My Assigned Tickets
           </h3>
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
-            {tickets.length}
+            {filteredTickets.length}
           </span>
         </div>
 
@@ -154,7 +191,7 @@ export default function StaffDashboard() {
           </div>
         ) : error ? (
           <div className="py-10 text-center text-sm text-red-500">{error}</div>
-        ) : tickets.length === 0 ? (
+        ) : filteredTickets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -176,8 +213,21 @@ export default function StaffDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {tickets.map((ticket) => (
-                  <tr key={ticket.id} className="transition-colors duration-100 hover:bg-slate-50/70" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                {filteredTickets.map((ticket) => (
+                  <tr
+                    key={ticket.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/staff/tickets/${ticket.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/staff/tickets/${ticket.id}`);
+                      }
+                    }}
+                    className="cursor-pointer transition-colors duration-100 hover:bg-slate-50/70"
+                    style={{ borderBottom: "1px solid #f1f5f9" }}
+                  >
                     <td className="px-4 py-3.5">
                       <span className="font-mono text-xs font-bold text-slate-700">
                         {ticket.ticket_id || `INC${ticket.id}`}
@@ -202,6 +252,7 @@ export default function StaffDashboard() {
                     <td className="px-4 py-3.5">
                       <Link
                         to={`/staff/tickets/${ticket.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300"
                       >
                         {ticket.status === "Resolved" ? "View" : "View / Resolve"}
@@ -211,7 +262,7 @@ export default function StaffDashboard() {
                       </Link>
                     </td>
                   </tr>
-                ))}
+                  ))}
               </tbody>
             </table>
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../utils/api.js";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { formatDateTime } from "../../utils/helpers.js";
@@ -8,25 +8,45 @@ const STATUSES = ["Open", "In Progress", "Pending", "Resolved", "Closed"];
 const PRIORITIES = ["P1", "P2", "P3", "P4"];
 
 export default function MyTickets() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "");
   const [filterPriority, setFilterPriority] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    api.userTickets({ status: filterStatus, priority: filterPriority })
+    api.userTickets()
       .then((r) => setTickets(r.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [filterStatus, filterPriority]);
+  }, []);
+
+  useEffect(() => {
+    const status = searchParams.get("status") || "";
+    setFilterStatus((current) => (current === status ? current : status));
+  }, [searchParams]);
 
   const filtered = tickets.filter((t) =>
-    !search ||
-    t.title?.toLowerCase().includes(search.toLowerCase()) ||
-    (t.ticket_id || "").toLowerCase().includes(search.toLowerCase())
+    (!filterStatus ||
+      (filterStatus === "In Progress"
+        ? ["In Progress", "Assigned", "Work In Progress"].includes(t.status)
+        : filterStatus === "On Hold"
+          ? t.status?.toLowerCase().includes("hold") || t.status?.toLowerCase().includes("pending")
+          : t.status === filterStatus)) &&
+    (!filterPriority || t.priority === filterPriority) &&
+    (!search ||
+      t.title?.toLowerCase().includes(search.toLowerCase()) ||
+      (t.ticket_id || "").toLowerCase().includes(search.toLowerCase()))
   );
+
+  function applyStatusFilter(status) {
+    const next = status === filterStatus ? "" : status;
+    setFilterStatus(next);
+    setSearchParams(next ? { status: next } : {});
+  }
 
   return (
     <div className="space-y-5">
@@ -36,16 +56,25 @@ export default function MyTickets() {
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">My Tickets</h2>
           <p className="mt-0.5 text-sm text-slate-500">View and manage all your submitted support requests.</p>
         </div>
-        <Link
-          to="/user/create-ticket"
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px self-start"
-          style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)", boxShadow: "0 4px 14px rgba(8,145,178,0.3)" }}
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Raise New Ticket
-        </Link>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => applyStatusFilter("Open")}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50"
+          >
+            Open Tickets
+          </button>
+          <Link
+            to="/user/create-ticket"
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px self-start"
+            style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)", boxShadow: "0 4px 14px rgba(8,145,178,0.3)" }}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Raise New Ticket
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -132,7 +161,16 @@ export default function MyTickets() {
               {filtered.map((ticket, i) => (
                 <div
                   key={ticket.id}
-                  className="flex flex-col gap-3 px-5 py-4 transition-colors duration-100 hover:bg-slate-50/70 lg:grid lg:grid-cols-[1fr_110px_110px_130px_72px] lg:items-center"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate(`/user/ticket/${ticket.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/user/ticket/${ticket.id}`);
+                    }
+                  }}
+                  className="flex cursor-pointer flex-col gap-3 px-5 py-4 transition-colors duration-100 hover:bg-slate-50/70 lg:grid lg:grid-cols-[1fr_110px_110px_130px_72px] lg:items-center"
                   style={{ borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none" }}
                 >
                   <div>
@@ -149,6 +187,7 @@ export default function MyTickets() {
                   <span className="text-xs text-slate-500">{formatDateTime(ticket.created_at)}</span>
                   <Link
                     to={`/user/ticket/${ticket.id}`}
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300"
                   >
                     View

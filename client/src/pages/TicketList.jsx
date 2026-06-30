@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
 import { formatDateTime } from "../utils/helpers.js";
@@ -27,6 +27,7 @@ function Select({ label, value, onChange, options }) {
 }
 
 export default function TicketList() {
+  const [searchParams] = useSearchParams();
   const {
     tickets,
     pagination,
@@ -37,11 +38,24 @@ export default function TicketList() {
   } = useTickets();
 
   const navigate = useNavigate();
-  const [draft, setDraft] = useState(ticketFilters);
+  const [draft, setDraft] = useState(() => ({
+    ...ticketFilters,
+    status: searchParams.get("status") || ticketFilters.status || "",
+  }));
 
   useEffect(() => {
     setDraft(ticketFilters);
   }, [ticketFilters]);
+
+  useEffect(() => {
+    const status = searchParams.get("status") || "";
+    if (!status) return;
+    const next = { ...ticketFilters, status, page: 1 };
+    setDraft((current) => ({ ...current, status }));
+    setTicketFilters(next);
+    refreshTickets(next).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const statuses = [
     "Open",
@@ -173,12 +187,21 @@ export default function TicketList() {
               </tr>
             </thead>
             <tbody>
-              {tickets.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className="transition-colors duration-100 hover:bg-slate-50/70"
-                  style={{ borderBottom: "1px solid #f1f5f9" }}
-                >
+                {tickets.map((ticket) => (
+                  <tr
+                    key={ticket.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/tickets/${ticket.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/tickets/${ticket.id}`);
+                      }
+                    }}
+                    className="cursor-pointer transition-colors duration-100 hover:bg-slate-50/70"
+                    style={{ borderBottom: "1px solid #f1f5f9" }}
+                  >
                   <td className="px-4 py-3.5">
                     <span className="font-mono text-xs font-bold text-slate-700">INC{ticket.id}</span>
                   </td>
@@ -200,6 +223,7 @@ export default function TicketList() {
                     <div className="flex items-center gap-2">
                       <Link
                         to={`/tickets/${ticket.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300"
                       >
                         View
