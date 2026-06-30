@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { formatDateTime } from "../utils/helpers.js";
 
-export function CommentBox({ comments = [], onAddComment, currentUser }) {
+export function CommentBox({ comments = [], onAddComment, currentUser, disabled = false }) {
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const sortedComments = useMemo(
@@ -11,6 +11,7 @@ export function CommentBox({ comments = [], onAddComment, currentUser }) {
 
   async function submit(event) {
     event.preventDefault();
+    if (disabled) return;
     if (!body.trim()) return;
     setSubmitting(true);
     try {
@@ -80,8 +81,9 @@ export function CommentBox({ comments = [], onAddComment, currentUser }) {
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder={`Add a note as ${currentUser?.name || "you"}…`}
+          placeholder={disabled ? "Comments are disabled for closed tickets" : `Add a note as ${currentUser?.name || "you"}…`}
           rows={3}
+          disabled={disabled}
           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-all duration-200 resize-none"
           style={{ minHeight: "72px" }}
           onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.background = "#fff"; }}
@@ -90,7 +92,7 @@ export function CommentBox({ comments = [], onAddComment, currentUser }) {
         <div className="mt-2 flex justify-end">
           <button
             type="submit"
-            disabled={submitting || !body.trim()}
+            disabled={disabled || submitting || !body.trim()}
             className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-px"
             style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}
           >

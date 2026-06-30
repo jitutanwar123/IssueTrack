@@ -1,4 +1,4 @@
-import { cn, getPriorityTone, getStatusTone } from "../utils/helpers.js";
+import { cn, getPriorityTone, getStatusLabel, getStatusTone } from "../utils/helpers.js";
 
 // Professional status badge with subtle dot indicator
 const palette = {
@@ -30,7 +30,7 @@ export function StatusBadge({ status, type = "status", className = "" }) {
         className="h-1.5 w-1.5 rounded-full shrink-0"
         style={{ background: colors.dot }}
       />
-      {status}
+      {getStatusLabel(status)}
     </span>
   );
 }

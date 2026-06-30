@@ -245,6 +245,11 @@ export function updateTicket(ticketId, data, actor = {}) {
     SELECT * FROM tickets WHERE ticket_id = ?
   `).get(ticketId);
   if (!current) return null;
+  if (String(current.status || "").toLowerCase() === "closed") {
+    const err = new Error("Closed tickets are read-only");
+    err.statusCode = 409;
+    throw err;
+  }
 
   const next = {
     title: data.title ?? current.title,
@@ -421,8 +426,8 @@ export function getCategoryCounts(filters = {}) {
 export function getAgeingBuckets(filters = {}) {
   const { clauses, params } = buildFilters(filters);
   const activeWhere = clauses.length
-    ? `WHERE (${clauses.join(" AND ")}) AND t.status NOT IN ('Closed','Cancelled')`
-    : `WHERE t.status NOT IN ('Closed','Cancelled')`;
+    ? `WHERE (${clauses.join(" AND ")}) AND t.status NOT IN ('Closed','Cancelled','Reject')`
+    : `WHERE t.status NOT IN ('Closed','Cancelled','Reject')`;
 
   const rows = db.prepare(`
     SELECT
@@ -475,8 +480,8 @@ export function getSummaryStats(filters = {}) {
   const { clauses, params } = buildFilters(filters);
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const activeWhere = clauses.length
-    ? `WHERE (${clauses.join(" AND ")}) AND t.status NOT IN ('Closed','Cancelled')`
-    : `WHERE t.status NOT IN ('Closed','Cancelled')`;
+    ? `WHERE (${clauses.join(" AND ")}) AND t.status NOT IN ('Closed','Cancelled','Reject')`
+    : `WHERE t.status NOT IN ('Closed','Cancelled','Reject')`;
 
   const now = new Date().toISOString();
   const since24h = new Date(Date.now() - 86_400_000).toISOString();

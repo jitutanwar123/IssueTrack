@@ -157,6 +157,10 @@ function requireUser(req, res, next) {
   next();
 }
 
+function isClosedStatus(status) {
+  return String(status || "").toLowerCase() === "closed";
+}
+
 // ─── Helper: query as promise ────────────────────────────────────
 function query(sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -559,6 +563,10 @@ app.put("/api/tickets/:id", async (req, res) => {
   const oldRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
   const oldTicket = oldRows[0];
 
+  if (isClosedStatus(oldTicket?.status)) {
+    return res.status(409).json({ message: "Closed tickets are read-only" });
+  }
+
   const sql = `UPDATE tickets SET
     title=?, description=?, category=?, sub_category=?, priority=?, status=?,
     customer_name=?, requester_email=?, phone=?, department=?,
@@ -657,7 +665,7 @@ app.get("/api/reports/summary", async (req, res) => {
       q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND created_at >= ?`,
         [...filterParams, yesterday]),
       // Unassigned active tickets
-      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND (assigned_to IS NULL OR assigned_to = '') AND status NOT IN ('Closed','Cancelled')`),
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND (assigned_to IS NULL OR assigned_to = '') AND status NOT IN ('Closed','Cancelled','Reject')`),
       // Incident count
       q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND category = 'Incident'`),
       // Service Request count
@@ -665,7 +673,7 @@ app.get("/api/reports/summary", async (req, res) => {
       // P1 Incidents
       q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND priority = 'P1' AND category = 'Incident'`),
       // Pending-breach: active tickets (not closed/cancelled)
-      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND status NOT IN ('Closed','Cancelled')`),
+      q(`SELECT COUNT(*) AS n FROM tickets ${baseWhere} AND status NOT IN ('Closed','Cancelled','Reject')`),
       // Ageing buckets (active tickets only) using SQL CASE
       q(`SELECT
            CASE
@@ -676,7 +684,7 @@ app.get("/api/reports/summary", async (req, res) => {
            END AS bucket,
            COUNT(*) AS count
          FROM tickets
-         ${baseWhere} AND status NOT IN ('Closed','Cancelled')
+         ${baseWhere} AND status NOT IN ('Closed','Cancelled','Reject')
          GROUP BY bucket`),
       // Category breakdown
       q(`SELECT COALESCE(category,'Uncategorised') AS name, COUNT(*) AS value
@@ -893,6 +901,12 @@ app.post("/api/tickets/:id/comments", authenticateJWT, async (req, res) => {
   const authorRole = req.user?.portal_role || "admin";
 
   try {
+    const ticketRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    if (ticketRows.length === 0) return res.status(404).json({ message: "Ticket not found" });
+    if (isClosedStatus(ticketRows[0]?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
+
     const result = await query(
       "INSERT INTO ticket_comments (ticket_id, author_name, author_email, author_role, body) VALUES (?,?,?,?,?)",
       [id, authorName, req.user?.email || null, authorRole, body]
@@ -900,10 +914,7 @@ app.post("/api/tickets/:id/comments", authenticateJWT, async (req, res) => {
 
     // Email trigger: admin comment → notify user
     if (authorRole === "admin") {
-      const ticketRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
-      if (ticketRows[0]) {
-        sendAdminCommentToUser(ticketRows[0], body).catch(() => {});
-      }
+      sendAdminCommentToUser(ticketRows[0], body).catch(() => {});
     }
 
     res.json({ success: true, id: result.insertId });
@@ -999,6 +1010,9 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
     }
 
     const currentTicket = currentRows[0];
+    if (isClosedStatus(currentTicket?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
     const targetRows = await query(
       "SELECT id, name, email FROM users WHERE id = ? AND portal_role = 'it_staff' LIMIT 1",
       [assigneeId]
@@ -1203,6 +1217,9 @@ app.post("/api/user/tickets/:id/comment", authenticateJWT, requireUser, async (r
       [id, user.email, user.email]
     );
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
+    if (isClosedStatus(rows[0]?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
 
     await query(
       "INSERT INTO ticket_comments (ticket_id, author_name, author_email, author_role, body) VALUES (?,?,?,?,?)",
@@ -1232,6 +1249,9 @@ app.patch("/api/admin/tickets/:id/status", authenticateJWT, requireAdmin, async 
     if (oldRows.length === 0) return res.status(404).json({ message: "Ticket not found" });
 
     const oldTicket = oldRows[0];
+    if (isClosedStatus(oldTicket?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
     await query("UPDATE tickets SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
 
     // Record history
@@ -1259,6 +1279,9 @@ app.post("/api/admin/tickets/:id/comment", authenticateJWT, requireAdmin, async 
   try {
     const rows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
+    if (isClosedStatus(rows[0]?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
 
     await query(
       "INSERT INTO ticket_comments (ticket_id, author_name, author_email, author_role, body) VALUES (?,?,?,?,?)",
@@ -1292,6 +1315,9 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
 
     const oldTicket = rows[0];
 
+    if (isClosedStatus(oldTicket?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
     if (oldTicket.status === "Resolved") {
       return res.status(409).json({ message: "Ticket is already resolved" });
     }
@@ -1378,6 +1404,9 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
     }
 
     const current = rows[0];
+    if (isClosedStatus(current?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
     if ((current.status || "") === status) {
       return res.status(409).json({ message: "Ticket already has that status" });
     }
@@ -1560,6 +1589,9 @@ app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (
       : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
     const oldTicket = rows[0];
+    if (isClosedStatus(oldTicket?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
     if (oldTicket.status === "Resolved") {
       return res.status(409).json({ message: "Ticket is already resolved" });
     }
@@ -1600,6 +1632,9 @@ app.post("/api/staff/tickets/:id/comment", authenticateJWT, requireStaff, async 
       ? await query("SELECT * FROM tickets WHERE id = ?", [id])
       : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
+    if (isClosedStatus(rows[0]?.status)) {
+      return res.status(409).json({ message: "Closed tickets are read-only" });
+    }
     await query(
       "INSERT INTO ticket_comments (ticket_id, author_name, author_email, author_role, body) VALUES (?,?,?,?,?)",
       [id, staffName, req.user?.email || null, "admin", body.trim()]

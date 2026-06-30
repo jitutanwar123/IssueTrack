@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../utils/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
-import { formatDateTime } from "../utils/helpers.js";
+import { formatDateTime, getStatusLabel } from "../utils/helpers.js";
 
 // ─── Department field definitions ───────────────────────────────────────────
 const DEPARTMENT_FIELDS = {
@@ -70,7 +70,7 @@ function TicketSummaryCard({ ticket }) {
     ["Category",        ticket.category || "—"],
     ["Sub-Category",    ticket.sub_category || null],
     ["Priority",        ticket.priority],
-    ["Current Status",  ticket.status],
+    ["Current Status",  getStatusLabel(ticket.status)],
     ["Created At",      formatDateTime(ticket.created_at)],
     ["Description",     null], // handled separately
   ].filter(([, v]) => v);

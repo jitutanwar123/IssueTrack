@@ -14,7 +14,7 @@ const COLORS = ["#2563eb", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2"
 const STATUS_COLOR = {
   Open: "#2563eb", Assigned: "#7c3aed",
   "Work In Progress": "#d97706", "In Progress": "#d97706",
-  Resolved: "#059669", Closed: "#64748b", Cancelled: "#dc2626",
+  Resolved: "#059669", Closed: "#64748b", Reject: "#dc2626",
 };
 
 // ── Stat card ────────────────────────────────────────────────────────────────

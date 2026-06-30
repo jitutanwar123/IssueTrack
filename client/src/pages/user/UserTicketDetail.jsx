@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../../utils/api.js";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { formatDateTime } from "../../utils/helpers.js";
+import { formatDateTime, getStatusLabel } from "../../utils/helpers.js";
 
 export default function UserTicketDetail() {
   const { id } = useParams();
@@ -66,6 +66,7 @@ export default function UserTicketDetail() {
     ...comments.map((c) => ({ ...c, _type: "comment" })),
     ...timeline.map((h) => ({ ...h, _type: "history" })),
   ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const isClosed = String(ticket.status || "").toLowerCase() === "closed";
 
   return (
     <div className="space-y-6">
@@ -170,8 +171,8 @@ export default function UserTicketDetail() {
                     <div key={`h-${item.id}-${i}`} className="flex items-center justify-center">
                       <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-500">
                         <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        Status changed {item.from_status ? `from ${item.from_status} ` : ""}to{" "}
-                        <strong>{item.to_status}</strong>
+                        Status changed {item.from_status ? `from ${getStatusLabel(item.from_status)} ` : ""}to{" "}
+                        <strong>{getStatusLabel(item.to_status)}</strong>
                         {item.changed_by && ` by ${item.changed_by}`}
                         <span className="opacity-60">· {formatDateTime(item.created_at)}</span>
                       </div>
@@ -184,17 +185,23 @@ export default function UserTicketDetail() {
             {/* Reply box */}
             <div className="border-t border-slate-200 p-5">
               <h4 className="mb-3 text-sm font-semibold text-slate-700">Add a Follow-up Reply</h4>
+              {isClosed && (
+                <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-500">
+                  This ticket is closed and can only be viewed.
+                </div>
+              )}
               <form onSubmit={submitReply} className="flex gap-3">
                 <textarea
                   value={replyBody}
                   onChange={(e) => setReplyBody(e.target.value)}
-                  placeholder="Type your message here..."
+                  placeholder={isClosed ? "Replies are disabled for closed tickets" : "Type your message here..."}
                   rows={3}
+                  disabled={isClosed}
                   className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-400"
                 />
                 <button
                   type="submit"
-                  disabled={submitting || !replyBody.trim()}
+                  disabled={isClosed || submitting || !replyBody.trim()}
                   className="self-end rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-navy transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submitting ? "..." : "Send"}
@@ -214,7 +221,7 @@ export default function UserTicketDetail() {
                 ["Category", ticket.category],
                 ["Sub-Category", ticket.sub_category],
                 ["Priority", ticket.priority],
-                ["Status", ticket.status],
+                ["Status", getStatusLabel(ticket.status)],
                 ["Assigned To", ticket.assigned_to || "Unassigned"],
                 ["Location", ticket.location],
                 ["Created", formatDateTime(ticket.created_at)],
@@ -236,7 +243,7 @@ export default function UserTicketDetail() {
                   <div key={i} className="flex items-start gap-3">
                     <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-cyan-500" />
                     <div>
-                      <div className="text-xs font-semibold text-slate-700">→ {h.to_status}</div>
+                      <div className="text-xs font-semibold text-slate-700">→ {getStatusLabel(h.to_status)}</div>
                       <div className="text-xs text-slate-400">{formatDateTime(h.created_at)}</div>
                     </div>
                   </div>

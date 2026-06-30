@@ -89,8 +89,14 @@ export function getStatusTone(status = "") {
   if (lower.includes("hold")) return "yellow";
   if (lower.includes("closed")) return "slate";
   if (lower.includes("resolved")) return "green";
-  if (lower.includes("cancel")) return "red";
+  if (lower.includes("reject") || lower.includes("cancel")) return "red";
   return "slate";
+}
+
+export function getStatusLabel(status = "") {
+  const lower = String(status || "").toLowerCase();
+  if (lower.includes("cancel")) return "Reject";
+  return status || "—";
 }
 
 export function getPriorityTone(priority = "") {

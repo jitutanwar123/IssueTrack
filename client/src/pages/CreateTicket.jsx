@@ -13,7 +13,7 @@ const statuses = [
   "On Hold - Customer",
   "On Hold - Infra",
   "Closed",
-  "Cancelled",
+  "Reject",
 ];
 
 export default function CreateTicket() {

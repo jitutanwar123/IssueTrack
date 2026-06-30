@@ -4,7 +4,7 @@ import { CommentBox } from "../../components/CommentBox.jsx";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api, getToken } from "../../utils/api.js";
-import { formatDateTime, formatMinutes } from "../../utils/helpers.js";
+import { formatDateTime, formatMinutes, getStatusLabel } from "../../utils/helpers.js";
 
 const STATUS_OPTIONS = [
   "Open",
@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
   "On Hold - Customer",
   "On Hold - Infra",
   "Closed",
-  "Cancelled",
+  "Reject",
 ];
 
 function SectionCard({ title, subtitle, children, className = "" }) {
@@ -116,7 +116,7 @@ export default function StaffTicketDetail() {
       ["Category", ticket.category || "—"],
       ["Sub-Category", ticket.sub_category || "—"],
       ["Priority", ticket.priority || "—"],
-      ["Current Status", ticket.status || "—"],
+      ["Current Status", getStatusLabel(ticket.status)],
       ["Department", ticket.department || "—"],
       ["Raised By", ticket.customer_name || ticket.requested_by || "—"],
       ["Requester Email", ticket.requester_email || "—"],
@@ -134,6 +134,10 @@ export default function StaffTicketDetail() {
   async function saveStatus() {
     if (!statusDraft) {
       setStatusError("Choose a status first.");
+      return;
+    }
+    if (ticket?.status === "Closed") {
+      setStatusError("Closed tickets are read-only.");
       return;
     }
     setSavingStatus(true);
@@ -156,6 +160,10 @@ export default function StaffTicketDetail() {
     event.preventDefault();
     if (!resolutionNote.trim()) {
       setResolveError("Resolution note is required.");
+      return;
+    }
+    if (ticket?.status === "Closed") {
+      setResolveError("Closed tickets are read-only.");
       return;
     }
     setResolving(true);
@@ -183,6 +191,10 @@ export default function StaffTicketDetail() {
     event.preventDefault();
     if (!transferToId) {
       setTransferError("Please choose a staff member.");
+      return;
+    }
+    if (ticket?.status === "Closed") {
+      setTransferError("Closed tickets are read-only.");
       return;
     }
     setTransferring(true);
@@ -306,6 +318,7 @@ export default function StaffTicketDetail() {
             <button
               key={status}
               type="button"
+              disabled={ticket?.status === "Closed"}
               onClick={() => setStatusDraft(status)}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusDraft === status
@@ -334,13 +347,13 @@ export default function StaffTicketDetail() {
               {ticket.assigned_to || "Unassigned"}
             </div>
           </label>
-          <button
-            onClick={saveStatus}
-            disabled={savingStatus}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {savingStatus ? "Saving..." : "Save Status"}
-          </button>
+            <button
+              onClick={saveStatus}
+              disabled={savingStatus || ticket?.status === "Closed"}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingStatus ? "Saving..." : "Save Status"}
+            </button>
         </div>
 
         {statusError && (
@@ -350,7 +363,7 @@ export default function StaffTicketDetail() {
         )}
 
         {showResolve && (
-          <form onSubmit={handleResolve} className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+            <form onSubmit={handleResolve} className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Resolution</h3>
@@ -377,7 +390,7 @@ export default function StaffTicketDetail() {
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="submit"
-                disabled={resolving}
+                disabled={resolving || ticket?.status === "Closed"}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
               >
                 {resolving ? "Resolving..." : "Submit Resolution"}
@@ -396,7 +409,7 @@ export default function StaffTicketDetail() {
 
       {(isResolved || isClosed) && (
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
-          Ticket is currently marked as <strong>{ticket.status}</strong>.
+          Ticket is currently marked as <strong>{getStatusLabel(ticket.status)}</strong>.
           {ticket.resolution_note ? <span className="block mt-1 text-emerald-800">Resolution: {ticket.resolution_note}</span> : null}
         </div>
       )}
@@ -412,7 +425,12 @@ export default function StaffTicketDetail() {
           </SectionCard>
 
           <SectionCard title="Comments" subtitle={`Conversation and updates from the team (${comments.length})`}>
-            <CommentBox comments={comments} onAddComment={handleComment} currentUser={user} />
+            <CommentBox
+              comments={comments}
+              onAddComment={handleComment}
+              currentUser={user}
+              disabled={isClosed}
+            />
           </SectionCard>
         </div>
 
@@ -463,11 +481,11 @@ export default function StaffTicketDetail() {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  disabled={transferring || !staffMembers.length}
-                  className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:opacity-60"
-                >
-                  {transferring ? "Transferring..." : "Transfer Ticket"}
-                </button>
+                disabled={transferring || !staffMembers.length || ticket?.status === "Closed"}
+                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:opacity-60"
+              >
+                {transferring ? "Transferring..." : "Transfer Ticket"}
+              </button>
                 <button
                   type="button"
                   onClick={() => { setTransferToId(""); setTransferNote(""); setTransferError(""); }}
@@ -488,7 +506,7 @@ export default function StaffTicketDetail() {
                       <div className="text-xs font-semibold text-slate-700">
                         {entry.type === "comment"
                           ? "Comment"
-                          : `${entry.from_status ? `${entry.from_status} -> ` : ""}${entry.to_status || entry.action || "Update"}`}
+                          : `${entry.from_status ? `${getStatusLabel(entry.from_status)} -> ` : ""}${getStatusLabel(entry.to_status || entry.action || "Update")}`}
                       </div>
                       <div className="text-[10px] text-slate-400">{formatDateTime(entry.created_at)}</div>
                     </div>

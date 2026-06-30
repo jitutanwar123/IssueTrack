@@ -65,7 +65,7 @@ export default function TicketList() {
     "On Hold - Customer",
     "On Hold - Infra",
     "Closed",
-    "Cancelled",
+    "Reject",
   ];
 
   const priorities = ["P1", "P2", "P3", "P4"];
