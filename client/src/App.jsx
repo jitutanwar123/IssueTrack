@@ -29,6 +29,7 @@ const StaffLogin          = lazy(() => import("./pages/staff/StaffLogin.jsx"));
 const StaffDashboard      = lazy(() => import("./pages/staff/StaffDashboard.jsx"));
 const StaffTicketDetail   = lazy(() => import("./pages/staff/StaffTicketDetail.jsx"));
 const StaffResolvedHistory = lazy(() => import("./pages/staff/StaffResolvedHistory.jsx"));
+const StaffReports         = lazy(() => import("./pages/staff/StaffReports.jsx"));
 
 // ─── Loading fallback ────────────────────────────────────────────────────────
 function LoadingScreen() {
@@ -245,6 +246,7 @@ export default function App() {
                     <Route path="/dashboard" element={<StaffDashboard />} />
                     <Route path="/tickets/:id" element={<StaffTicketDetail />} />
                     <Route path="/history" element={<StaffResolvedHistory />} />
+                    <Route path="/reports" element={<StaffReports />} />
                     <Route path="*" element={<Navigate to="/staff/dashboard" replace />} />
                   </Routes>
                 </StaffShell>

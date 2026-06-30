@@ -158,19 +158,12 @@ export async function sendNewTicketToAdmin(ticket) {
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A user has submitted a new ticket and is awaiting your attention.</p>
      ${ticketTable(ticket)}
      <p class="section-title">Description</p>
-     <div class="comment-box">${ticket.description || "—"}</div>
-     ${attachmentSection(ticket)}`);
-
-  // Build attachment list for email
-  const attachments = ticket.attachment_data
-    ? [{ name: ticket.attachment_name, content: ticket.attachment_data, type: ticket.attachment_mime }]
-    : [];
+     <div class="comment-box">${ticket.description || "—"}</div>`);
 
   await sendEmail({
     to: process.env.ADMIN_EMAIL,
     subject: `[NEW TICKET] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
     html,
-    attachments,
   });
 }
 
@@ -179,6 +172,9 @@ export async function sendTicketConfirmationToUser(ticket) {
   if (!ticket.requester_email) return;
   const slaMap = { P1: "4 hours", P2: "8 hours", P3: "24 hours", P4: "72 hours" };
   const sla = slaMap[ticket.priority] || "48 hours";
+  const attachmentNote = ticket.attachment_name
+    ? `<p style="font-size:13px;color:#64748b;margin:8px 0 0;">📎 Attachment received: <strong>${ticket.attachment_name}</strong></p>`
+    : "";
   const html = baseTemplate("Ticket Raised Successfully",
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">✅ Your ticket has been received!</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">Thank you, <strong>${ticket.customer_name}</strong>. We have received your support request and our team will contact you shortly.</p>
@@ -186,18 +182,12 @@ export async function sendTicketConfirmationToUser(ticket) {
      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;color:#166534;">
        <strong>Expected SLA:</strong> ${sla} response time for ${ticket.priority} priority tickets.
      </div>
-     ${attachmentSection(ticket)}`);
-
-  // Echo the attachment back to the user so they have a copy
-  const attachments = ticket.attachment_data
-    ? [{ name: ticket.attachment_name, content: ticket.attachment_data, type: ticket.attachment_mime }]
-    : [];
+     ${attachmentNote}`);
 
   await sendEmail({
     to: ticket.requester_email,
     subject: `[TICKET RAISED] ${ticket.ticket_id || ticket.id} — Your ticket has been received`,
     html,
-    attachments,
   });
 }
 

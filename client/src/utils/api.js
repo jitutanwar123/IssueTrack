@@ -125,6 +125,13 @@ export const api = {
   },
   staffTicket: (id) => request(`/staff/tickets/${id}`),
   staffResolvedHistory: () => request("/staff/resolved-history"),
+  staffReports: (params = {}) => {
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") search.set(key, value);
+    });
+    return request(`/staff/reports?${search.toString()}`);
+  },
   resolveStaffTicket: (id, payload) =>
     request(`/staff/tickets/${id}/resolve`, { method: "PUT", body: JSON.stringify(payload) }),
   addStaffComment: (id, body) =>

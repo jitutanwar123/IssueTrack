@@ -1025,15 +1025,13 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     ).catch(() => {});
 
     // Send emails async (don't block response)
-    console.log(`📧 Sending emails for ticket ${ticketId} to admin and user ${user.email}`);
-    sendNewTicketToAdmin(newTicket)
-      .then(() => console.log(`✅ Admin email sent for ${ticketId}`))
-      .catch((e) => console.error(`❌ Admin email error:`, e.message));
+    // 1. Confirmation to the user who raised the ticket
+    console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
     sendTicketConfirmationToUser(newTicket)
       .then(() => console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`))
       .catch((e) => console.error(`❌ User email error:`, e.message));
 
-    // If assigned to a staff member, email them too
+    // 2. Only email the assigned staff member (NOT admin)
     if (assigned_to) {
       query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to])
         .then((rows) => {
@@ -1295,6 +1293,78 @@ app.get("/api/staff/resolved-history", authenticateJWT, requireStaff, async (req
       [staffName]
     );
     res.json({ data: rows, count: rows.length });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET: Staff personal reports — only their assigned tickets
+app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) => {
+  try {
+    const staffName = req.user.name;
+    const { from, to } = req.query;
+
+    const conditions = ["assigned_to = ?"];
+    const params = [staffName];
+    if (from) { conditions.push("DATE(created_at) >= ?"); params.push(from); }
+    if (to)   { conditions.push("DATE(created_at) <= ?"); params.push(to); }
+
+    const where = `WHERE ${conditions.join(" AND ")}`;
+    const rows  = await query(`SELECT * FROM tickets ${where} ORDER BY created_at DESC`, params);
+
+    // ── Summary counts ──────────────────────────────────────────────
+    const total      = rows.length;
+    const open       = rows.filter(t => t.status === "Open").length;
+    const inProgress = rows.filter(t => t.status === "Work In Progress" || t.status === "In Progress" || t.status === "Assigned").length;
+    const resolved   = rows.filter(t => t.status === "Resolved").length;
+    const closed     = rows.filter(t => t.status === "Closed").length;
+
+    // ── By Status chart ─────────────────────────────────────────────
+    const statusMap = {};
+    rows.forEach(t => { const s = t.status || "Unknown"; statusMap[s] = (statusMap[s] || 0) + 1; });
+
+    // ── By Priority chart ───────────────────────────────────────────
+    const priorityMap = {};
+    rows.forEach(t => { const p = t.priority || "Unknown"; priorityMap[p] = (priorityMap[p] || 0) + 1; });
+
+    // ── Resolved per month (last 6 months) ─────────────────────────
+    const resolvedRows = rows.filter(t => ["Resolved", "Closed"].includes(t.status) && t.actual_closure_date);
+    const monthMap = {};
+    resolvedRows.forEach(t => {
+      const d = new Date(t.actual_closure_date);
+      const key = d.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "Asia/Kolkata" });
+      monthMap[key] = (monthMap[key] || 0) + 1;
+    });
+
+    // ── Avg resolution time ─────────────────────────────────────────
+    let totalMinutes = 0, countMinutes = 0;
+    resolvedRows.forEach(t => {
+      const mins = Number(t.resolution_time || 0) ||
+        Math.max(1, Math.round((new Date(t.actual_closure_date) - new Date(t.created_at)) / 60000));
+      totalMinutes += mins;
+      countMinutes++;
+    });
+    const avgResolutionMinutes = countMinutes > 0 ? Math.round(totalMinutes / countMinutes) : 0;
+
+    // ── Category breakdown ──────────────────────────────────────────
+    const categoryMap = {};
+    rows.forEach(t => { const c = t.category || "Unknown"; categoryMap[c] = (categoryMap[c] || 0) + 1; });
+
+    res.json({
+      data: {
+        summary: { total, open, inProgress, resolved, closed, avgResolutionMinutes },
+        byStatus:      Object.entries(statusMap).map(([name, value]) => ({ name, value })),
+        byPriority:    Object.entries(priorityMap).map(([name, value]) => ({ name, value })),
+        byCategory:    Object.entries(categoryMap).map(([name, value]) => ({ name, value })),
+        resolvedPerMonth: Object.entries(monthMap).map(([name, value]) => ({ name, value })),
+        tickets: rows.map(t => ({
+          ticket_id: t.ticket_id, title: t.title, category: t.category,
+          priority: t.priority, status: t.status, customer_name: t.customer_name,
+          created_at: t.created_at, actual_closure_date: t.actual_closure_date,
+          resolution_time: t.resolution_time,
+        })),
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
