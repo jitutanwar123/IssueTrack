@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../utils/api.js";
 
 const ROLE_OPTIONS = {
@@ -161,8 +161,10 @@ export default function Team() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [newStaffOpen, setNewStaffOpen] = useState(false);
+  const [splitPercent, setSplitPercent] = useState(38);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const splitRef = useRef(null);
 
   useEffect(() => {
     if (!success) return;
@@ -191,6 +193,42 @@ export default function Team() {
   useEffect(() => {
     load().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    function clampSplit() {
+      setSplitPercent((current) => Math.min(62, Math.max(30, current)));
+    }
+
+    clampSplit();
+    window.addEventListener("resize", clampSplit);
+    return () => window.removeEventListener("resize", clampSplit);
+  }, []);
+
+  function beginSplitDrag(event) {
+    event.preventDefault();
+    const container = splitRef.current;
+    if (!container) return;
+
+    const onMove = (moveEvent) => {
+      const rect = container.getBoundingClientRect();
+      const clientX = moveEvent.clientX ?? (moveEvent.touches && moveEvent.touches[0]?.clientX);
+      if (typeof clientX !== "number") return;
+      const next = ((clientX - rect.left) / rect.width) * 100;
+      setSplitPercent(Math.min(68, Math.max(32, next)));
+    };
+
+    const stop = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", stop);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", stop);
+  }
 
   const metrics = useMemo(() => {
     const staff = users.filter((u) => u.portal_role === "it_staff");
@@ -331,278 +369,299 @@ export default function Team() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.35fr]">
-        <SectionShell
-          title={editingId ? "Edit Team Member" : "Create Team Member"}
-          subtitle="Choose the login type first, then fill in the profile details."
-          badge={currentPortalLabel}
-        >
-          <form className="space-y-4" onSubmit={submit}>
-            <div>
-              <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                Account Type
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {portalRoles.map((option) => {
-                  const active = form.portal_role === option.value;
-                  return (
+      <div
+        ref={splitRef}
+        className="grid gap-6 xl:items-stretch xl:gap-0"
+        style={{ gridTemplateColumns: `${splitPercent}fr 14px ${100 - splitPercent}fr` }}
+      >
+        <div className="xl:pr-3" style={{ gridColumn: "1" }}>
+          <SectionShell
+            title={editingId ? "Edit Team Member" : "Create Team Member"}
+            subtitle="Choose the login type first, then fill in the profile details."
+            badge={currentPortalLabel}
+          >
+            <form className="space-y-4" onSubmit={submit}>
+              <div>
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Account Type
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {portalRoles.map((option) => {
+                    const active = form.portal_role === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          const nextRole =
+                            option.value === "it_staff"
+                              ? "New Position"
+                              : option.value === "admin"
+                                ? "Administrator"
+                                : "User";
+                          setForm((current) => ({
+                            ...current,
+                            portal_role: option.value,
+                            role: nextRole,
+                            staff_position:
+                              option.value === "it_staff" ? current.staff_position || "Help Desk Engineer" : "",
+                            custom_position: "",
+                            department: option.value === "user" ? "" : current.department || "IT",
+                            status: option.value === "user" ? "Active" : current.status || "Available",
+                          }));
+                          setNewStaffOpen(option.value === "it_staff");
+                        }}
+                        className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
+                          active
+                            ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  Staff members use the staff portal, while users use the user portal. Admins get full access.
+                </p>
+              </div>
+
+              {isNewStaffMode ? (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">New Staff Member</h4>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Fill this dedicated staff panel to create a fresh IT staff login.
+                      </p>
+                    </div>
                     <button
-                      key={option.value}
                       type="button"
                       onClick={() => {
-                        const nextRole =
-                          option.value === "it_staff"
-                            ? "New Position"
-                            : option.value === "admin"
-                              ? "Administrator"
-                              : "User";
+                        setNewStaffOpen(false);
                         setForm((current) => ({
                           ...current,
-                          portal_role: option.value,
-                          role: nextRole,
-                          staff_position: option.value === "it_staff" ? current.staff_position || "Help Desk Engineer" : "",
-                          custom_position: "",
-                          department: option.value === "user" ? "" : current.department || "IT",
-                          status: option.value === "user" ? "Active" : current.status || "Available",
-                        }));
-                        setNewStaffOpen(option.value === "it_staff");
-                      }}
-                      className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
-                        active
-                          ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-xs text-slate-400">
-                Staff members use the staff portal, while users use the user portal. Admins get full access.
-              </p>
-            </div>
-
-            {isNewStaffMode ? (
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">New Staff Member</h4>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Fill this dedicated staff panel to create a fresh IT staff login.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                      onClick={() => {
-                      setNewStaffOpen(false);
-                      setForm((current) => ({
-                        ...current,
-                        role: current.staff_position || "Help Desk Engineer",
-                        portal_role: "it_staff",
-                        staff_position: current.staff_position || "Help Desk Engineer",
-                        custom_position: "",
-                        department: "IT",
-                        status: "Available",
-                      }));
-                    }}
-                    className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
-                  >
-                    Back to Positions
-                  </button>
-                </div>
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <TextField
-                    label="Staff Name"
-                    value={form.name}
-                    onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-                  />
-                  <TextField
-                    label="Staff Email"
-                    value={form.email}
-                    onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-                  />
-                  <TextField
-                    label="Username"
-                    value={form.username}
-                    onChange={(value) => setForm((current) => ({ ...current, username: value }))}
-                  />
-                  <TextField
-                    label="Password"
-                    type="password"
-                    value={form.password}
-                    onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                    placeholder="Set staff login password"
-                  />
-                  <SelectField
-                    label="Role / Position"
-                    value={form.staff_position}
-                    onChange={(value) =>
-                      setForm((current) => ({
-                        ...current,
-                        staff_position: value,
-                        role: value === "New Position" ? "New Position" : value,
-                        custom_position: value === "New Position" ? current.custom_position : "",
-                      }))
-                    }
-                    options={STAFF_ROLE_OPTIONS}
-                  />
-                  {form.staff_position === "New Position" ? (
-                    <TextField
-                      label="Custom Role / Position"
-                      value={form.custom_position}
-                      onChange={(value) => setForm((current) => ({ ...current, custom_position: value }))}
-                      placeholder="Enter a new role for this staff member"
-                    />
-                  ) : null}
-                  <SelectField
-                    label="Department"
-                    value={form.department}
-                    onChange={(value) => setForm((current) => ({ ...current, department: value }))}
-                    options={departments}
-                  />
-                  <SelectField
-                    label="Status"
-                    value={form.status}
-                    onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-                    options={statuses}
-                  />
-                  <div>
-                    <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                      <input
-                        type="color"
-                        value={form.avatar_color}
-                        onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
-                        className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
-                      />
-                      <div className="text-xs text-slate-500">Used in avatar badges.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {!isNewStaffMode ? (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <TextField
-                    label="Full Name"
-                    value={form.name}
-                    onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-                  />
-                  <TextField
-                    label="Email"
-                    value={form.email}
-                    onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-                  />
-                  <TextField
-                    label="Username"
-                    value={form.username}
-                    onChange={(value) => setForm((current) => ({ ...current, username: value }))}
-                  />
-                  <TextField
-                    label={editingId ? "New Password" : "Password"}
-                    type="password"
-                    value={form.password}
-                    onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                    placeholder={editingId ? "Leave blank to keep current" : "Set a login password"}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <SelectField
-                    label="Role / Position"
-                    value={form.role}
-                    onChange={(value) => {
-                      if (value === "New Position") {
-                        setNewStaffOpen(true);
-                        setForm((current) => ({
-                          ...current,
+                          role: current.staff_position || "Help Desk Engineer",
                           portal_role: "it_staff",
-                          role: "New Position",
                           staff_position: current.staff_position || "Help Desk Engineer",
                           custom_position: "",
                           department: "IT",
                           status: "Available",
                         }));
-                        return;
+                      }}
+                      className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                    >
+                      Back to Positions
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <TextField
+                      label="Staff Name"
+                      value={form.name}
+                      onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                    />
+                    <TextField
+                      label="Staff Email"
+                      value={form.email}
+                      onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+                    />
+                    <TextField
+                      label="Username"
+                      value={form.username}
+                      onChange={(value) => setForm((current) => ({ ...current, username: value }))}
+                    />
+                    <TextField
+                      label="Password"
+                      type="password"
+                      value={form.password}
+                      onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+                      placeholder="Set staff login password"
+                    />
+                    <SelectField
+                      label="Role / Position"
+                      value={form.staff_position}
+                      onChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          staff_position: value,
+                          role: value === "New Position" ? "New Position" : value,
+                          custom_position: value === "New Position" ? current.custom_position : "",
+                        }))
                       }
-                      setNewStaffOpen(false);
-                      setForm((current) => ({ ...current, role: value, staff_position: "", custom_position: "" }));
-                    }}
-                    options={roleOptions}
-                  />
-                  {form.portal_role !== "user" ? (
+                      options={STAFF_ROLE_OPTIONS}
+                    />
+                    {form.staff_position === "New Position" ? (
+                      <TextField
+                        label="Custom Role / Position"
+                        value={form.custom_position}
+                        onChange={(value) => setForm((current) => ({ ...current, custom_position: value }))}
+                        placeholder="Enter a new role for this staff member"
+                      />
+                    ) : null}
                     <SelectField
                       label="Department"
                       value={form.department}
                       onChange={(value) => setForm((current) => ({ ...current, department: value }))}
                       options={departments}
                     />
-                  ) : null}
-                  <TextField
-                    label="Team"
-                    value={form.team}
-                    onChange={(value) => setForm((current) => ({ ...current, team: value }))}
-                    placeholder="Optional team name"
-                  />
-                  <SelectField
-                    label="Status"
-                    value={form.status}
-                    onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-                    options={form.portal_role === "user" ? ["Active", "Inactive"] : statuses}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
-                  <div>
-                    <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <input
-                        type="color"
-                        value={form.avatar_color}
-                        onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
-                        className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
-                      />
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">{form.avatar_color}</div>
-                        <div className="text-xs text-slate-400">Used in portal badges and cards</div>
+                    <SelectField
+                      label="Status"
+                      value={form.status}
+                      onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                      options={statuses}
+                    />
+                    <div>
+                      <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
+                      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <input
+                          type="color"
+                          value={form.avatar_color}
+                          onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
+                          className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                        />
+                        <div className="text-xs text-slate-500">Used in avatar badges.</div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </>
-            ) : null}
+              ) : null}
 
-            {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-                {error}
-              </div>
-            ) : null}
-            {success ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                {success}
-              </div>
-            ) : null}
+              {!isNewStaffMode ? (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField
+                      label="Full Name"
+                      value={form.name}
+                      onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                    />
+                    <TextField
+                      label="Email"
+                      value={form.email}
+                      onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+                    />
+                    <TextField
+                      label="Username"
+                      value={form.username}
+                      onChange={(value) => setForm((current) => ({ ...current, username: value }))}
+                    />
+                    <TextField
+                      label={editingId ? "New Password" : "Password"}
+                      type="password"
+                      value={form.password}
+                      onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+                      placeholder={editingId ? "Leave blank to keep current" : "Set a login password"}
+                    />
+                  </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting ? "Saving..." : editingId ? "Update Member" : "Create Member"}
-              </button>
-              <GhostButton type="button" onClick={() => resetForm(form.portal_role)}>
-                Reset
-              </GhostButton>
-            </div>
-          </form>
-        </SectionShell>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <SelectField
+                      label="Role / Position"
+                      value={form.role}
+                      onChange={(value) => {
+                        if (value === "New Position") {
+                          setNewStaffOpen(true);
+                          setForm((current) => ({
+                            ...current,
+                            portal_role: "it_staff",
+                            role: "New Position",
+                            staff_position: current.staff_position || "Help Desk Engineer",
+                            custom_position: "",
+                            department: "IT",
+                            status: "Available",
+                          }));
+                          return;
+                        }
+                        setNewStaffOpen(false);
+                        setForm((current) => ({ ...current, role: value, staff_position: "", custom_position: "" }));
+                      }}
+                      options={roleOptions}
+                    />
+                    {form.portal_role !== "user" ? (
+                      <SelectField
+                        label="Department"
+                        value={form.department}
+                        onChange={(value) => setForm((current) => ({ ...current, department: value }))}
+                        options={departments}
+                      />
+                    ) : null}
+                    <TextField
+                      label="Team"
+                      value={form.team}
+                      onChange={(value) => setForm((current) => ({ ...current, team: value }))}
+                      placeholder="Optional team name"
+                    />
+                    <SelectField
+                      label="Status"
+                      value={form.status}
+                      onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                      options={form.portal_role === "user" ? ["Active", "Inactive"] : statuses}
+                    />
+                  </div>
 
-        <div className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+                    <div>
+                      <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
+                      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <input
+                          type="color"
+                          value={form.avatar_color}
+                          onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
+                          className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                        />
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">{form.avatar_color}</div>
+                          <div className="text-xs text-slate-400">Used in portal badges and cards</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
+                {error ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                    {error}
+                  </div>
+                ) : null}
+                {success ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                    {success}
+                  </div>
+                ) : null}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {submitting ? "Saving..." : editingId ? "Update Member" : "Create Member"}
+                  </button>
+                  <GhostButton type="button" onClick={() => resetForm(form.portal_role)}>
+                    Reset
+                  </GhostButton>
+                </div>
+            </form>
+          </SectionShell>
+        </div>
+
+        <div className="relative hidden xl:flex items-stretch justify-center" style={{ gridColumn: "2" }}>
+          <button
+            type="button"
+            aria-label="Resize team layout"
+            onPointerDown={beginSplitDrag}
+            onTouchStart={beginSplitDrag}
+            className="relative flex h-full w-full items-stretch justify-center"
+            style={{ cursor: "col-resize" }}
+          >
+            <span className="h-full w-px bg-slate-200" />
+            <span className="absolute top-1/2 h-16 w-3 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow-sm" />
+          </button>
+        </div>
+
+        <div className="space-y-6 xl:pl-3" style={{ gridColumn: "3" }}>
           <SectionShell
             title="Search and Filter"
             subtitle="Focus on the record set you want to review."
