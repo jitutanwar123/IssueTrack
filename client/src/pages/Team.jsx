@@ -17,6 +17,15 @@ const ROLE_OPTIONS = {
   ],
 };
 
+const STAFF_ROLE_OPTIONS = [
+  "Help Desk Engineer",
+  "Technical Support Engineer",
+  "Network Administrator",
+  "System Administrator",
+  "Infrastructure Manager",
+  "New",
+];
+
 const portalRoles = [
   { value: "user", label: "User" },
   { value: "it_staff", label: "IT Staff" },
@@ -82,6 +91,17 @@ function Metric({ label, value, hint, accent = "blue" }) {
   );
 }
 
+function GhostButton({ children, className = "", ...props }) {
+  return (
+    <button
+      {...props}
+      className={`rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function RecordRow({ user, onEdit, onDelete }) {
   const portalLabel =
     user.portal_role === "it_staff" ? "IT Staff" : user.portal_role === "admin" ? "Admin" : "User";
@@ -138,6 +158,7 @@ export default function Team() {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [newStaffOpen, setNewStaffOpen] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -206,9 +227,11 @@ export default function Team() {
   function resetForm(nextPortalRole = "it_staff") {
     setEditingId(null);
     setForm(emptyForm(nextPortalRole));
+    setNewStaffOpen(false);
   }
 
   function startEdit(user) {
+    setNewStaffOpen(false);
     setEditingId(user.id);
     setForm({
       name: user.name || "",
@@ -262,6 +285,8 @@ export default function Team() {
 
   const currentPortalLabel =
     form.portal_role === "it_staff" ? "IT Staff" : form.portal_role === "admin" ? "Admin" : "User";
+  const isStaffMode = form.portal_role === "it_staff";
+  const isNewStaffMode = newStaffOpen && isStaffMode;
 
   return (
     <div className="space-y-6">
@@ -345,84 +370,194 @@ export default function Team() {
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                label="Full Name"
-                value={form.name}
-                onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-              />
-              <TextField
-                label="Email"
-                value={form.email}
-                onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-              />
-              <TextField
-                label="Username"
-                value={form.username}
-                onChange={(value) => setForm((current) => ({ ...current, username: value }))}
-              />
-              <TextField
-                label={editingId ? "New Password" : "Password"}
-                type="password"
-                value={form.password}
-                onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                placeholder={editingId ? "Leave blank to keep current" : "Set a login password"}
-              />
-            </div>
+            {isNewStaffMode ? (
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">New Staff Member</h4>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Fill this dedicated staff panel to create a fresh IT staff login.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewStaffOpen(false);
+                      setForm((current) => ({
+                        ...current,
+                        role: "Help Desk Engineer",
+                        portal_role: "it_staff",
+                        department: "IT",
+                        status: "Available",
+                      }));
+                    }}
+                    className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                  >
+                    Back to Positions
+                  </button>
+                </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SelectField
-                label="Role / Position"
-                value={form.role}
-                onChange={(value) => setForm((current) => ({ ...current, role: value }))}
-                options={ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.it_staff}
-              />
-              <SelectField
-                label="Department"
-                value={form.department}
-                onChange={(value) => setForm((current) => ({ ...current, department: value }))}
-                options={form.portal_role === "user" ? ["Administration", ...departments.filter((d) => d !== "Administration")] : departments}
-              />
-              <TextField
-                label="Team"
-                value={form.team}
-                onChange={(value) => setForm((current) => ({ ...current, team: value }))}
-                placeholder="Optional team name"
-              />
-              <SelectField
-                label="Status"
-                value={form.status}
-                onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-                options={form.portal_role === "user" ? ["Active", "Inactive"] : statuses}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
-              <div>
-                <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <input
-                    type="color"
-                    value={form.avatar_color}
-                    onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
-                    className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <TextField
+                    label="Staff Name"
+                    value={form.name}
+                    onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                  />
+                  <TextField
+                    label="Staff Email"
+                    value={form.email}
+                    onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+                  />
+                  <TextField
+                    label="Username"
+                    value={form.username}
+                    onChange={(value) => setForm((current) => ({ ...current, username: value }))}
+                  />
+                  <TextField
+                    label="Password"
+                    type="password"
+                    value={form.password}
+                    onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+                    placeholder="Set staff login password"
+                  />
+                  <SelectField
+                    label="Position"
+                    value={form.role}
+                    onChange={(value) => setForm((current) => ({ ...current, role: value }))}
+                    options={STAFF_ROLE_OPTIONS.filter((item) => item !== "New")}
+                  />
+                  <SelectField
+                    label="Department"
+                    value={form.department}
+                    onChange={(value) => setForm((current) => ({ ...current, department: value }))}
+                    options={departments}
+                  />
+                  <SelectField
+                    label="Status"
+                    value={form.status}
+                    onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                    options={statuses}
                   />
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">{form.avatar_color}</div>
-                    <div className="text-xs text-slate-400">Used in portal badges and cards</div>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <input
+                        type="color"
+                        value={form.avatar_color}
+                        onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
+                        className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                      />
+                      <div className="text-xs text-slate-500">Used in avatar badges.</div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => setForm((current) => ({ ...current, portal_role: "it_staff", role: "Help Desk Engineer", department: "IT", status: "Available" }))}
-                  className="w-full rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
-                >
-                  Quick Staff Setup
-                </button>
-              </div>
-            </div>
+            ) : null}
+
+            {!isNewStaffMode ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextField
+                    label="Full Name"
+                    value={form.name}
+                    onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                  />
+                  <TextField
+                    label="Email"
+                    value={form.email}
+                    onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+                  />
+                  <TextField
+                    label="Username"
+                    value={form.username}
+                    onChange={(value) => setForm((current) => ({ ...current, username: value }))}
+                  />
+                  <TextField
+                    label={editingId ? "New Password" : "Password"}
+                    type="password"
+                    value={form.password}
+                    onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+                    placeholder={editingId ? "Leave blank to keep current" : "Set a login password"}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SelectField
+                    label="Role / Position"
+                    value={form.role}
+                    onChange={(value) => {
+                      if (value === "New") {
+                        setNewStaffOpen(true);
+                        setForm((current) => ({
+                          ...current,
+                          portal_role: "it_staff",
+                          role: "Help Desk Engineer",
+                          department: "IT",
+                          status: "Available",
+                        }));
+                        return;
+                      }
+                      setForm((current) => ({ ...current, role: value }));
+                    }}
+                    options={isStaffMode ? STAFF_ROLE_OPTIONS : ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.it_staff}
+                  />
+                  <SelectField
+                    label="Department"
+                    value={form.department}
+                    onChange={(value) => setForm((current) => ({ ...current, department: value }))}
+                    options={form.portal_role === "user" ? ["Administration", ...departments.filter((d) => d !== "Administration")] : departments}
+                  />
+                  <TextField
+                    label="Team"
+                    value={form.team}
+                    onChange={(value) => setForm((current) => ({ ...current, team: value }))}
+                    placeholder="Optional team name"
+                  />
+                  <SelectField
+                    label="Status"
+                    value={form.status}
+                    onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                    options={form.portal_role === "user" ? ["Active", "Inactive"] : statuses}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+                  <div>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <input
+                        type="color"
+                        value={form.avatar_color}
+                        onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
+                        className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                      />
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{form.avatar_color}</div>
+                        <div className="text-xs text-slate-400">Used in portal badges and cards</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewStaffOpen(true);
+                        setForm((current) => ({
+                          ...current,
+                          portal_role: "it_staff",
+                          role: "Help Desk Engineer",
+                          department: "IT",
+                          status: "Available",
+                        }));
+                      }}
+                      className="w-full rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                    >
+                      New Staff Member
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : null}
 
             {error ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -435,7 +570,7 @@ export default function Team() {
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="submit"
                 disabled={submitting}
@@ -443,13 +578,9 @@ export default function Team() {
               >
                 {submitting ? "Saving..." : editingId ? "Update Member" : "Create Member"}
               </button>
-              <button
-                type="button"
-                onClick={() => resetForm(form.portal_role)}
-                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
+              <GhostButton type="button" onClick={() => resetForm(form.portal_role)}>
                 Reset
-              </button>
+              </GhostButton>
             </div>
           </form>
         </SectionShell>
