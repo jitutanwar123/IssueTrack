@@ -42,11 +42,12 @@ function emptyForm(portal_role = "it_staff") {
     username: "",
     password: "",
     role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : "Help Desk Engineer",
+    staff_position: portal_role === "user" ? "" : "Help Desk Engineer",
     team: "",
     status: portal_role === "user" ? "Active" : "Available",
     avatar_color: "#0f172a",
     portal_role,
-    department: portal_role === "user" ? "Administration" : "IT",
+    department: portal_role === "user" ? "" : "IT",
   };
 }
 
@@ -102,7 +103,7 @@ function GhostButton({ children, className = "", ...props }) {
   );
 }
 
-function RecordRow({ user, onEdit, onDelete }) {
+function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
   const portalLabel =
     user.portal_role === "it_staff" ? "IT Staff" : user.portal_role === "admin" ? "Admin" : "User";
 
@@ -126,7 +127,7 @@ function RecordRow({ user, onEdit, onDelete }) {
           {portalLabel}
         </span>
       </td>
-      <td className="px-4 py-4 text-sm text-slate-700">{user.department || "—"}</td>
+      {showDepartment ? <td className="px-4 py-4 text-sm text-slate-700">{user.department || "—"}</td> : null}
       <td className="px-4 py-4 text-sm text-slate-700">{user.status || "—"}</td>
       <td className="px-4 py-4">
         <div className="flex flex-wrap gap-2">
@@ -239,11 +240,12 @@ export default function Team() {
       username: user.username || "",
       password: "",
       role: user.role || (user.portal_role === "user" ? "User" : "Help Desk Engineer"),
+      staff_position: user.portal_role === "it_staff" ? user.role || "Help Desk Engineer" : "",
       team: user.team || "",
       status: user.status || (user.portal_role === "user" ? "Active" : "Available"),
       avatar_color: user.avatar_color || "#0f172a",
       portal_role: user.portal_role || "user",
-      department: user.department || (user.portal_role === "user" ? "Administration" : "IT"),
+      department: user.portal_role === "user" ? "" : user.department || "IT",
     });
   }
 
@@ -255,7 +257,13 @@ export default function Team() {
     try {
       const payload = {
         ...form,
-        role: form.portal_role === "user" ? "User" : form.role,
+        role:
+          form.portal_role === "user"
+            ? "User"
+            : form.role === "New"
+              ? form.staff_position || "Help Desk Engineer"
+              : form.role,
+        department: form.portal_role === "user" ? "" : form.department,
       };
       if (editingId) {
         await api.updateUser(editingId, payload);
@@ -287,6 +295,7 @@ export default function Team() {
     form.portal_role === "it_staff" ? "IT Staff" : form.portal_role === "admin" ? "Admin" : "User";
   const isStaffMode = form.portal_role === "it_staff";
   const isNewStaffMode = newStaffOpen && isStaffMode;
+  const roleOptions = isStaffMode ? STAFF_ROLE_OPTIONS : ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.it_staff;
 
   return (
     <div className="space-y-6">
@@ -337,22 +346,21 @@ export default function Team() {
                       key={option.value}
                       type="button"
                       onClick={() => {
+                        const nextRole =
+                          option.value === "it_staff"
+                            ? "New"
+                            : option.value === "admin"
+                              ? "Administrator"
+                              : "User";
                         setForm((current) => ({
                           ...current,
                           portal_role: option.value,
-                          role:
-                            current.role === "User" || current.role === "Administrator"
-                              ? option.value === "user"
-                                ? "User"
-                                : option.value === "admin"
-                                  ? "Administrator"
-                                  : "Help Desk Engineer"
-                              : current.role,
-                          department:
-                            option.value === "user" ? "Administration" : current.department || "IT",
-                          status:
-                            option.value === "user" ? "Active" : current.status || "Available",
+                          role: nextRole,
+                          staff_position: option.value === "it_staff" ? current.staff_position || "Help Desk Engineer" : "",
+                          department: option.value === "user" ? "" : current.department || "IT",
+                          status: option.value === "user" ? "Active" : current.status || "Available",
                         }));
+                        setNewStaffOpen(option.value === "it_staff");
                       }}
                       className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
                         active
@@ -385,8 +393,9 @@ export default function Team() {
                       setNewStaffOpen(false);
                       setForm((current) => ({
                         ...current,
-                        role: "Help Desk Engineer",
+                        role: current.staff_position || "Help Desk Engineer",
                         portal_role: "it_staff",
+                        staff_position: current.staff_position || "Help Desk Engineer",
                         department: "IT",
                         status: "Available",
                       }));
@@ -422,8 +431,8 @@ export default function Team() {
                   />
                   <SelectField
                     label="Position"
-                    value={form.role}
-                    onChange={(value) => setForm((current) => ({ ...current, role: value }))}
+                    value={form.staff_position}
+                    onChange={(value) => setForm((current) => ({ ...current, staff_position: value, role: value }))}
                     options={STAFF_ROLE_OPTIONS.filter((item) => item !== "New")}
                   />
                   <SelectField
@@ -491,22 +500,26 @@ export default function Team() {
                         setForm((current) => ({
                           ...current,
                           portal_role: "it_staff",
-                          role: "Help Desk Engineer",
+                          role: "New",
+                          staff_position: current.staff_position || "Help Desk Engineer",
                           department: "IT",
                           status: "Available",
                         }));
                         return;
                       }
-                      setForm((current) => ({ ...current, role: value }));
+                      setNewStaffOpen(false);
+                      setForm((current) => ({ ...current, role: value, staff_position: "" }));
                     }}
-                    options={isStaffMode ? STAFF_ROLE_OPTIONS : ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.it_staff}
+                    options={roleOptions}
                   />
-                  <SelectField
-                    label="Department"
-                    value={form.department}
-                    onChange={(value) => setForm((current) => ({ ...current, department: value }))}
-                    options={form.portal_role === "user" ? ["Administration", ...departments.filter((d) => d !== "Administration")] : departments}
-                  />
+                  {form.portal_role !== "user" ? (
+                    <SelectField
+                      label="Department"
+                      value={form.department}
+                      onChange={(value) => setForm((current) => ({ ...current, department: value }))}
+                      options={departments}
+                    />
+                  ) : null}
                   <TextField
                     label="Team"
                     value={form.team}
@@ -536,24 +549,6 @@ export default function Team() {
                         <div className="text-xs text-slate-400">Used in portal badges and cards</div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewStaffOpen(true);
-                        setForm((current) => ({
-                          ...current,
-                          portal_role: "it_staff",
-                          role: "Help Desk Engineer",
-                          department: "IT",
-                          status: "Available",
-                        }));
-                      }}
-                      className="w-full rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
-                    >
-                      New Staff Member
-                    </button>
                   </div>
                 </div>
               </>
@@ -623,6 +618,7 @@ export default function Team() {
               emptyText="No IT staff members found."
               onEdit={startEdit}
               onDelete={remove}
+              showDepartment
             />
           </SectionShell>
 
@@ -632,6 +628,7 @@ export default function Team() {
               emptyText="No user accounts found."
               onEdit={startEdit}
               onDelete={remove}
+              showDepartment={false}
             />
           </SectionShell>
 
@@ -641,6 +638,7 @@ export default function Team() {
               emptyText="No admin accounts found."
               onEdit={startEdit}
               onDelete={remove}
+              showDepartment
             />
           </SectionShell>
         </div>
@@ -689,7 +687,7 @@ function SelectField({ label, value, onChange, options = [] }) {
   );
 }
 
-function RecordsTable({ records, emptyText, onEdit, onDelete }) {
+function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = true }) {
   if (!records.length) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-10 text-center text-sm text-slate-400">
@@ -707,14 +705,14 @@ function RecordsTable({ records, emptyText, onEdit, onDelete }) {
               <th className="px-4 py-3">Member</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Access</th>
-              <th className="px-4 py-3">Department</th>
+              {showDepartment ? <th className="px-4 py-3">Department</th> : null}
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {records.map((user) => (
-              <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} />
+              <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} showDepartment={showDepartment} />
             ))}
           </tbody>
         </table>
