@@ -5,6 +5,31 @@ import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { formatDateTime, getStatusLabel } from "../../utils/helpers.js";
 
+const TRACKER_STEPS = [
+  "Open",
+  "Assigned",
+  "Work In Progress",
+  "On Hold",
+  "Resolved",
+  "Closed",
+];
+
+function normalizeTrackerStep(status = "") {
+  const value = String(status || "").toLowerCase();
+  if (value.includes("hold")) return "On Hold";
+  if (value.includes("progress")) return "Work In Progress";
+  if (value.includes("assign")) return "Assigned";
+  if (value.includes("resolve")) return "Resolved";
+  if (value.includes("closed")) return "Closed";
+  if (value.includes("reject") || value.includes("cancel")) return "Closed";
+  return "Open";
+}
+
+function getTrackerIndex(status = "") {
+  const step = normalizeTrackerStep(status);
+  return Math.max(0, TRACKER_STEPS.indexOf(step));
+}
+
 export default function UserTicketDetail() {
   const { id } = useParams();
   const { showToast } = useToast();
@@ -67,6 +92,9 @@ export default function UserTicketDetail() {
     ...timeline.map((h) => ({ ...h, _type: "history" })),
   ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const isClosed = String(ticket.status || "").toLowerCase() === "closed";
+  const currentStepIndex = getTrackerIndex(ticket.status);
+  const lastUpdate = timeline[timeline.length - 1] || null;
+  const currentStageLabel = normalizeTrackerStep(ticket.status);
 
   return (
     <div className="space-y-6">
@@ -99,6 +127,97 @@ export default function UserTicketDetail() {
             {ticket.assigned_to && (
               <div className="mt-1">Assigned to: <span className="font-medium text-slate-700">{ticket.assigned_to}</span></div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Tracking panel */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Ticket Tracker</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Follow the current stage, the latest update, and the full status path.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={ticket.status} />
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              Current stage: {currentStageLabel}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {TRACKER_STEPS.map((step, index) => {
+            const active = index === currentStepIndex;
+            const done = index < currentStepIndex;
+            const blocked = index > currentStepIndex;
+
+            return (
+              <div
+                key={step}
+                className={`rounded-2xl border p-4 transition ${
+                  active
+                    ? "border-cyan-300 bg-cyan-50"
+                    : done
+                      ? "border-emerald-200 bg-emerald-50/70"
+                      : "border-slate-200 bg-slate-50/80"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      active
+                        ? "bg-cyan-500"
+                        : done
+                          ? "bg-emerald-500"
+                          : "bg-slate-300"
+                    }`}
+                  />
+                  <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${
+                    active ? "text-cyan-700" : done ? "text-emerald-700" : "text-slate-400"
+                  }`}>
+                    {done ? "Done" : blocked ? "Next" : "Now"}
+                  </span>
+                </div>
+                <div className="mt-3 text-sm font-semibold text-slate-900">{step}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {step === "On Hold"
+                    ? "Waiting for customer or internal action"
+                    : step === "Resolved"
+                      ? "Work completed by the support team"
+                      : step === "Closed"
+                        ? "Ticket is finalized"
+                        : step === "Work In Progress"
+                          ? "Support is actively working on it"
+                          : step === "Assigned"
+                            ? "Assigned to a support owner"
+                            : "Ticket has been created"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Current Status</div>
+            <div className="mt-1 text-sm font-semibold text-slate-900">{getStatusLabel(ticket.status)}</div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Last Update</div>
+            <div className="mt-1 text-sm font-semibold text-slate-900">
+              {lastUpdate?.created_at ? formatDateTime(lastUpdate.created_at) : formatDateTime(ticket.updated_at)}
+            </div>
+            <div className="mt-0.5 text-xs text-slate-500">
+              {lastUpdate?.changed_by ? `Updated by ${lastUpdate.changed_by}` : "No history yet"}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Current Owner</div>
+            <div className="mt-1 text-sm font-semibold text-slate-900">{ticket.assigned_to || "Unassigned"}</div>
+            <div className="mt-0.5 text-xs text-slate-500">Who is handling the ticket now</div>
           </div>
         </div>
       </section>
