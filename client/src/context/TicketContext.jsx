@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../utils/api.js";
 
 const TicketContext = createContext(null);
@@ -23,6 +24,7 @@ const defaultDashboardFilters = {
 };
 
 export function TicketProvider({ children }) {
+  const { pathname } = useLocation();
   const [tickets, setTickets] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [ticketFilters, setTicketFilters] = useState(defaultFilters);
@@ -39,6 +41,10 @@ export function TicketProvider({ children }) {
 
   const dashboardQuery = useMemo(() => dashboardFilters, [dashboardFilters]);
   const listQuery = useMemo(() => ticketFilters, [ticketFilters]);
+  const shouldLoadAdminData =
+    !pathname.startsWith("/user") &&
+    !pathname.startsWith("/staff") &&
+    !["/login", "/user-login", "/staff-login", "/register"].includes(pathname);
 
   async function loadTickets(overrides = {}) {
     setLoadingTickets(true);
@@ -130,6 +136,7 @@ export function TicketProvider({ children }) {
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!shouldLoadAdminData) return;
     // loadTickets() is intentionally omitted here — the listQuery effect below
     // fires on mount and handles the initial fetch, avoiding a duplicate request.
     loadSummary().catch(() => {});
@@ -139,17 +146,19 @@ export function TicketProvider({ children }) {
       if (!fetchingSummary.current) loadSummary().catch(() => {});
     }, 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldLoadAdminData]);
 
   // ── Reload ticket list whenever filters change ───────────────────────────────
   useEffect(() => {
+    if (!shouldLoadAdminData) return;
     loadTickets().catch(() => {});
-  }, [JSON.stringify(listQuery)]);
+  }, [shouldLoadAdminData, JSON.stringify(listQuery)]);
 
   // ── Reload summary whenever dashboard filters change ────────────────────────
   useEffect(() => {
+    if (!shouldLoadAdminData) return;
     loadSummary().catch(() => {});
-  }, [JSON.stringify(dashboardQuery)]);
+  }, [shouldLoadAdminData, JSON.stringify(dashboardQuery)]);
 
   const value = {
     tickets,

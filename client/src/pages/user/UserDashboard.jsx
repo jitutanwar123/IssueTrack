@@ -38,24 +38,26 @@ function StatCard({ title, value, icon, index }) {
 
 export default function UserDashboard() {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [recentTickets, setRecentTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.userTickets()
-      .then((r) => setTickets(r.data || []))
+    api.userDashboard({ recentLimit: 5 })
+      .then((r) => {
+        setSummary(r.data?.summary || null);
+        setRecentTickets(r.data?.recentTickets || []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const stats = {
-    open: tickets.filter((t) => t.status === "Open").length,
-    inProgress: tickets.filter((t) => ["In Progress", "Assigned", "Work In Progress"].includes(t.status)).length,
-    pending: tickets.filter((t) => t.status?.toLowerCase().includes("hold") || t.status?.toLowerCase().includes("pending")).length,
-    resolved: tickets.filter((t) => t.status === "Resolved" || t.status === "Closed").length,
+    open: summary?.open ?? 0,
+    inProgress: summary?.inProgress ?? 0,
+    pending: summary?.onHold ?? 0,
+    resolved: summary?.resolved ?? 0,
   };
-
-  const recent = [...tickets].slice(0, 5);
 
   return (
     <div className="space-y-5">
@@ -164,7 +166,7 @@ export default function UserDashboard() {
             </svg>
             Loading your tickets…
           </div>
-        ) : recent.length === 0 ? (
+        ) : recentTickets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
             <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
               <svg viewBox="0 0 24 24" className="h-6 w-6 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -182,11 +184,11 @@ export default function UserDashboard() {
           </div>
         ) : (
           <div>
-            {recent.map((ticket, i) => (
+            {recentTickets.map((ticket, i) => (
               <div
                 key={ticket.id}
                 className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors duration-100 hover:bg-slate-50/70"
-                style={{ borderBottom: i < recent.length - 1 ? "1px solid #f1f5f9" : "none" }}
+                style={{ borderBottom: i < recentTickets.length - 1 ? "1px solid #f1f5f9" : "none" }}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">

@@ -6,21 +6,25 @@ import { formatDateTime } from "../../utils/helpers.js";
 
 export default function UserProfile() {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [recentTickets, setRecentTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.userTickets()
-      .then((r) => setTickets(r.data || []))
+    api.userDashboard({ recentLimit: 6 })
+      .then((r) => {
+        setSummary(r.data?.summary || null);
+        setRecentTickets(r.data?.recentTickets || []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const stats = [
-    { label: "Total Tickets", value: tickets.length, color: "text-slate-900", bg: "bg-slate-100" },
-    { label: "Open", value: tickets.filter((t) => t.status === "Open").length, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "In Progress", value: tickets.filter((t) => ["In Progress", "Assigned", "Work In Progress"].includes(t.status)).length, color: "text-orange-500", bg: "bg-orange-50" },
-    { label: "Resolved", value: tickets.filter((t) => ["Resolved", "Closed"].includes(t.status)).length, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Total Tickets", value: summary?.total ?? 0, color: "text-slate-900", bg: "bg-slate-100" },
+    { label: "Open", value: summary?.open ?? 0, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "In Progress", value: summary?.inProgress ?? 0, color: "text-orange-500", bg: "bg-orange-50" },
+    { label: "Resolved", value: summary?.resolved ?? 0, color: "text-emerald-600", bg: "bg-emerald-50" },
   ];
 
   const initials = user?.name?.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "U";
@@ -94,7 +98,7 @@ export default function UserProfile() {
             <div className="divide-y divide-slate-100">
               {loading ? (
                 <div className="py-10 text-center text-sm text-slate-400">Loading...</div>
-              ) : tickets.length === 0 ? (
+              ) : recentTickets.length === 0 ? (
                 <div className="py-10 text-center">
                   <p className="text-sm text-slate-400">No tickets yet.</p>
                   <Link
@@ -105,7 +109,7 @@ export default function UserProfile() {
                   </Link>
                 </div>
               ) : (
-                tickets.slice(0, 6).map((t) => (
+                recentTickets.map((t) => (
                   <div key={t.id} className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-slate-50">
                     <div className="min-w-0 flex-1">
                       <span className="font-mono text-xs text-slate-400">{t.ticket_id || `#${t.id}`}</span>

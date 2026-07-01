@@ -171,6 +171,15 @@ function query(sql, params = []) {
   });
 }
 
+const TICKET_SLIM_COLUMNS = `
+  id, ticket_id, title, description, category, sub_category, priority, status,
+  customer_name, requester_email, phone, department, user_email, requested_by,
+  assigned_to, location, workstream, workgroup, service,
+  expected_closure_date, actual_closure_date, response_time, resolution_time,
+  resolved_at, resolution_note, resolved_by, created_at, updated_at,
+  attachment_name, attachment_mime
+`;
+
 // ─── Helper: auto-generate ticket ID ────────────────────────────
 async function generateTicketId() {
   // Count existing tickets so IDs stay sequential even after deletes
@@ -390,11 +399,7 @@ app.get("/api/tickets", (req, res) => {
   if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
 
   // Exclude attachment_data (LONGBLOB) — fetched only via /api/tickets/:id/attachment
-  const cols = `id, ticket_id, title, description, category, sub_category, priority, status,
-    customer_name, requester_email, phone, department, location, user_email,
-    assigned_to, created_at, updated_at, resolved_at, resolution_note, resolved_by,
-    attachment_name, attachment_mime`;
-  const dataSql  = `SELECT ${cols} FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
+  const dataSql  = `SELECT ${TICKET_SLIM_COLUMNS} FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
 
   // Run both queries in parallel using the promise-based interface
@@ -426,7 +431,7 @@ app.get("/api/tickets/next-id", async (req, res) => {
 // GET SINGLE TICKET (admin — includes comments + timeline)
 app.get("/api/tickets/:id", (req, res) => {
   const { id } = req.params;
-  db.query("SELECT * FROM tickets WHERE id = ?", [id], async (err, results) => {
+  db.query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id], async (err, results) => {
     if (err) return res.status(500).json(err);
     if (results.length === 0) return res.status(404).json({ message: "Ticket not found" });
 
@@ -560,7 +565,7 @@ app.put("/api/tickets/:id", async (req, res) => {
   } = req.body;
 
   // Get old ticket for status comparison
-  const oldRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+  const oldRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
   const oldTicket = oldRows[0];
 
   if (isClosedStatus(oldTicket?.status)) {
@@ -759,7 +764,7 @@ app.get("/api/reports/detail", (req, res) => {
   if (assignee) { conditions.push("(assigned_to LIKE ? OR assigned_to_name LIKE ?)"); params.push(`%${assignee}%`, `%${assignee}%`); }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const sql = `SELECT * FROM tickets ${where}`;
+  const sql = `SELECT ${TICKET_SLIM_COLUMNS} FROM tickets ${where}`;
 
   db.query(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ message: err.message });
@@ -901,7 +906,7 @@ app.post("/api/tickets/:id/comments", authenticateJWT, async (req, res) => {
   const authorRole = req.user?.portal_role || "admin";
 
   try {
-    const ticketRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const ticketRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
     if (ticketRows.length === 0) return res.status(404).json({ message: "Ticket not found" });
     if (isClosedStatus(ticketRows[0]?.status)) {
       return res.status(409).json({ message: "Closed tickets are read-only" });
@@ -926,7 +931,7 @@ app.post("/api/tickets/:id/comments", authenticateJWT, async (req, res) => {
 // PDF download stub (keep existing)
 app.get("/api/tickets/:id/pdf", authenticateJWT, async (req, res) => {
   try {
-    const rows = await query("SELECT * FROM tickets WHERE id = ?", [req.params.id]);
+    const rows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
 
     const ticket = rows[0];
@@ -959,7 +964,7 @@ app.get("/api/user/tickets", authenticateJWT, requireUser, async (req, res) => {
   const email = req.user.email;
   const { status, priority } = req.query;
 
-  let sql = "SELECT * FROM tickets WHERE (requester_email = ? OR user_email = ?)";
+  let sql = `SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE (requester_email = ? OR user_email = ?)`;
   let params = [email, email];
 
   if (status) { sql += " AND status = ?"; params.push(status); }
@@ -969,6 +974,52 @@ app.get("/api/user/tickets", authenticateJWT, requireUser, async (req, res) => {
   try {
     const rows = await query(sql, params);
     res.json({ data: rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET USER DASHBOARD SNAPSHOT — counts plus recent tickets only
+app.get("/api/user/dashboard", authenticateJWT, requireUser, async (req, res) => {
+  const email = req.user.email;
+  const recentLimit = Math.min(10, Math.max(1, parseInt(req.query.recentLimit, 10) || 5));
+
+  try {
+    const [summaryRows, recentRows] = await Promise.all([
+      query(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(CASE WHEN status = 'Open' THEN 1 ELSE 0 END) AS open,
+           SUM(CASE WHEN status IN ('Assigned', 'In Progress', 'Work In Progress') THEN 1 ELSE 0 END) AS inProgress,
+           SUM(CASE WHEN status LIKE '%Hold%' OR status LIKE '%Pending%' THEN 1 ELSE 0 END) AS onHold,
+           SUM(CASE WHEN status IN ('Resolved', 'Closed') THEN 1 ELSE 0 END) AS resolved
+         FROM tickets
+         WHERE (requester_email = ? OR user_email = ?)`,
+        [email, email]
+      ),
+      query(
+        `SELECT ${TICKET_SLIM_COLUMNS}
+         FROM tickets
+         WHERE (requester_email = ? OR user_email = ?)
+         ORDER BY created_at DESC
+         LIMIT ?`,
+        [email, email, recentLimit]
+      ),
+    ]);
+
+    const summary = summaryRows[0] || {};
+    res.json({
+      data: {
+        summary: {
+          total: Number(summary.total || 0),
+          open: Number(summary.open || 0),
+          inProgress: Number(summary.inProgress || 0),
+          onHold: Number(summary.onHold || 0),
+          resolved: Number(summary.resolved || 0),
+        },
+        recentTickets: recentRows,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1002,8 +1053,8 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
     const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
 
     const currentRows = isAdmin
-      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
-      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, actorName]);
+      ? await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id])
+      : await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ? AND assigned_to = ?`, [id, actorName]);
 
     if (currentRows.length === 0) {
       return res.status(404).json({ message: "Ticket not found or not assigned to you" });
@@ -1048,7 +1099,7 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
       ]
     ).catch(() => {});
 
-    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
+    const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]);
     const updatedTicket = updatedRows[0] || { ...currentTicket, assigned_to: target.name };
 
     sendTicketTransferredToAssignee(updatedTicket, target.email, actorName)
@@ -1181,7 +1232,9 @@ app.get("/api/user/tickets/:id", authenticateJWT, requireUser, async (req, res) 
 
   try {
     const rows = await query(
-      "SELECT * FROM tickets WHERE id = ? AND (requester_email = ? OR user_email = ?)",
+      `SELECT ${TICKET_SLIM_COLUMNS}
+       FROM tickets
+       WHERE id = ? AND (requester_email = ? OR user_email = ?)`,
       [id, email, email]
     );
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
@@ -1213,7 +1266,9 @@ app.post("/api/user/tickets/:id/comment", authenticateJWT, requireUser, async (r
   try {
     // Verify ticket belongs to user
     const rows = await query(
-      "SELECT * FROM tickets WHERE id = ? AND (requester_email = ? OR user_email = ?)",
+      `SELECT ${TICKET_SLIM_COLUMNS}
+       FROM tickets
+       WHERE id = ? AND (requester_email = ? OR user_email = ?)`,
       [id, user.email, user.email]
     );
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
@@ -1245,7 +1300,7 @@ app.patch("/api/admin/tickets/:id/status", authenticateJWT, requireAdmin, async 
   const { status, note } = req.body;
 
   try {
-    const oldRows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
+    const oldRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]);
     if (oldRows.length === 0) return res.status(404).json({ message: "Ticket not found" });
 
     const oldTicket = oldRows[0];
@@ -1283,7 +1338,7 @@ app.post("/api/admin/tickets/:id/comment", authenticateJWT, requireAdmin, async 
   if (!body?.trim()) return res.status(400).json({ message: "Comment cannot be empty" });
 
   try {
-    const rows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
+    const rows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
     if (isClosedStatus(rows[0]?.status)) {
       return res.status(409).json({ message: "Closed tickets are read-only" });
@@ -1316,7 +1371,7 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
 
   try {
     // Fetch existing ticket
-    const rows = await query("SELECT * FROM tickets WHERE id = ?", [id]);
+    const rows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found" });
 
     const oldTicket = rows[0];
@@ -1352,7 +1407,7 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
     ).catch(() => {});
 
     // Fetch updated ticket for email
-    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
     const updatedTicket = updatedRows[0] || { ...oldTicket, status: "Resolved" };
 
     // Send resolution email to user (non-blocking)
@@ -1376,7 +1431,7 @@ app.get("/api/staff/tickets", authenticateJWT, requireStaff, async (req, res) =>
   try {
     const staffName = req.user.name;
     const { status, priority, search } = req.query;
-    let sql = "SELECT * FROM tickets WHERE assigned_to = ?";
+    let sql = `SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE assigned_to = ?`;
     const params = [staffName];
     if (status)   { sql += " AND status = ?";                            params.push(status); }
     if (priority) { sql += " AND priority = ?";                          params.push(priority); }
@@ -1403,8 +1458,8 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
     const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
 
     const rows = isAdmin
-      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
-      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+      ? await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id])
+      : await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ? AND assigned_to = ?`, [id, staffName]);
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "Ticket not found or not assigned to you" });
@@ -1455,7 +1510,7 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
       ]
     ).catch(() => {});
 
-    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
     const updatedTicket = updatedRows[0] || { ...current, status };
 
     if (status === "Resolved") {
@@ -1504,7 +1559,7 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
     if (to)   { conditions.push("DATE(created_at) <= ?"); params.push(to); }
 
     const where = `WHERE ${conditions.join(" AND ")}`;
-    const rows  = await query(`SELECT * FROM tickets ${where} ORDER BY created_at DESC`, params);
+    const rows  = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets ${where} ORDER BY created_at DESC`, params);
 
     // ── Summary counts ──────────────────────────────────────────────
     const total      = rows.length;
@@ -1580,8 +1635,8 @@ app.get("/api/staff/tickets/:id", authenticateJWT, requireStaff, async (req, res
     // Admin can view any ticket; staff can only view assigned ones
     const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
     const rows = isAdmin
-      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
-      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+      ? await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id])
+      : await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ? AND assigned_to = ?`, [id, staffName]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
     const ticket = rows[0];
     const comments = await query(
@@ -1607,8 +1662,8 @@ app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (
     const staffName = req.user.name;
     const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator" || req.user?.role === "admin";
     const rows = isAdmin
-      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
-      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+      ? await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id])
+      : await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ? AND assigned_to = ?`, [id, staffName]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
     const oldTicket = rows[0];
     if (isClosedStatus(oldTicket?.status)) {
@@ -1625,7 +1680,7 @@ app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (
       `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note) VALUES (?,?,?,'Resolved',?)`,
       [id, staffName, oldTicket.status, resolutionNote.trim()]
     ).catch(() => {});
-    const updatedRows = await query("SELECT * FROM tickets WHERE id = ?", [id]).catch(() => []);
+    const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
     const updatedTicket = updatedRows[0] || { ...oldTicket, status: "Resolved" };
     // Email user: your ticket has been resolved
     sendResolutionToUser(updatedTicket, staffName, resolutionNote.trim())
@@ -1651,8 +1706,8 @@ app.post("/api/staff/tickets/:id/comment", authenticateJWT, requireStaff, async 
     const staffName = req.user.name;
     const isAdmin = req.user?.portal_role === "admin" || req.user?.role === "Administrator";
     const rows = isAdmin
-      ? await query("SELECT * FROM tickets WHERE id = ?", [id])
-      : await query("SELECT * FROM tickets WHERE id = ? AND assigned_to = ?", [id, staffName]);
+      ? await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id])
+      : await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ? AND assigned_to = ?`, [id, staffName]);
     if (rows.length === 0) return res.status(404).json({ message: "Ticket not found or not assigned to you" });
     if (isClosedStatus(rows[0]?.status)) {
       return res.status(409).json({ message: "Closed tickets are read-only" });
