@@ -158,16 +158,6 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Link
-              to="/tickets/new"
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px hover:shadow-lg"
-              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 4px 16px rgba(37,99,235,0.35)" }}
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              New Ticket
-            </Link>
             <button
               onClick={handleRefresh}
               disabled={refreshing}

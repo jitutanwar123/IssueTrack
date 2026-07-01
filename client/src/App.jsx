@@ -10,7 +10,6 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 // ─── Lazy-loaded pages (code-split per route) ───────────────────────────────
 const Dashboard        = lazy(() => import("./pages/Dashboard.jsx"));
 const TicketList       = lazy(() => import("./pages/TicketList.jsx"));
-const CreateTicket     = lazy(() => import("./pages/CreateTicket.jsx"));
 const TicketDetail     = lazy(() => import("./pages/TicketDetail.jsx"));
 const Reports          = lazy(() => import("./pages/Reports.jsx"));
 const Team             = lazy(() => import("./pages/Team.jsx"));
@@ -208,7 +207,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/tickets" element={<TicketList />} />
-                    <Route path="/tickets/new" element={<CreateTicket />} />
+                    <Route path="/tickets/new" element={<Navigate to="/tickets" replace />} />
                     <Route path="/tickets/:id" element={<TicketDetail />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/team" element={<Team />} />

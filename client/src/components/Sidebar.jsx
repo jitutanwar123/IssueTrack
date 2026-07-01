@@ -4,7 +4,6 @@ import virajLogo from "../viraaj.webp";
 const navItems = [
   { to: "/", label: "Dashboard", icon: "grid", section: null },
   { to: "/tickets", label: "Tickets", icon: "ticket", section: "Tickets" },
-  { to: "/tickets/new", label: "New Ticket", icon: "plus", section: null },
   { to: "/reports", label: "Reports", icon: "chart", section: "Analytics" },
   { to: "/team", label: "Team", icon: "users", section: null },
 ];
@@ -89,12 +88,12 @@ export function Sidebar() {
         ))}
 
         <p className="sidebar-section-label mt-4 mb-1.5">Manage</p>
-        {navItems.slice(1, 3).map((item) => (
+        {navItems.slice(1, 2).map((item) => (
           <SidebarLink key={item.to} item={item} />
         ))}
 
         <p className="sidebar-section-label mt-4 mb-1.5">Analytics</p>
-        {navItems.slice(3).map((item) => (
+        {navItems.slice(2).map((item) => (
           <SidebarLink key={item.to} item={item} />
         ))}
       </nav>
