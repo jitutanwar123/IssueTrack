@@ -1,26 +1,146 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../utils/api.js";
 
-const roles = ["Administrator", "Infrastructure Manager", "System Administrator", "Network Administrator", "Help Desk Engineer", "Technical Support Engineer"];
+const ROLE_OPTIONS = {
+  user: ["User"],
+  it_staff: [
+    "Help Desk Engineer",
+    "Technical Support Engineer",
+    "Network Administrator",
+    "System Administrator",
+    "Infrastructure Manager",
+  ],
+  admin: [
+    "Administrator",
+    "System Administrator",
+    "IT Manager",
+  ],
+};
+
 const portalRoles = [
-  { value: "user",     label: "User (End user portal)" },
-  { value: "it_staff", label: "IT Staff (Sub-branch portal)" },
-  { value: "admin",    label: "Admin (Full access)" },
+  { value: "user", label: "User" },
+  { value: "it_staff", label: "IT Staff" },
+  { value: "admin", label: "Admin" },
 ];
+
 const departments = ["IT", "HR", "Finance", "Operations", "Sales", "Marketing", "Administration"];
+const statuses = ["Available", "Busy", "Away", "Offline"];
+
+function emptyForm(portal_role = "it_staff") {
+  return {
+    name: "",
+    email: "",
+    username: "",
+    password: "",
+    role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : "Help Desk Engineer",
+    team: "",
+    status: portal_role === "user" ? "Active" : "Available",
+    avatar_color: "#0f172a",
+    portal_role,
+    department: portal_role === "user" ? "Administration" : "IT",
+  };
+}
+
+function SectionShell({ title, subtitle, children, badge }) {
+  return (
+    <section
+      className="overflow-hidden rounded-3xl bg-white"
+      style={{ border: "1px solid #e2e8f0", boxShadow: "0 8px 30px rgba(15,23,42,0.06)" }}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+        </div>
+        {badge ? (
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+            {badge}
+          </span>
+        ) : null}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function Metric({ label, value, hint, accent = "blue" }) {
+  const styles = {
+    blue: { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" },
+    cyan: { bg: "#ecfeff", text: "#0891b2", border: "#a5f3fc" },
+    purple: { bg: "#f5f3ff", text: "#7c3aed", border: "#ddd6fe" },
+    emerald: { bg: "#f0fdf4", text: "#059669", border: "#bbf7d0" },
+  };
+  const c = styles[accent] || styles.blue;
+  return (
+    <div className="rounded-2xl bg-white p-4" style={{ border: `1px solid ${c.border}`, boxShadow: "0 6px 18px rgba(15,23,42,0.04)" }}>
+      <div className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: c.text }}>
+        {label}
+      </div>
+      <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{value}</div>
+      {hint && <div className="mt-1 text-xs text-slate-400">{hint}</div>}
+    </div>
+  );
+}
+
+function RecordRow({ user, onEdit, onDelete }) {
+  const portalLabel =
+    user.portal_role === "it_staff" ? "IT Staff" : user.portal_role === "admin" ? "Admin" : "User";
+
+  return (
+    <tr className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+      <td className="px-4 py-4">
+        <div className="font-semibold text-slate-900">{user.name}</div>
+        <div className="text-sm text-slate-500">{user.email}</div>
+      </td>
+      <td className="px-4 py-4 text-sm text-slate-700">{user.role || "—"}</td>
+      <td className="px-4 py-4">
+        <span
+          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+            user.portal_role === "admin"
+              ? "bg-purple-100 text-purple-700"
+              : user.portal_role === "it_staff"
+                ? "bg-cyan-100 text-cyan-700"
+                : "bg-slate-100 text-slate-600"
+          }`}
+        >
+          {portalLabel}
+        </span>
+      </td>
+      <td className="px-4 py-4 text-sm text-slate-700">{user.department || "—"}</td>
+      <td className="px-4 py-4 text-sm text-slate-700">{user.status || "—"}</td>
+      <td className="px-4 py-4">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(user)}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(user.id)}
+            className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+          >
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function Team() {
   const [users, setUsers] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({
-    name: "", email: "", username: "", password: "",
-    role: "Help Desk Engineer", team: "", status: "Available",
-    avatar_color: "#0f172a", portal_role: "it_staff", department: "IT",
-  });
+  const [form, setForm] = useState(emptyForm("it_staff"));
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Auto-dismiss notifications after 3 seconds
   useEffect(() => {
     if (!success) return;
     const t = setTimeout(() => setSuccess(""), 3000);
@@ -34,31 +154,73 @@ export default function Team() {
   }, [error]);
 
   async function load() {
-  const response = await api.users();
-
-  console.log("USERS RESPONSE =", response);
-  console.log("USERS DATA =", response.data);
-
-  setUsers(response.data || []);
-}
+    setLoading(true);
+    try {
+      const response = await api.users();
+      setUsers(response.data || []);
+    } catch (err) {
+      setError(err.message || "Failed to load team members.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     load().catch(() => {});
   }, []);
 
+  const metrics = useMemo(() => {
+    const staff = users.filter((u) => u.portal_role === "it_staff");
+    const admins = users.filter((u) => u.portal_role === "admin");
+    const userAccounts = users.filter((u) => !u.portal_role || u.portal_role === "user");
+    return {
+      total: users.length,
+      staff: staff.length,
+      users: userAccounts.length,
+      admins: admins.length,
+    };
+  }, [users]);
+
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return users.filter((user) => {
+      const portal = user.portal_role || "user";
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "staff" && portal === "it_staff") ||
+        (filter === "users" && portal === "user") ||
+        (filter === "admins" && portal === "admin");
+      const matchesSearch =
+        !term ||
+        [user.name, user.email, user.username, user.role, user.team, user.department]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(term));
+      return matchesFilter && matchesSearch;
+    });
+  }, [users, filter, search]);
+
+  const staffRecords = filteredUsers.filter((user) => user.portal_role === "it_staff");
+  const userRecords = filteredUsers.filter((user) => !user.portal_role || user.portal_role === "user");
+  const adminRecords = filteredUsers.filter((user) => user.portal_role === "admin");
+
+  function resetForm(nextPortalRole = "it_staff") {
+    setEditingId(null);
+    setForm(emptyForm(nextPortalRole));
+  }
+
   function startEdit(user) {
     setEditingId(user.id);
     setForm({
-      name: user.name,
-      email: user.email,
-      username: user.username,
+      name: user.name || "",
+      email: user.email || "",
+      username: user.username || "",
       password: "",
-      role: user.role,
+      role: user.role || (user.portal_role === "user" ? "User" : "Help Desk Engineer"),
       team: user.team || "",
-      status: user.status || "Available",
+      status: user.status || (user.portal_role === "user" ? "Active" : "Available"),
       avatar_color: user.avatar_color || "#0f172a",
       portal_role: user.portal_role || "user",
-      department: user.department || "IT",
+      department: user.department || (user.portal_role === "user" ? "Administration" : "IT"),
     });
   }
 
@@ -66,190 +228,365 @@ export default function Team() {
     event.preventDefault();
     setError("");
     setSuccess("");
+    setSubmitting(true);
     try {
-      console.log("[Team] Submitting — editingId:", editingId, "form:", form);
+      const payload = {
+        ...form,
+        role: form.portal_role === "user" ? "User" : form.role,
+      };
       if (editingId) {
-        const result = await api.updateUser(editingId, form);
-        console.log("[Team] updateUser result:", result);
-        setSuccess("Member updated successfully!");
+        await api.updateUser(editingId, payload);
+        setSuccess("Member updated successfully.");
       } else {
-        const result = await api.createUser(form);
-        console.log("[Team] createUser result:", result);
-        setSuccess("Member added successfully!");
+        await api.createUser(payload);
+        setSuccess(form.portal_role === "it_staff" ? "Staff member created successfully." : "Member created successfully.");
       }
-      setEditingId(null);
-      setForm({
-        name: "", email: "", username: "", password: "",
-        role: "Help Desk Engineer", team: "", status: "Available",
-        avatar_color: "#0f172a", portal_role: "it_staff", department: "IT",
-      });
+      resetForm(form.portal_role);
       await load();
     } catch (err) {
-      console.error("[Team] submit error:", err);
-      setError(err.message || "An unexpected error occurred. Please try again.");
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
   async function remove(id) {
     if (!window.confirm("Remove this team member?")) return;
-    await api.deleteUser(id);
-    await load();
+    try {
+      await api.deleteUser(id);
+      await load();
+    } catch (err) {
+      setError(err.message || "Failed to delete member.");
+    }
   }
+
+  const currentPortalLabel =
+    form.portal_role === "it_staff" ? "IT Staff" : form.portal_role === "admin" ? "Admin" : "User";
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Team Management</h2>
-        <p className="mt-1 text-sm text-slate-500">Create, edit and delete engineers or viewers.</p>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-          <h3 className="text-base font-semibold text-slate-900">{editingId ? "Edit Member" : "Add Member"}</h3>
-          {[
-            ["name", "Full Name"],
-            ["email", "Email"],
-            ["username", "Username"],
-            ["password", "Password"],
-            ["avatar_color", "Avatar Color"],
-          ].map(([field, label]) => (
-            <label key={field} className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-              <input
-                type={field === "password" ? "password" : field === "avatar_color" ? "color" : "text"}
-                value={form[field]}
-                onChange={(event) => setForm((current) => ({ ...current, [field]: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-              />
-            </label>
-          ))}
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Role / Position</span>
-            <select
-              value={form.role}
-              onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-            >
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Portal Access</span>
-            <select
-              value={form.portal_role}
-              onChange={(event) => setForm((current) => ({ ...current, portal_role: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-            >
-              {portalRoles.map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">
-              IT Staff = sub-branch portal at /staff-login
+      <section
+        className="overflow-hidden rounded-3xl text-white"
+        style={{
+          background: "linear-gradient(135deg, #0f172a 0%, #111827 45%, #1e293b 100%)",
+          boxShadow: "0 18px 50px rgba(15,23,42,0.18)",
+        }}
+      >
+        <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
+              Team Directory
+            </div>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight">Separate user and staff records in one place</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              Manage portal access cleanly with dedicated records for users, IT staff, and admins. Create new staff members,
+              update roles, and keep the login structure organized.
             </p>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Department</span>
-            <select
-              value={form.department}
-              onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-            >
-              {departments.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Status</span>
-            <input
-              value={form.status}
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-            />
-          </label>
-          {error ? <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-700">{error}</div> : null}
-          {success ? <div className="rounded-2xl bg-green-50 border border-green-200 px-4 py-3 text-sm font-medium text-green-700">{success}</div> : null}
-          <div className="flex gap-3">
-            <button type="submit" className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-              {editingId ? "Update Member" : "Add Member"}
-            </button>
-            {editingId ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm({
-                    name: "", email: "", username: "", password: "",
-                    role: "Help Desk Engineer", team: "", status: "Available",
-                    avatar_color: "#0f172a", portal_role: "it_staff", department: "IT",
-                  });
-                }}
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
-              >
-                Cancel
-              </button>
-            ) : null}
           </div>
-        </form>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h3 className="text-base font-semibold text-slate-900">Team Members</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-4">Name</th>
-                  <th className="px-5 py-4">Role</th>
-                  <th className="px-5 py-4">Portal Access</th>
-                  <th className="px-5 py-4">Team</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-4">
-                      <div className="font-semibold text-slate-900">{user.name}</div>
-                      <div className="text-sm text-slate-500">{user.email}</div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700">{user.role}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        user.portal_role === "admin"
-                          ? "bg-purple-100 text-purple-700"
-                          : user.portal_role === "it_staff"
-                          ? "bg-cyan-100 text-cyan-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {user.portal_role === "it_staff" ? "IT Staff" : user.portal_role || "user"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700">{user.team}</td>
-                    <td className="px-5 py-4 text-sm text-slate-700">{user.status}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => startEdit(user)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
-                          Edit
-                        </button>
-                        <button onClick={() => remove(user.id)} className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600">
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Metric label="Total Records" value={metrics.total} hint="All portal accounts" accent="cyan" />
+            <Metric label="IT Staff" value={metrics.staff} hint="Staff portal members" accent="purple" />
+            <Metric label="Users" value={metrics.users} hint="End-user accounts" accent="blue" />
+            <Metric label="Admins" value={metrics.admins} hint="Full access accounts" accent="emerald" />
           </div>
         </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.35fr]">
+        <SectionShell
+          title={editingId ? "Edit Team Member" : "Create Team Member"}
+          subtitle="Choose the login type first, then fill in the profile details."
+          badge={currentPortalLabel}
+        >
+          <form className="space-y-4" onSubmit={submit}>
+            <div>
+              <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                Account Type
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {portalRoles.map((option) => {
+                  const active = form.portal_role === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setForm((current) => ({
+                          ...current,
+                          portal_role: option.value,
+                          role:
+                            current.role === "User" || current.role === "Administrator"
+                              ? option.value === "user"
+                                ? "User"
+                                : option.value === "admin"
+                                  ? "Administrator"
+                                  : "Help Desk Engineer"
+                              : current.role,
+                          department:
+                            option.value === "user" ? "Administration" : current.department || "IT",
+                          status:
+                            option.value === "user" ? "Active" : current.status || "Available",
+                        }));
+                      }}
+                      className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
+                        active
+                          ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Staff members use the staff portal, while users use the user portal. Admins get full access.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                label="Full Name"
+                value={form.name}
+                onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+              />
+              <TextField
+                label="Email"
+                value={form.email}
+                onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+              />
+              <TextField
+                label="Username"
+                value={form.username}
+                onChange={(value) => setForm((current) => ({ ...current, username: value }))}
+              />
+              <TextField
+                label={editingId ? "New Password" : "Password"}
+                type="password"
+                value={form.password}
+                onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+                placeholder={editingId ? "Leave blank to keep current" : "Set a login password"}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SelectField
+                label="Role / Position"
+                value={form.role}
+                onChange={(value) => setForm((current) => ({ ...current, role: value }))}
+                options={ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.it_staff}
+              />
+              <SelectField
+                label="Department"
+                value={form.department}
+                onChange={(value) => setForm((current) => ({ ...current, department: value }))}
+                options={form.portal_role === "user" ? ["Administration", ...departments.filter((d) => d !== "Administration")] : departments}
+              />
+              <TextField
+                label="Team"
+                value={form.team}
+                onChange={(value) => setForm((current) => ({ ...current, team: value }))}
+                placeholder="Optional team name"
+              />
+              <SelectField
+                label="Status"
+                value={form.status}
+                onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                options={form.portal_role === "user" ? ["Active", "Inactive"] : statuses}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+              <div>
+                <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <input
+                    type="color"
+                    value={form.avatar_color}
+                    onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
+                    className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{form.avatar_color}</div>
+                    <div className="text-xs text-slate-400">Used in portal badges and cards</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={() => setForm((current) => ({ ...current, portal_role: "it_staff", role: "Help Desk Engineer", department: "IT", status: "Available" }))}
+                  className="w-full rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                >
+                  Quick Staff Setup
+                </button>
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                {error}
+              </div>
+            ) : null}
+            {success ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                {success}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting ? "Saving..." : editingId ? "Update Member" : "Create Member"}
+              </button>
+              <button
+                type="button"
+                onClick={() => resetForm(form.portal_role)}
+                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Reset
+              </button>
+            </div>
+          </form>
+        </SectionShell>
+
+        <div className="space-y-6">
+          <SectionShell
+            title="Search and Filter"
+            subtitle="Focus on the record set you want to review."
+            badge={`${filteredUsers.length} shown`}
+          >
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Search</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search name, email, username, role..."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Record Type</span>
+                <select
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                >
+                  <option value="all">All Records</option>
+                  <option value="staff">Staff Only</option>
+                  <option value="users">Users Only</option>
+                  <option value="admins">Admins Only</option>
+                </select>
+              </label>
+            </div>
+          </SectionShell>
+
+          <SectionShell title="IT Staff Records" subtitle="Accounts that can sign in to the staff portal." badge={`${staffRecords.length}`}>
+            <RecordsTable
+              records={staffRecords}
+              emptyText="No IT staff members found."
+              onEdit={startEdit}
+              onDelete={remove}
+            />
+          </SectionShell>
+
+          <SectionShell title="User Records" subtitle="End-user accounts used for the user portal." badge={`${userRecords.length}`}>
+            <RecordsTable
+              records={userRecords}
+              emptyText="No user accounts found."
+              onEdit={startEdit}
+              onDelete={remove}
+            />
+          </SectionShell>
+
+          <SectionShell title="Admin Records" subtitle="Privileged accounts with full access." badge={`${adminRecords.length}`}>
+            <RecordsTable
+              records={adminRecords}
+              emptyText="No admin accounts found."
+              onEdit={startEdit}
+              onDelete={remove}
+            />
+          </SectionShell>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-400">
+          Loading team records...
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange, type = "text", placeholder = "" }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <input
+        type={type}
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+      />
+    </label>
+  );
+}
+
+function SelectField({ label, value, onChange, options = [] }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <select
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+      >
+        {options.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function RecordsTable({ records, emptyText, onEdit, onDelete }) {
+  if (!records.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-10 text-center text-sm text-slate-400">
+        {emptyText}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-slate-50/80 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Member</th>
+              <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Access</th>
+              <th className="px-4 py-3">Department</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((user) => (
+              <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} />
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
