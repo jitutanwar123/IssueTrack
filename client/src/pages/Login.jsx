@@ -146,21 +146,21 @@ export default function Login() {
 
           {/* Portal links */}
           <div
-            className="pt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:items-center"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}
+            className="mt-3 flex flex-col gap-2 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+            style={{ borderTopColor: "rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}
           >
-            <span className="sm:text-left">
-              Not an admin?{" "}
+            <div className="flex items-center gap-1 sm:min-h-11">
+              <span>Not an admin?</span>
               <Link to="/user-login" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
                 User Portal →
               </Link>
-            </span>
-            <span className="sm:text-right">
-              IT Staff?{" "}
+            </div>
+            <div className="flex items-center gap-1 sm:min-h-11 sm:justify-end">
+              <span>IT Staff?</span>
               <Link to="/staff-login" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
                 Staff Portal →
               </Link>
-            </span>
+            </div>
           </div>
         </form>
       </div>
