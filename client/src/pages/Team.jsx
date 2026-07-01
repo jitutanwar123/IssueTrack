@@ -110,12 +110,12 @@ function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
 
   return (
     <tr className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-      <td className="px-4 py-4">
+      <td className="px-3 py-3 lg:px-4">
         <div className="font-semibold text-slate-900">{user.name}</div>
         <div className="text-sm text-slate-500">{user.email}</div>
       </td>
-      <td className="px-4 py-4 text-sm text-slate-700">{user.role || "—"}</td>
-      <td className="px-4 py-4">
+      <td className="px-3 py-3 text-sm text-slate-700 lg:px-4">{user.role || "—"}</td>
+      <td className="px-3 py-3 lg:px-4">
         <span
           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
             user.portal_role === "admin"
@@ -128,9 +128,9 @@ function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
           {portalLabel}
         </span>
       </td>
-      {showDepartment ? <td className="px-4 py-4 text-sm text-slate-700">{user.department || "—"}</td> : null}
-      <td className="px-4 py-4 text-sm text-slate-700">{user.status || "—"}</td>
-      <td className="px-4 py-4">
+      {showDepartment ? <td className="px-3 py-3 text-sm text-slate-700 lg:px-4">{user.department || "—"}</td> : null}
+      <td className="px-3 py-3 text-sm text-slate-700 lg:px-4">{user.status || "—"}</td>
+      <td className="px-3 py-3 lg:px-4">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -785,15 +785,29 @@ function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = t
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="overflow-x-auto">
-        <table className="min-w-full">
+        <table className="w-full table-fixed">
           <thead className="bg-slate-50/80 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
             <tr>
-              <th className="px-4 py-3">Member</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Access</th>
-              {showDepartment ? <th className="px-4 py-3">Department</th> : null}
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-3 py-3 lg:px-4" style={{ width: showDepartment ? "30%" : "34%" }}>
+                Member
+              </th>
+              <th className="px-3 py-3 lg:px-4" style={{ width: showDepartment ? "18%" : "20%" }}>
+                Role
+              </th>
+              <th className="px-3 py-3 lg:px-4" style={{ width: "14%" }}>
+                Access
+              </th>
+              {showDepartment ? (
+                <th className="px-3 py-3 lg:px-4" style={{ width: "14%" }}>
+                  Department
+                </th>
+              ) : null}
+              <th className="px-3 py-3 lg:px-4" style={{ width: "12%" }}>
+                Status
+              </th>
+              <th className="px-3 py-3 lg:px-4" style={{ width: showDepartment ? "12%" : "20%" }}>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
