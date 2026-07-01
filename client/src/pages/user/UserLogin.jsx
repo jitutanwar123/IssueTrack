@@ -48,7 +48,7 @@ export default function UserLogin() {
         <div className="mb-8 flex flex-col items-center text-center">
           <img src={virajLogo} alt="Viraj Profiles Limited" className="h-16 w-auto object-contain mb-4" />
           <h1 className="text-lg font-bold text-white tracking-tight">Viraj Profiles Limited</h1>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "rgba(148,163,184,0.7)" }}>User Support Portal</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "rgba(148,163,184,0.9)" }}>User Support Portal</p>
         </div>
 
         {/* Divider */}
@@ -60,7 +60,7 @@ export default function UserLogin() {
         <form onSubmit={submit} autoComplete="off" className="space-y-4">
           {/* Email */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(148,163,184,0.8)" }}>
+            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(226,232,240,0.9)" }}>
               Email Address
             </label>
             <input
@@ -77,7 +77,7 @@ export default function UserLogin() {
 
           {/* Password */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(148,163,184,0.8)" }}>
+            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(226,232,240,0.9)" }}>
               Password
             </label>
             <div className="relative">
@@ -94,7 +94,9 @@ export default function UserLogin() {
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                aria-label={showPw ? "Hide password" : "Show password"}
+                title={showPw ? "Hide password" : "Show password"}
+                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
               >
                 {showPw ? (
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -141,9 +143,9 @@ export default function UserLogin() {
           </button>
 
           {/* Create account */}
-          <div className="pt-3 text-center text-xs" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(148,163,184,0.7)" }}>
+          <div className="pt-3 text-center text-sm" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}>
             New here?{" "}
-            <Link to="/register" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
+            <Link to="/register" className="inline-flex min-h-11 items-center font-semibold text-cyan-300 hover:text-cyan-200 transition-colors">
               Create an account →
             </Link>
           </div>
