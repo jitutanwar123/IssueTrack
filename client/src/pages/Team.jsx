@@ -107,48 +107,78 @@ function GhostButton({ children, className = "", ...props }) {
 function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
   const portalLabel =
     user.portal_role === "it_staff" ? "IT Staff" : user.portal_role === "admin" ? "Admin" : "User";
+  const statusTone =
+    user.status === "Available"
+      ? "bg-emerald-100 text-emerald-700"
+      : user.status === "Busy"
+        ? "bg-amber-100 text-amber-700"
+        : user.status === "Away"
+          ? "bg-orange-100 text-orange-700"
+          : "bg-slate-100 text-slate-600";
 
   return (
-    <tr className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-      <td className="px-3 py-3 lg:px-4">
-        <div className="font-semibold text-slate-900">{user.name}</div>
-        <div className="text-sm text-slate-500">{user.email}</div>
-      </td>
-      <td className="px-3 py-3 text-sm text-slate-700 lg:px-4">{user.role || "—"}</td>
-      <td className="px-3 py-3 lg:px-4">
-        <span
-          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-            user.portal_role === "admin"
-              ? "bg-purple-100 text-purple-700"
-              : user.portal_role === "it_staff"
-                ? "bg-cyan-100 text-cyan-700"
-                : "bg-slate-100 text-slate-600"
-          }`}
-        >
-          {portalLabel}
-        </span>
-      </td>
-      {showDepartment ? <td className="px-3 py-3 text-sm text-slate-700 lg:px-4">{user.department || "—"}</td> : null}
-      <td className="px-3 py-3 text-sm text-slate-700 lg:px-4">{user.status || "—"}</td>
-      <td className="px-3 py-3 lg:px-4">
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(user)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(user.id)}
-            className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
-          >
-            Delete
-          </button>
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="text-base font-semibold leading-6 text-slate-900 break-words">{user.name}</div>
+          <div className="mt-1 text-sm leading-5 text-slate-500 break-words">{user.email}</div>
         </div>
-      </td>
-    </tr>
+        <div className="flex flex-wrap gap-2 md:justify-end">
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+              user.portal_role === "admin"
+                ? "bg-purple-100 text-purple-700"
+                : user.portal_role === "it_staff"
+                  ? "bg-cyan-100 text-cyan-700"
+                  : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {portalLabel}
+          </span>
+          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone}`}>
+            {user.status || "—"}
+          </span>
+        </div>
+      </div>
+
+      <div className={`mt-4 grid gap-3 ${showDepartment ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+        <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Role</div>
+          <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.role || "—"}</div>
+        </div>
+        <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Access</div>
+          <div className="mt-1 text-sm font-medium text-slate-700">{portalLabel}</div>
+        </div>
+        {showDepartment ? (
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Department</div>
+            <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.department || "—"}</div>
+          </div>
+        ) : null}
+        <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Team</div>
+          <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.team || "—"}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => onEdit(user)}
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(user.id)}
+          className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+        >
+          Delete
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -705,6 +735,7 @@ export default function Team() {
               onEdit={startEdit}
               onDelete={remove}
               showDepartment
+              loading={loading}
             />
           </SectionShell>
 
@@ -715,6 +746,7 @@ export default function Team() {
               onEdit={startEdit}
               onDelete={remove}
               showDepartment={false}
+              loading={loading}
             />
           </SectionShell>
 
@@ -725,16 +757,12 @@ export default function Team() {
               onEdit={startEdit}
               onDelete={remove}
               showDepartment
+              loading={loading}
             />
           </SectionShell>
         </div>
       </div>
 
-      {loading && (
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-400">
-          Loading team records...
-        </div>
-      )}
     </div>
   );
 }
@@ -773,7 +801,34 @@ function SelectField({ label, value, onChange, options = [] }) {
   );
 }
 
-function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = true }) {
+function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = true, loading = false }) {
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-4 w-40 rounded bg-slate-200" />
+                <div className="h-3 w-56 rounded bg-slate-200" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-6 w-16 rounded-full bg-slate-200" />
+                <div className="h-6 w-16 rounded-full bg-slate-200" />
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="h-14 rounded-xl bg-slate-200" />
+              <div className="h-14 rounded-xl bg-slate-200" />
+              <div className="h-14 rounded-xl bg-slate-200" />
+              <div className="h-14 rounded-xl bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (!records.length) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-10 text-center text-sm text-slate-400">
@@ -783,40 +838,10 @@ function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = t
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed">
-          <thead className="bg-slate-50/80 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
-            <tr>
-              <th className="px-3 py-3 lg:px-4" style={{ width: showDepartment ? "30%" : "34%" }}>
-                Member
-              </th>
-              <th className="px-3 py-3 lg:px-4" style={{ width: showDepartment ? "18%" : "20%" }}>
-                Role
-              </th>
-              <th className="px-3 py-3 lg:px-4" style={{ width: "14%" }}>
-                Access
-              </th>
-              {showDepartment ? (
-                <th className="px-3 py-3 lg:px-4" style={{ width: "14%" }}>
-                  Department
-                </th>
-              ) : null}
-              <th className="px-3 py-3 lg:px-4" style={{ width: "12%" }}>
-                Status
-              </th>
-              <th className="px-3 py-3 lg:px-4" style={{ width: showDepartment ? "12%" : "20%" }}>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((user) => (
-              <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} showDepartment={showDepartment} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-3">
+      {records.map((user) => (
+        <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} showDepartment={showDepartment} />
+      ))}
     </div>
   );
 }
