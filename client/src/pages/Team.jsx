@@ -208,6 +208,7 @@ export default function Team() {
     event.preventDefault();
     const container = splitRef.current;
     if (!container) return;
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
 
     const onMove = (moveEvent) => {
       const rect = container.getBoundingClientRect();
@@ -220,12 +221,16 @@ export default function Team() {
     const stop = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", stop);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", stop);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", stop);
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", stop);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", stop);
     window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", stop);
   }
@@ -372,9 +377,9 @@ export default function Team() {
       <div
         ref={splitRef}
         className="grid gap-6 xl:items-stretch xl:gap-0"
-        style={{ gridTemplateColumns: `${splitPercent}fr 14px ${100 - splitPercent}fr` }}
+        style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
-        <div className="xl:pr-3" style={{ gridColumn: "1" }}>
+        <div className="min-w-0 xl:pr-3" style={{ gridColumn: "1" }}>
           <SectionShell
             title={editingId ? "Edit Team Member" : "Create Team Member"}
             subtitle="Choose the login type first, then fill in the profile details."
@@ -654,14 +659,14 @@ export default function Team() {
             onPointerDown={beginSplitDrag}
             onTouchStart={beginSplitDrag}
             className="relative flex h-full w-full items-stretch justify-center"
-            style={{ cursor: "col-resize" }}
+            style={{ cursor: "col-resize", touchAction: "none", userSelect: "none" }}
           >
             <span className="h-full w-px bg-slate-200" />
             <span className="absolute top-1/2 h-16 w-3 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow-sm" />
           </button>
         </div>
 
-        <div className="space-y-6 xl:pl-3" style={{ gridColumn: "3" }}>
+        <div className="min-w-0 space-y-6 xl:pl-3" style={{ gridColumn: "3" }}>
           <SectionShell
             title="Search and Filter"
             subtitle="Focus on the record set you want to review."
