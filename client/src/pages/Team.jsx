@@ -23,7 +23,7 @@ const STAFF_ROLE_OPTIONS = [
   "Network Administrator",
   "System Administrator",
   "Infrastructure Manager",
-  "New",
+  "New Position",
 ];
 
 const portalRoles = [
@@ -43,6 +43,7 @@ function emptyForm(portal_role = "it_staff") {
     password: "",
     role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : "Help Desk Engineer",
     staff_position: portal_role === "user" ? "" : "Help Desk Engineer",
+    custom_position: "",
     team: "",
     status: portal_role === "user" ? "Active" : "Available",
     avatar_color: "#0f172a",
@@ -234,13 +235,16 @@ export default function Team() {
   function startEdit(user) {
     setNewStaffOpen(false);
     setEditingId(user.id);
+    const staffRole = user.portal_role === "it_staff" ? user.role || "Help Desk Engineer" : "";
+    const isCustomStaffRole = user.portal_role === "it_staff" && staffRole && !STAFF_ROLE_OPTIONS.includes(staffRole);
     setForm({
       name: user.name || "",
       email: user.email || "",
       username: user.username || "",
       password: "",
-      role: user.role || (user.portal_role === "user" ? "User" : "Help Desk Engineer"),
-      staff_position: user.portal_role === "it_staff" ? user.role || "Help Desk Engineer" : "",
+      role: user.portal_role === "it_staff" && isCustomStaffRole ? "New Position" : user.role || (user.portal_role === "user" ? "User" : "Help Desk Engineer"),
+      staff_position: user.portal_role === "it_staff" ? (isCustomStaffRole ? "New Position" : staffRole || "Help Desk Engineer") : "",
+      custom_position: user.portal_role === "it_staff" && isCustomStaffRole ? staffRole : "",
       team: user.team || "",
       status: user.status || (user.portal_role === "user" ? "Active" : "Available"),
       avatar_color: user.avatar_color || "#0f172a",
@@ -260,9 +264,9 @@ export default function Team() {
         role:
           form.portal_role === "user"
             ? "User"
-            : form.role === "New"
-              ? form.staff_position || "Help Desk Engineer"
-              : form.role,
+            : form.staff_position === "New Position"
+              ? form.custom_position || "Custom Position"
+              : form.staff_position || form.role,
         department: form.portal_role === "user" ? "" : form.department,
       };
       if (editingId) {
@@ -348,7 +352,7 @@ export default function Team() {
                       onClick={() => {
                         const nextRole =
                           option.value === "it_staff"
-                            ? "New"
+                            ? "New Position"
                             : option.value === "admin"
                               ? "Administrator"
                               : "User";
@@ -357,6 +361,7 @@ export default function Team() {
                           portal_role: option.value,
                           role: nextRole,
                           staff_position: option.value === "it_staff" ? current.staff_position || "Help Desk Engineer" : "",
+                          custom_position: "",
                           department: option.value === "user" ? "" : current.department || "IT",
                           status: option.value === "user" ? "Active" : current.status || "Available",
                         }));
@@ -389,13 +394,14 @@ export default function Team() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
+                      onClick={() => {
                       setNewStaffOpen(false);
                       setForm((current) => ({
                         ...current,
                         role: current.staff_position || "Help Desk Engineer",
                         portal_role: "it_staff",
                         staff_position: current.staff_position || "Help Desk Engineer",
+                        custom_position: "",
                         department: "IT",
                         status: "Available",
                       }));
@@ -430,11 +436,26 @@ export default function Team() {
                     placeholder="Set staff login password"
                   />
                   <SelectField
-                    label="Position"
+                    label="Role / Position"
                     value={form.staff_position}
-                    onChange={(value) => setForm((current) => ({ ...current, staff_position: value, role: value }))}
-                    options={STAFF_ROLE_OPTIONS.filter((item) => item !== "New")}
+                    onChange={(value) =>
+                      setForm((current) => ({
+                        ...current,
+                        staff_position: value,
+                        role: value === "New Position" ? "New Position" : value,
+                        custom_position: value === "New Position" ? current.custom_position : "",
+                      }))
+                    }
+                    options={STAFF_ROLE_OPTIONS}
                   />
+                  {form.staff_position === "New Position" ? (
+                    <TextField
+                      label="Custom Role / Position"
+                      value={form.custom_position}
+                      onChange={(value) => setForm((current) => ({ ...current, custom_position: value }))}
+                      placeholder="Enter a new role for this staff member"
+                    />
+                  ) : null}
                   <SelectField
                     label="Department"
                     value={form.department}
@@ -495,20 +516,21 @@ export default function Team() {
                     label="Role / Position"
                     value={form.role}
                     onChange={(value) => {
-                      if (value === "New") {
+                      if (value === "New Position") {
                         setNewStaffOpen(true);
                         setForm((current) => ({
                           ...current,
                           portal_role: "it_staff",
-                          role: "New",
+                          role: "New Position",
                           staff_position: current.staff_position || "Help Desk Engineer",
+                          custom_position: "",
                           department: "IT",
                           status: "Available",
                         }));
                         return;
                       }
                       setNewStaffOpen(false);
-                      setForm((current) => ({ ...current, role: value, staff_position: "" }));
+                      setForm((current) => ({ ...current, role: value, staff_position: "", custom_position: "" }));
                     }}
                     options={roleOptions}
                   />
