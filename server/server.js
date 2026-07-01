@@ -1252,7 +1252,13 @@ app.patch("/api/admin/tickets/:id/status", authenticateJWT, requireAdmin, async 
     if (isClosedStatus(oldTicket?.status)) {
       return res.status(409).json({ message: "Closed tickets are read-only" });
     }
-    await query("UPDATE tickets SET status = ?, updated_at = NOW() WHERE id = ?", [status, id]);
+    const nextSql =
+      status === "Resolved"
+        ? "UPDATE tickets SET status = ?, resolved_at = NOW(), actual_closure_date = NOW(), updated_at = NOW() WHERE id = ?"
+        : status === "Closed"
+          ? "UPDATE tickets SET status = ?, actual_closure_date = NOW(), updated_at = NOW() WHERE id = ?"
+          : "UPDATE tickets SET status = ?, updated_at = NOW() WHERE id = ?";
+    await query(nextSql, [status, id]);
 
     // Record history
     await query(
@@ -1327,11 +1333,12 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
     // Update ticket in DB
     await query(
       `UPDATE tickets
-         SET status        = 'Resolved',
-             resolved_at   = NOW(),
-             resolution_note = ?,
-             resolved_by   = ?,
-             updated_at    = NOW()
+         SET status            = 'Resolved',
+             resolved_at       = NOW(),
+             actual_closure_date = NOW(),
+             resolution_note   = ?,
+             resolved_by       = ?,
+             updated_at        = NOW()
        WHERE id = ?`,
       [resolutionNote.trim(), resolvedByName, id]
     );
@@ -1416,9 +1423,16 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
     if (status === "Resolved") {
       await query(
         `UPDATE tickets
-           SET status = ?, resolved_at = NOW(), resolved_by = ?, resolution_note = ?, updated_at = NOW()
+           SET status = ?, resolved_at = NOW(), actual_closure_date = NOW(), resolved_by = ?, resolution_note = ?, updated_at = NOW()
          WHERE id = ?`,
         [status, staffName, cleanNote || current.resolution_note || "", id]
+      );
+    } else if (status === "Closed") {
+      await query(
+        `UPDATE tickets
+           SET status = ?, actual_closure_date = NOW(), updated_at = NOW()
+         WHERE id = ?`,
+        [status, id]
       );
     } else {
       await query(
@@ -1538,9 +1552,17 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
         byCategory:    Object.entries(categoryMap).map(([name, value]) => ({ name, value })),
         resolvedPerMonth: Object.entries(monthMap).map(([name, value]) => ({ name, value })),
         tickets: rows.map(t => ({
-          ticket_id: t.ticket_id, title: t.title, category: t.category,
-          priority: t.priority, status: t.status, customer_name: t.customer_name,
-          created_at: t.created_at, actual_closure_date: t.actual_closure_date,
+          ticket_id: t.ticket_id,
+          title: t.title,
+          category: t.category,
+          priority: t.priority,
+          status: t.status,
+          customer_name: t.customer_name,
+          created_at: t.created_at,
+          actual_closure_date: t.actual_closure_date,
+          resolved_at: t.resolved_at,
+          closed_at: t.closed_at,
+          updated_at: t.updated_at,
           resolution_time: t.resolution_time,
         })),
       },

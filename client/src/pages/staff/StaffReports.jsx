@@ -7,7 +7,7 @@ import {
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api } from "../../utils/api.js";
 import { exportStaffReportExcel } from "../../utils/excelExport.js";
-import { formatMinutes } from "../../utils/helpers.js";
+import { formatDateTime, formatMinutes } from "../../utils/helpers.js";
 
 // ── Colour palette ──────────────────────────────────────────────────────────
 const COLORS = ["#2563eb", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2", "#64748b"];
@@ -293,7 +293,7 @@ export default function StaffReports() {
                       {t.created_at ? new Date(t.created_at).toLocaleDateString("en-IN") : "—"}
                     </td>
                     <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
-                      {t.actual_closure_date ? new Date(t.actual_closure_date).toLocaleDateString("en-IN") : "—"}
+                      {formatDateTime(t.actual_closure_date || t.resolved_at || t.closed_at || t.updated_at)}
                     </td>
                   </tr>
                 ))}
