@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { clearToken } from "../../utils/api.js";
 import virajLogo from "../../viraaj.webp";
 
 export default function UserLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,23 +14,22 @@ export default function UserLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { clearToken(); }, []);
-
   async function submit(event) {
     event.preventDefault();
     setLoading(true);
     setError("");
     try {
       const user = await login(null, password, email);
+      const fallback = location.state?.from || "/user/dashboard";
       if (
         user?.portal_role === "admin" ||
         user?.role === "Administrator" ||
         user?.role === "admin" ||
         user?.role === "Admin"
       ) {
-        navigate("/", { replace: true });
+        navigate(location.state?.from || "/", { replace: true });
       } else {
-        navigate("/user/dashboard", { replace: true });
+        navigate(fallback, { replace: true });
       }
     } catch (err) {
       setError(err.message);

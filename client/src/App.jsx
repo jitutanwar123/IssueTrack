@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar.jsx";
 import { UserSidebar } from "./components/UserSidebar.jsx";
 import { StaffSidebar } from "./components/StaffSidebar.jsx";
@@ -162,25 +162,28 @@ function StaffShell({ children }) {
 // ─── Route Guards ────────────────────────────────────────────────────────────
 function ProtectedAdminRoute({ children }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingScreen />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/user/dashboard" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!isAdmin) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return children;
 }
 
 function ProtectedUserRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingScreen />;
-  if (!isAuthenticated) return <Navigate to="/user-login" replace />;
+  if (!isAuthenticated) return <Navigate to="/user-login" replace state={{ from: location.pathname }} />;
   return children;
 }
 
 function ProtectedStaffRoute({ children }) {
   const { isAuthenticated, isStaff, isAdmin, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingScreen />;
-  if (!isAuthenticated) return <Navigate to="/staff-login" replace />;
+  if (!isAuthenticated) return <Navigate to="/staff-login" replace state={{ from: location.pathname }} />;
   // Allow both staff and admin to access staff portal (admin supervising)
-  if (!isStaff && !isAdmin) return <Navigate to="/user/dashboard" replace />;
+  if (!isStaff && !isAdmin) return <Navigate to="/staff-login" replace state={{ from: location.pathname }} />;
   return children;
 }
 
@@ -258,4 +261,3 @@ export default function App() {
     </ToastProvider>
   );
 }
-

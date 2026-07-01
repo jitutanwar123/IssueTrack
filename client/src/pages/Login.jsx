@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { clearToken } from "../utils/api.js";
 import virajLogo from "../viraaj.webp";
 
 export default function Login() {
@@ -14,8 +13,6 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => { clearToken(); }, []);
 
   async function submit(event) {
     event.preventDefault();

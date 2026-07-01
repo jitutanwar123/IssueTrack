@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { clearToken } from "../../utils/api.js";
 import virajLogo from "../../viraaj.webp";
 
 export default function StaffLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,15 +14,13 @@ export default function StaffLogin() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { clearToken(); }, []);
-
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
       await login(email, password);
-      navigate("/staff/dashboard", { replace: true });
+      navigate(location.state?.from || "/staff/dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Invalid credentials");
     } finally {
