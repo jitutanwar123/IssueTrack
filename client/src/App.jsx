@@ -84,7 +84,7 @@ function UserShell({ children }) {
         >
           <div className="flex h-full items-center justify-between px-6 lg:px-8">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Viraj Profiles Limited</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Viraj Profiles Limited</p>
               <h1 className="text-base font-bold text-slate-900 leading-tight">User Support Portal</h1>
             </div>
             <div
@@ -99,7 +99,7 @@ function UserShell({ children }) {
               </div>
               <div className="hidden sm:block leading-tight">
                 <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-                <div className="text-[11px] text-slate-400">{user?.department || "User"}</div>
+                <div className="text-[11px] text-slate-500">{user?.department || "User"}</div>
               </div>
             </div>
           </div>
@@ -132,7 +132,7 @@ function StaffShell({ children }) {
         >
           <div className="flex h-full items-center justify-between px-6 lg:px-8">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Viraj Profiles Limited</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Viraj Profiles Limited</p>
               <h1 className="text-base font-bold text-slate-900 leading-tight">IT Staff Portal</h1>
             </div>
             <div
@@ -147,7 +147,7 @@ function StaffShell({ children }) {
               </div>
               <div className="hidden sm:block leading-tight">
                 <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-                <div className="text-[11px] text-slate-400">{user?.role || "IT Staff"}</div>
+                <div className="text-[11px] text-slate-500">{user?.role || "IT Staff"}</div>
               </div>
             </div>
           </div>

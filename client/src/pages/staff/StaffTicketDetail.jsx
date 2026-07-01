@@ -275,7 +275,7 @@ export default function StaffTicketDetail() {
             <span>›</span>
             <span className="font-medium text-slate-800">{ticket.ticket_id || `INC${ticket.id}`}</span>
           </div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Viraj Profiles Limited
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{ticket.title}</h1>

@@ -70,7 +70,7 @@ export function StaffSidebar() {
           IT
         </div>
         <div className="leading-tight">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(148,163,184,0.5)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(148,163,184,0.8)" }}>
             Viraj Profiles
           </div>
           <div className="text-sm font-bold text-white">Staff Portal</div>
@@ -134,7 +134,7 @@ export function StaffSidebar() {
           </div>
           <div className="min-w-0 leading-tight">
             <div className="truncate text-sm font-semibold text-white">{user?.name}</div>
-            <div className="truncate text-[10px]" style={{ color: "rgba(148,163,184,0.6)" }}>
+            <div className="truncate text-[10px]" style={{ color: "rgba(148,163,184,0.82)" }}>
               {user?.role || "IT Staff"}
             </div>
           </div>
