@@ -143,17 +143,15 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ── Hero ── */}
-      <section className="hero-banner rounded-2xl p-6 text-white shadow-elevated relative overflow-hidden">
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
-              style={{ background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd" }}>
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] mb-3 text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
               Operations Snapshot
             </div>
-            <h2 className="text-2xl font-bold tracking-tight">Live Ticket Control Room</h2>
-            <p className="mt-2 max-w-xl text-sm" style={{ color: "rgba(203,213,225,0.75)" }}>
+            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Live Ticket Control Room</h2>
+            <p className="mt-2 max-w-xl text-sm text-slate-500">
               Monitor open work, SLA risk, and resolver load across incident and service request queues.
             </p>
           </div>
@@ -161,12 +159,11 @@ export default function Dashboard() {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/10 disabled:opacity-60"
-              style={{ borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }}
+              className="btn-secondary disabled:opacity-60"
             >
               {refreshing ? (
                 <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
                   Refreshing…
                 </>
               ) : (
@@ -181,11 +178,7 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        {lastRefreshed && (
-          <div className="relative z-10 mt-3 text-right text-[11px]" style={{ color: "rgba(148,163,184,0.7)" }}>
-            ✓ Updated at {lastRefreshed.toLocaleTimeString("en-IN")}
-          </div>
-        )}
+        {lastRefreshed && <div className="mt-3 text-right text-[11px] text-slate-400">Updated at {lastRefreshed.toLocaleTimeString("en-IN")}</div>}
       </section>
 
       {/* ── Stats Cards ── */}

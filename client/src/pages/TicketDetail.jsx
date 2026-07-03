@@ -7,9 +7,9 @@ import { formatDateTime, formatMinutes, getStatusLabel } from "../utils/helpers.
 
 function SectionCard({ title, subtitle, children }) {
   return (
-    <section className="overflow-hidden rounded-2xl bg-white" style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+    <section className="overflow-hidden rounded-2xl bg-white shadow-soft" style={{ border: "1px solid #dbe3ec" }}>
       <div className="border-b border-slate-100 px-5 py-4">
-        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
         {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
       </div>
       <div className="p-5">{children}</div>
@@ -142,44 +142,41 @@ export default function TicketDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Viraj Profiles Limited
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Viraj Profiles Limited
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Link to="/tickets" className="hover:text-slate-800">Tickets</Link>
+              <span>›</span>
+              <span className="font-medium text-slate-800">{ticket.ticket_id || `INC${ticket.id}`}</span>
+            </div>
+            <h1 className="text-[28px] font-semibold tracking-tight text-slate-900">{ticket.title}</h1>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Link to="/tickets" className="hover:text-slate-800">Tickets</Link>
-            <span>›</span>
-            <span className="font-medium text-slate-800">{ticket.ticket_id || `INC${ticket.id}`}</span>
+          <div className="flex items-center gap-2">
+            <button onClick={downloadPdf} className="btn-secondary">PDF</button>
+            <button
+              onClick={deleteTicket}
+              disabled={deleting}
+              className="btn-danger disabled:opacity-60"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{ticket.title}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadPdf}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            PDF
-          </button>
-          <button
-            onClick={deleteTicket}
-            disabled={deleting}
-            className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-60"
-          >
-            {deleting ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </div>
+      </section>
 
       {closed && (
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600">
           This ticket is closed and read-only for everyone.
         </div>
       )}
 
-      <section className="rounded-2xl bg-white p-5" style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+      <section className="rounded-2xl bg-white p-5 shadow-soft" style={{ border: "1px solid #dbe3ec" }}>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold tracking-wider text-slate-500">
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tracking-wider text-slate-500">
             {ticket.ticket_id || `INC${ticket.id}`}
           </span>
           <StatusBadge status={ticket.priority} type="priority" />
@@ -222,7 +219,7 @@ export default function TicketDetail() {
             <SectionCard title="Status History" subtitle="Chronological activity log">
               <div className="space-y-3">
                 {timeline.map((entry) => (
-                  <div key={`${entry.type}-${entry.id}`} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div key={`${entry.type}-${entry.id}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="text-xs font-semibold text-slate-700">
                         {entry.type === "comment"

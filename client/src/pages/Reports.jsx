@@ -43,26 +43,27 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Reports</h2>
-          <p className="mt-1 text-sm text-slate-500">Operational charts and exportable summary views.</p>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Analytics</div>
+            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Reports</h2>
+            <p className="mt-1 text-sm text-slate-500">Operational charts and exportable summary views.</p>
+          </div>
+          <button
+            onClick={exportExcel}
+            className="btn-secondary"
+            disabled={!data?.tickets?.length}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 17l2-3-2-3H10l1.25 2L12.5 11H14l-2 3 2 3h-1.5L11 15l-1.25 2H8.5z"/>
+            </svg>
+            Export Excel
+          </button>
         </div>
-        <button
-          onClick={exportExcel}
-          className="rounded-2xl px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 flex items-center gap-2"
-          style={{ background: "linear-gradient(135deg,#1d6f42,#157347)", boxShadow: "0 4px 14px rgba(21,115,71,0.35)" }}
-        >
-          {/* Excel icon */}
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 17l2-3-2-3H10l1.25 2L12.5 11H14l-2 3 2 3h-1.5L11 15l-1.25 2H8.5z"/>
-          </svg>
-          Export Excel
-        </button>
-      </div>
+      </section>
 
-      {/* Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+      <div className="pro-card p-5">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FilterInput label="From" type="date" value={filters.from} onChange={(v) => setFilters((f) => ({ ...f, from: v }))} />
           <FilterInput label="To" type="date" value={filters.to} onChange={(v) => setFilters((f) => ({ ...f, to: v }))} />
@@ -73,8 +74,7 @@ export default function Reports() {
           <button
             onClick={applyFilters}
             disabled={loading}
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-            style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", boxShadow: "0 3px 12px rgba(37,99,235,0.3)" }}
+            className="btn-primary"
           >
             {loading ? (
               <>
@@ -100,7 +100,7 @@ export default function Reports() {
                 setFilters(cleared);
                 loadData(cleared);
               }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              className="btn-secondary"
             >
               Clear
             </button>

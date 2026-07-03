@@ -76,10 +76,10 @@ function SectionShell({ title, subtitle, children, badge }) {
 
 function Metric({ label, value, hint, accent = "blue" }) {
   const styles = {
-    blue: { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" },
-    cyan: { bg: "#ecfeff", text: "#0891b2", border: "#a5f3fc" },
-    purple: { bg: "#f5f3ff", text: "#7c3aed", border: "#ddd6fe" },
-    emerald: { bg: "#f0fdf4", text: "#059669", border: "#bbf7d0" },
+    blue: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+    cyan: { bg: "#f0fdfa", text: "#0f766e", border: "#99f6e4" },
+    purple: { bg: "#f8fafc", text: "#475569", border: "#e2e8f0" },
+    emerald: { bg: "#f0fdf4", text: "#0f766e", border: "#bbf7d0" },
   };
   const c = styles[accent] || styles.blue;
   return (
@@ -377,19 +377,18 @@ export default function Team() {
   return (
     <div className="space-y-6">
       <section
-        className="overflow-hidden rounded-3xl text-white"
+        className="overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
         style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #111827 45%, #1e293b 100%)",
-          boxShadow: "0 18px 50px rgba(15,23,42,0.18)",
+          border: "1px solid #dbe3ec",
         }}
       >
         <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Team Directory
             </div>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight">Separate user and staff records in one place</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+            <h2 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-900">Separate user and staff records in one place</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
               Manage portal access cleanly with dedicated records for users, IT staff, and admins. Create new staff members,
               update roles, and keep the login structure organized.
             </p>

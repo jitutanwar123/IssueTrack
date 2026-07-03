@@ -127,29 +127,29 @@ export default function StaffReports() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">My Reports</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Personal performance overview for <span className="font-semibold text-slate-700">{user?.name}</span>
-          </p>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Staff Analytics</div>
+            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">My Reports</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Personal performance overview for <span className="font-semibold text-slate-700">{user?.name}</span>
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={!data?.tickets?.length}
+            className="btn-secondary disabled:opacity-40"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 17l2-3-2-3H10l1.25 2L12.5 11H14l-2 3 2 3h-1.5L11 15l-1.25 2H8.5z"/>
+            </svg>
+            Export Excel
+          </button>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={!data?.tickets?.length}
-          className="rounded-2xl px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40 flex items-center gap-2"
-          style={{ background: "linear-gradient(135deg,#1d6f42,#157347)", boxShadow: "0 4px 14px rgba(21,115,71,0.3)" }}
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 17l2-3-2-3H10l1.25 2L12.5 11H14l-2 3 2 3h-1.5L11 15l-1.25 2H8.5z"/>
-          </svg>
-          Export Excel
-        </button>
-      </div>
+      </section>
 
-      {/* Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="pro-card p-5">
         <div className="flex flex-wrap gap-4 items-end">
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">From</span>
@@ -169,8 +169,7 @@ export default function StaffReports() {
             <button
               onClick={applyFilters}
               disabled={loading}
-              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 flex items-center gap-2"
-              style={{ background: "linear-gradient(135deg,#7c3aed,#8b5cf6)", boxShadow: "0 3px 12px rgba(124,58,237,0.3)" }}
+              className="btn-primary"
             >
               {loading
                 ? <><svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Loading…</>
@@ -178,7 +177,7 @@ export default function StaffReports() {
             </button>
             {(filters.from || filters.to) && (
               <button onClick={clearFilters}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                className="btn-secondary">
                 Clear
               </button>
             )}

@@ -109,19 +109,18 @@ export default function TicketList() {
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Tickets</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Search, filter and manage all ticket records.</p>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Ticketing</div>
+            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Tickets</h2>
+            <p className="mt-1 text-sm text-slate-500">Search, filter and manage all ticket records from one clean view.</p>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Filter bar */}
-      <div
-        className="rounded-2xl bg-white p-4"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-      >
+      <div className="pro-card p-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <label className="block xl:col-span-2">
             <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Search</span>
@@ -159,10 +158,7 @@ export default function TicketList() {
       </div>
 
       {/* Table */}
-      <div
-        className="overflow-hidden rounded-2xl bg-white"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-      >
+      <div className="pro-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>

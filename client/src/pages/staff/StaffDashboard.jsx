@@ -6,17 +6,17 @@ import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { formatDateTime } from "../../utils/helpers.js";
 
 const STAT_META = [
-  { label: "Open",        color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
-  { label: "In Progress", color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-  { label: "On Hold",     color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
-  { label: "Resolved",    color: "#059669", bg: "#f0fdf4", border: "#bbf7d0" },
+  { label: "Open",        color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe" },
+  { label: "In Progress", color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  { label: "On Hold",     color: "#475569", bg: "#f8fafc", border: "#e2e8f0" },
+  { label: "Resolved",    color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
 ];
 
 function StatCard({ label, value, color, bg, border }) {
   return (
     <div
       className="relative overflow-hidden rounded-2xl bg-white p-5 transition-all duration-200 hover:-translate-y-0.5"
-      style={{ border: `1px solid #e2e8f0`, boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+      style={{ border: `1px solid ${border}`, boxShadow: "0 2px 8px rgba(15,23,42,0.04)" }}
     >
       <div
         className="absolute inset-x-0 top-0 h-[3px] rounded-t-2xl"
@@ -97,40 +97,34 @@ export default function StaffDashboard() {
 
   return (
     <div className="space-y-5">
-      {/* Welcome */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-            Welcome back, {firstName} 👋
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-col gap-1">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Staff Workspace</div>
+          <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">
+            Welcome back, {firstName}
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            {user?.role || "IT Staff"} — tickets assigned to you
+          <p className="text-sm text-slate-500">
+            {user?.role || "IT Staff"} - tickets assigned to you in one focused view.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Link to={ticketStatusLink("Open")} className="block">
-          <StatCard label="Open" value={open} color="#2563eb" bg="#eff6ff" border="#bfdbfe" />
+          <StatCard label="Open" value={open} color="#1d4ed8" bg="#eff6ff" border="#bfdbfe" />
         </Link>
         <Link to={ticketStatusLink("In Progress")} className="block">
-          <StatCard label="In Progress" value={inProgress} color="#d97706" bg="#fffbeb" border="#fde68a" />
+          <StatCard label="In Progress" value={inProgress} color="#b45309" bg="#fffbeb" border="#fde68a" />
         </Link>
         <Link to={ticketStatusLink("On Hold")} className="block">
-          <StatCard label="On Hold" value={onHold} color="#7c3aed" bg="#f5f3ff" border="#ddd6fe" />
+          <StatCard label="On Hold" value={onHold} color="#475569" bg="#f8fafc" border="#e2e8f0" />
         </Link>
         <Link to={ticketStatusLink("Resolved")} className="block">
-          <StatCard label="Resolved" value={resolved} color="#059669" bg="#f0fdf4" border="#bbf7d0" />
+          <StatCard label="Resolved" value={resolved} color="#0f766e" bg="#f0fdfa" border="#99f6e4" />
         </Link>
       </div>
 
-      {/* Filters */}
-      <form
-        onSubmit={applyFilters}
-        className="flex flex-wrap gap-3 rounded-2xl bg-white p-4"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-      >
+      <form onSubmit={applyFilters} className="pro-card flex flex-wrap gap-3 p-4">
         <input
           type="text"
           placeholder="Search by title or ID…"
@@ -167,16 +161,10 @@ export default function StaffDashboard() {
         </button>
       </form>
 
-      {/* Tickets table */}
-      <div
-        className="overflow-hidden rounded-2xl bg-white"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-      >
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
-          <h3 className="text-sm font-bold text-slate-900">
-            My Assigned Tickets
-          </h3>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+      <div className="pro-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
+          <h3 className="text-sm font-semibold text-slate-900">My Assigned Tickets</h3>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
             {filteredTickets.length}
           </span>
         </div>
