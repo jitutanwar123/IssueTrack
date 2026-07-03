@@ -50,11 +50,11 @@ export function UserSidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen z-50 flex flex-col overflow-y-auto"
+      className="fixed left-0 top-0 z-50 flex h-screen flex-col overflow-y-auto"
       style={{
         width: "var(--sidebar-width, 15rem)",
-        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.05)",
+        background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
       }}
     >
       {/* Logo */}
@@ -65,11 +65,11 @@ export function UserSidebar() {
       {/* Portal badge */}
       <div className="px-4 pt-4 pb-2">
         <div
-          className="flex items-center gap-2 rounded-lg px-3 py-2"
-          style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.2)" }}
+          className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-accent-400 animate-pulse-slow" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent-400">User Support Portal</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">User Support Portal</span>
         </div>
       </div>
 
@@ -114,13 +114,13 @@ export function UserSidebar() {
           <div className="flex items-center gap-3 px-2">
             <div
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #0891b2, #06b6d4)" }}
+              style={{ background: "linear-gradient(135deg, #334155, #475569)" }}
             >
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 leading-tight">
               <div className="truncate text-sm font-semibold text-white">{user.name}</div>
-              <div className="text-[10px]" style={{ color: "rgba(148,163,184,0.6)" }}>{user.department || "User"}</div>
+              <div className="text-[10px]" style={{ color: "rgba(148,163,184,0.66)" }}>{user.department || "User"}</div>
             </div>
           </div>
         )}
@@ -129,7 +129,7 @@ export function UserSidebar() {
           className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 hover:text-white"
           style={{
             background: "rgba(255,255,255,0.04)",
-            color: "rgba(148,163,184,0.7)",
+            color: "rgba(226,232,240,0.72)",
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >

@@ -14,10 +14,10 @@ const SUB_CATEGORIES = {
 };
 
 const PRIORITIES = [
-  { value: "P1", label: "P1 — Critical", desc: "System down, major business impact", color: "border-red-300 bg-red-50 text-red-800" },
-  { value: "P2", label: "P2 — High", desc: "Significant impact, workaround available", color: "border-orange-300 bg-orange-50 text-orange-800" },
-  { value: "P3", label: "P3 — Medium", desc: "Moderate impact, some users affected", color: "border-yellow-300 bg-yellow-50 text-yellow-800" },
-  { value: "P4", label: "P4 — Low", desc: "Minor issue, minimal impact", color: "border-green-300 bg-green-50 text-green-800" },
+  { value: "P1", label: "P1 — Critical", desc: "System down, major business impact", color: "border-red-200 bg-red-50 text-red-800" },
+  { value: "P2", label: "P2 — High", desc: "Significant impact, workaround available", color: "border-amber-200 bg-amber-50 text-amber-800" },
+  { value: "P3", label: "P3 — Medium", desc: "Moderate impact, some users affected", color: "border-slate-200 bg-slate-50 text-slate-700" },
+  { value: "P4", label: "P4 — Low", desc: "Minor issue, minimal impact", color: "border-emerald-200 bg-emerald-50 text-emerald-800" },
 ];
 
 export default function UserCreateTicket() {
@@ -102,24 +102,18 @@ export default function UserCreateTicket() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Raise a New Ticket</h2>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Raise a New Ticket</h2>
+        <p className="mt-1 text-sm text-slate-500">
           Describe your issue below. Our team will respond within the SLA for your selected priority.
         </p>
       </div>
 
       <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        {/* Main form */}
         <div className="space-y-5">
-          {/* Auto-filled user info */}
-          <div
-            className="rounded-2xl bg-white overflow-hidden"
-            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <h3 className="text-sm font-bold text-slate-900">Requester Information</h3>
+          <div className="pro-card overflow-hidden">
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
+              <h3 className="text-sm font-semibold text-slate-900">Requester Information</h3>
             </div>
             <div className="p-5 grid gap-3 sm:grid-cols-2">
               <ReadOnlyField label="Your Name" value={user?.name} />
@@ -128,13 +122,9 @@ export default function UserCreateTicket() {
             </div>
           </div>
 
-          {/* Ticket details */}
-          <div
-            className="rounded-2xl bg-white overflow-hidden"
-            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <h3 className="text-sm font-bold text-slate-900">Ticket Details</h3>
+          <div className="pro-card overflow-hidden">
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
+              <h3 className="text-sm font-semibold text-slate-900">Ticket Details</h3>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -231,7 +221,7 @@ export default function UserCreateTicket() {
                     handleFile(file);
                   }}
                   className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-all duration-200 ${
-                    dragging ? "border-brand-400 bg-blue-50/60" : "border-slate-200 hover:border-brand-400 hover:bg-blue-50/20"
+                    dragging ? "border-brand-400 bg-brand-50/70" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                   }`}
                 >
                   {attachment ? (
@@ -267,21 +257,17 @@ export default function UserCreateTicket() {
           </div>
         </div>
 
-        {/* Right: Priority picker + submit */}
         <div className="space-y-5">
-          <div
-            className="rounded-2xl bg-white overflow-hidden"
-            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <h3 className="text-sm font-bold text-slate-900">Priority *</h3>
+          <div className="pro-card overflow-hidden">
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
+              <h3 className="text-sm font-semibold text-slate-900">Priority *</h3>
             </div>
             <div className="p-5 space-y-3">
               {PRIORITIES.map((p) => (
                 <label
                   key={p.value}
                   className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-all duration-150 ${
-                    form.priority === p.value ? p.color + " border-current" : "border-slate-200 hover:border-slate-300"
+                    form.priority === p.value ? p.color + " shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <input
@@ -302,13 +288,9 @@ export default function UserCreateTicket() {
             </div>
           </div>
 
-          {/* SLA info */}
-          <div
-            className="rounded-2xl bg-white overflow-hidden"
-            style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <h3 className="text-sm font-bold text-slate-900">SLA Response Times</h3>
+          <div className="pro-card overflow-hidden">
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
+              <h3 className="text-sm font-semibold text-slate-900">SLA Response Times</h3>
             </div>
             <div className="p-5 space-y-2.5 text-xs text-slate-500">
               {[["P1 Critical", "4 hours", "#ef4444"], ["P2 High", "8 hours", "#f97316"], ["P3 Medium", "24 hours", "#eab308"], ["P4 Low", "72 hours", "#22c55e"]].map(([label, time, dot]) => (
@@ -326,8 +308,7 @@ export default function UserCreateTicket() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)", boxShadow: "0 4px 16px rgba(8,145,178,0.3)" }}
+            className="btn-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -354,7 +335,7 @@ export default function UserCreateTicket() {
 
 function ReadOnlyField({ label, value }) {
   return (
-    <div className="rounded-xl px-3.5 py-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+    <div className="rounded-xl px-3.5 py-3" style={{ background: "#f8fafc", border: "1px solid #dbe3ec" }}>
       <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</div>
       <div className="mt-1 text-sm font-semibold text-slate-800">{value || "—"}</div>
     </div>

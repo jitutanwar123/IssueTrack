@@ -50,24 +50,22 @@ export default function MyTickets() {
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">My Tickets</h2>
-          <p className="mt-0.5 text-sm text-slate-500">View and manage all your submitted support requests.</p>
+          <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">My Tickets</h2>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">View and manage all your submitted support requests from a single workspace.</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => applyStatusFilter("Open")}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-slate-50"
+            className="btn-secondary"
           >
             Open Tickets
           </button>
           <Link
             to="/user/create-ticket"
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px self-start"
-            style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)", boxShadow: "0 4px 14px rgba(8,145,178,0.3)" }}
+            className="btn-primary self-start"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
@@ -78,48 +76,44 @@ export default function MyTickets() {
       </div>
 
       {/* Filters */}
-      <div
-        className="flex flex-wrap gap-3 rounded-2xl bg-white p-4"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-      >
-        <input
-          type="text"
-          placeholder="Search by title or ticket ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pro-input flex-1 min-w-48"
-        />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="pro-select"
-        >
-          <option value="">All Statuses</option>
-          {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
-          className="pro-select"
-        >
-          <option value="">All Priorities</option>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        {(search || filterStatus || filterPriority) && (
-          <button
-            onClick={() => { setSearch(""); setFilterStatus(""); setFilterPriority(""); }}
-            className="btn-secondary"
+      <div className="pro-card p-4">
+        <div className="flex flex-wrap gap-3">
+          <input
+            type="text"
+            placeholder="Search by title or ticket ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pro-input flex-1 min-w-48"
+          />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="pro-select"
           >
-            Reset
-          </button>
-        )}
+            <option value="">All Statuses</option>
+            {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="pro-select"
+          >
+            <option value="">All Priorities</option>
+            {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+          {(search || filterStatus || filterPriority) && (
+            <button
+              onClick={() => { setSearch(""); setFilterStatus(""); setFilterPriority(""); }}
+              className="btn-secondary"
+            >
+              Reset
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Ticket list */}
-      <div
-        className="overflow-hidden rounded-2xl bg-white"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
-      >
+      <div className="pro-card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-14 text-sm text-slate-400">
             <svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
@@ -149,7 +143,7 @@ export default function MyTickets() {
             {/* Table header */}
             <div
               className="hidden px-5 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80 lg:grid lg:grid-cols-[1fr_110px_110px_130px_72px]"
-              style={{ borderBottom: "1px solid #f1f5f9" }}
+              style={{ borderBottom: "1px solid #e8eef5" }}
             >
               <span>Ticket</span>
               <span>Priority</span>
@@ -171,7 +165,7 @@ export default function MyTickets() {
                     }
                   }}
                   className="flex cursor-pointer flex-col gap-3 px-5 py-4 transition-colors duration-100 hover:bg-slate-50/70 lg:grid lg:grid-cols-[1fr_110px_110px_130px_72px] lg:items-center"
-                  style={{ borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none" }}
+                  style={{ borderBottom: i < filtered.length - 1 ? "1px solid #e8eef5" : "none" }}
                 >
                   <div>
                     <span className="font-mono text-[10px] font-bold text-slate-400">
@@ -200,7 +194,7 @@ export default function MyTickets() {
             </div>
             <div
               className="px-5 py-3 text-xs text-slate-500"
-              style={{ borderTop: "1px solid #f1f5f9" }}
+              style={{ borderTop: "1px solid #e8eef5" }}
             >
               Showing <span className="font-semibold text-slate-700">{filtered.length}</span> of{" "}
               <span className="font-semibold text-slate-700">{tickets.length}</span> tickets

@@ -61,36 +61,34 @@ export default function UserDashboard() {
 
   return (
     <div className="space-y-5">
-      {/* Hero */}
       <section
-        className="relative overflow-hidden rounded-2xl p-6 text-white"
-        style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%)", boxShadow: "0 8px 32px rgba(15,23,42,0.18)" }}
+        className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 p-6 text-white shadow-elevated"
+        style={{ background: "linear-gradient(135deg, #0f172a 0%, #111827 55%, #0f172a 100%)" }}
       >
         <div
-          className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full opacity-10"
-          style={{ background: "radial-gradient(circle, #22d3ee 0%, transparent 70%)" }}
+          className="pointer-events-none absolute -top-10 -right-10 h-44 w-44 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #93c5fd 0%, transparent 70%)" }}
         />
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div
-              className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
-              style={{ background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.25)", color: "#67e8f9" }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
+              style={{ color: "#cbd5e1" }}
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
               My Support Portal
             </div>
-            <h2 className="text-2xl font-bold tracking-tight">
+            <h2 className="text-[28px] font-semibold tracking-tight">
               Welcome back, {user?.name?.split(" ")[0]} 👋
             </h2>
-            <p className="mt-2 max-w-xl text-sm" style={{ color: "rgba(203,213,225,0.75)" }}>
+            <p className="mt-2 max-w-xl text-sm text-slate-300">
               Track and manage your support tickets below. Our team is ready to assist you.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
             <Link
               to="/user/create-ticket"
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px"
-              style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)", boxShadow: "0 4px 14px rgba(8,145,178,0.35)" }}
+              className="btn-primary"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
@@ -99,8 +97,7 @@ export default function UserDashboard() {
             </Link>
             <Link
               to="/user/my-tickets"
-              className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/10"
-              style={{ borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/10"
             >
               View All Tickets
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -137,12 +134,11 @@ export default function UserDashboard() {
 
       {/* Recent Tickets */}
       <section
-        className="overflow-hidden rounded-2xl bg-white"
-        style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+        className="pro-card overflow-hidden"
       >
         <div
           className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid #f1f5f9" }}
+          style={{ borderBottom: "1px solid #e8eef5" }}
         >
           <div className="flex items-center gap-2.5">
             <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -150,10 +146,7 @@ export default function UserDashboard() {
             </svg>
             <h3 className="text-sm font-bold text-slate-900">Recent Tickets</h3>
           </div>
-          <Link
-            to="/user/my-tickets"
-            className="text-[11px] font-semibold text-cyan-600 hover:text-cyan-700 transition-colors"
-          >
+          <Link to="/user/my-tickets" className="text-[11px] font-semibold text-brand-700 hover:text-brand-800 transition-colors">
             View all →
           </Link>
         </div>
@@ -176,8 +169,7 @@ export default function UserDashboard() {
             <p className="text-sm font-medium text-slate-400">No tickets yet</p>
             <Link
               to="/user/create-ticket"
-              className="mt-1 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)" }}
+              className="mt-1 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white btn-primary"
             >
               Raise your first ticket
             </Link>

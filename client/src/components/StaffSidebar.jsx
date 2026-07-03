@@ -54,8 +54,8 @@ export function StaffSidebar() {
       className="fixed inset-y-0 left-0 z-30 flex flex-col overflow-y-auto"
       style={{
         width: "var(--sidebar-width, 15rem)",
-        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.05)",
+        background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
       }}
     >
       {/* Logo / Branding */}
@@ -65,7 +65,7 @@ export function StaffSidebar() {
       >
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
-          style={{ background: "linear-gradient(135deg, #7c3aed, #8b5cf6)" }}
+          style={{ background: "linear-gradient(135deg, #334155, #475569)" }}
         >
           IT
         </div>
@@ -80,11 +80,11 @@ export function StaffSidebar() {
       {/* Portal badge */}
       <div className="px-4 pt-4 pb-2">
         <div
-          className="flex items-center gap-2 rounded-lg px-3 py-2"
-          style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.22)" }}
+          className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <span className="h-1.5 w-1.5 rounded-full animate-pulse-slow" style={{ background: "#a78bfa" }} />
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "#a78bfa" }}>
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "#cbd5e1" }}>
             IT Staff Panel
           </span>
         </div>
@@ -128,13 +128,13 @@ export function StaffSidebar() {
         <div className="flex items-center gap-3 px-2">
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ background: user?.avatar_color || "linear-gradient(135deg, #7c3aed, #8b5cf6)" }}
+            style={{ background: user?.avatar_color || "linear-gradient(135deg, #334155, #475569)" }}
           >
             {initials}
           </div>
           <div className="min-w-0 leading-tight">
             <div className="truncate text-sm font-semibold text-white">{user?.name}</div>
-            <div className="truncate text-[10px]" style={{ color: "rgba(148,163,184,0.82)" }}>
+            <div className="truncate text-[10px]" style={{ color: "rgba(148,163,184,0.72)" }}>
               {user?.role || "IT Staff"}
             </div>
           </div>
@@ -144,7 +144,7 @@ export function StaffSidebar() {
           className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 hover:text-white"
           style={{
             background: "rgba(255,255,255,0.04)",
-            color: "rgba(148,163,184,0.7)",
+            color: "rgba(226,232,240,0.72)",
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >

@@ -13,7 +13,7 @@ export function StatsCard({ title, value, hint, accentIndex = 0 }) {
   return (
     <div
       className="relative overflow-hidden rounded-2xl bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated"
-      style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
+      style={{ border: "1px solid #dbe3ec", boxShadow: "0 2px 8px rgba(15,23,42,0.04)" }}
     >
       {/* Top accent stripe */}
       <div

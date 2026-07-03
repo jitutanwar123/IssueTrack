@@ -63,7 +63,7 @@ function Shell({ children }) {
 
 // ─── User Shell ──────────────────────────────────────────────────────────────
 function UserShell({ children }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   return (
     <div className="flex min-h-full" style={{ background: "var(--color-bg, #f8fafc)" }}>
       <UserSidebar />
@@ -71,36 +71,50 @@ function UserShell({ children }) {
         className="flex min-h-screen min-w-0 flex-1 flex-col"
         style={{ marginLeft: "var(--sidebar-width, 15rem)" }}
       >
-        {/* User Header */}
         <header
           className="sticky top-0 z-20"
           style={{
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            borderBottom: "1px solid rgba(226,232,240,0.8)",
-            height: "var(--header-h, 4rem)",
+            background: "rgba(255,255,255,0.94)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderBottom: "1px solid rgba(226,232,240,0.9)",
+            height: "var(--header-h, 4.25rem)",
           }}
         >
           <div className="flex h-full items-center justify-between px-6 lg:px-8">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Viraj Profiles Limited</p>
-              <h1 className="text-base font-bold text-slate-900 leading-tight">User Support Portal</h1>
+              <h1 className="text-[15px] font-semibold text-slate-900 leading-tight">User Support Portal</h1>
+              <p className="mt-0.5 text-xs text-slate-500">Track, raise, and follow up on your requests.</p>
             </div>
-            <div
-              className="flex items-center gap-3 rounded-xl px-3 py-2"
-              style={{ border: "1px solid #e2e8f0", background: "#f8fafc" }}
-            >
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #0891b2, #06b6d4)" }}
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                Creator
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-soft">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ background: "linear-gradient(135deg, #334155, #475569)" }}
+                >
+                  {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                </div>
+                <div className="hidden sm:block leading-tight">
+                  <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
+                  <div className="text-[11px] text-slate-500">{user?.department || "User"}</div>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-soft transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
               >
-                {user?.name?.charAt(0)?.toUpperCase() || "U"}
-              </div>
-              <div className="hidden sm:block leading-tight">
-                <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-                <div className="text-[11px] text-slate-500">{user?.department || "User"}</div>
-              </div>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout
+              </button>
             </div>
           </div>
         </header>
@@ -112,7 +126,7 @@ function UserShell({ children }) {
 
 // ─── Staff Shell ─────────────────────────────────────────────────────────────
 function StaffShell({ children }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   return (
     <div className="flex min-h-full" style={{ background: "var(--color-bg, #f8fafc)" }}>
       <StaffSidebar />
@@ -123,32 +137,47 @@ function StaffShell({ children }) {
         <header
           className="sticky top-0 z-20"
           style={{
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            borderBottom: "1px solid rgba(226,232,240,0.8)",
-            height: "var(--header-h, 4rem)",
+            background: "rgba(255,255,255,0.94)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderBottom: "1px solid rgba(226,232,240,0.9)",
+            height: "var(--header-h, 4.25rem)",
           }}
         >
           <div className="flex h-full items-center justify-between px-6 lg:px-8">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Viraj Profiles Limited</p>
-              <h1 className="text-base font-bold text-slate-900 leading-tight">IT Staff Portal</h1>
+              <h1 className="text-[15px] font-semibold text-slate-900 leading-tight">IT Staff Portal</h1>
+              <p className="mt-0.5 text-xs text-slate-500">Handle assigned tickets and close the loop cleanly.</p>
             </div>
-            <div
-              className="flex items-center gap-3 rounded-xl px-3 py-2"
-              style={{ border: "1px solid #e2e8f0", background: "#f8fafc" }}
-            >
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                style={{ background: user?.avatar_color || "linear-gradient(135deg,#7c3aed,#8b5cf6)" }}
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                IT Staff
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-soft">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ background: user?.avatar_color || "linear-gradient(135deg, #334155, #475569)" }}
+                >
+                  {user?.name?.charAt(0)?.toUpperCase() || "I"}
+                </div>
+                <div className="hidden sm:block leading-tight">
+                  <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
+                  <div className="text-[11px] text-slate-500">{user?.role || "IT Staff"}</div>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-soft transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
               >
-                {user?.name?.charAt(0)?.toUpperCase() || "I"}
-              </div>
-              <div className="hidden sm:block leading-tight">
-                <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-                <div className="text-[11px] text-slate-500">{user?.role || "IT Staff"}</div>
-              </div>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout
+              </button>
             </div>
           </div>
         </header>

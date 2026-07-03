@@ -2,10 +2,10 @@ import { cn, getPriorityTone, getStatusLabel, getStatusTone } from "../utils/hel
 
 // Professional status badge with subtle dot indicator
 const palette = {
-  blue:   { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe", dot: "#3b82f6" },
-  orange: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa", dot: "#f97316" },
-  yellow: { bg: "#fefce8", text: "#92400e", border: "#fde68a", dot: "#eab308" },
-  green:  { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0", dot: "#22c55e" },
+  blue:   { bg: "#eef2ff", text: "#1d4ed8", border: "#c7d2fe", dot: "#3b82f6" },
+  orange: { bg: "#fff7ed", text: "#9a3412", border: "#fed7aa", dot: "#f97316" },
+  yellow: { bg: "#fffbeb", text: "#92400e", border: "#fde68a", dot: "#eab308" },
+  green:  { bg: "#ecfdf5", text: "#166534", border: "#bbf7d0", dot: "#16a34a" },
   red:    { bg: "#fef2f2", text: "#b91c1c", border: "#fecaca", dot: "#ef4444" },
   slate:  { bg: "#f8fafc", text: "#475569", border: "#e2e8f0", dot: "#94a3b8" },
 };

@@ -55,11 +55,11 @@ function Icon({ name }) {
 export function Sidebar() {
   return (
     <aside
-      className="fixed left-0 top-0 h-screen overflow-y-auto z-50 flex flex-col"
+      className="fixed left-0 top-0 z-50 flex h-screen flex-col overflow-y-auto"
       style={{
         width: "var(--sidebar-width, 15rem)",
-        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.05)",
+        background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
       }}
     >
       {/* Logo area */}
@@ -73,9 +73,9 @@ export function Sidebar() {
 
       {/* Portal label */}
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.2)" }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-400 animate-pulse-slow" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-400">Admin Command Center</span>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">Admin Command Center</span>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(148,163,184,0.4)" }}>
+        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(148,163,184,0.58)" }}>
           Incident · Service Request · Change · Problem
         </p>
       </div>

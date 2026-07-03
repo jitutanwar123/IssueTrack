@@ -6,8 +6,8 @@ export function TicketCard({ ticket }) {
   return (
     <Link
       to={`/tickets/${ticket.id}`}
-      className="group block rounded-xl border border-slate-200 bg-white px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-elevated"
-      style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.05)" }}
+      className="group block rounded-xl border border-slate-200 bg-white px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-elevated"
+      style={{ boxShadow: "0 1px 4px rgba(15,23,42,0.04)" }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
