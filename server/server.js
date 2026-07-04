@@ -6,7 +6,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { buildTicketPdf } from "./utils/pdf.js";
-import { plantLabel } from "./utils/plants.js";
 
 function toMySQLDateTime(value) {
   if (!value) return null;
@@ -383,7 +382,7 @@ app.get("/api/auth/me", authenticateJWT, async (req, res) => {
 
 // GET ALL TICKETS (paginated)
 app.get("/api/tickets", (req, res) => {
-  const { search, status, priority, category, assignee, location, sub_category, service, workgroup, customer_name } = req.query;
+  const { search, status, priority, category, assignee, location, sub_category, service, workgroup, customer_name, plant } = req.query;
 
   // ── Pagination ────────────────────────────────────────────────
   const page  = Math.max(1, parseInt(req.query.page,  10) || 1);
@@ -403,6 +402,7 @@ app.get("/api/tickets", (req, res) => {
   if (service)      { whereSql += " AND service = ?";          params.push(service); }
   if (workgroup)    { whereSql += " AND workgroup = ?";        params.push(workgroup); }
   if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
+  if (plant)        { whereSql += " AND plant = ?";            params.push(plant); }
 
   // Exclude attachment_data (LONGBLOB) — fetched only via /api/tickets/:id/attachment
   const dataSql  = `SELECT ${TICKET_SLIM_COLUMNS} FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
@@ -640,7 +640,7 @@ app.delete("/api/tickets/:id", (req, res) => {
 
 // REPORT SUMMARY — uses SQL aggregates instead of loading all rows into JS
 app.get("/api/reports/summary", async (req, res) => {
-  const { location, category, sub_category, service, workgroup, customer } = req.query;
+  const { location, category, sub_category, service, workgroup, customer, plant } = req.query;
 
   // Build a reusable filter clause on top of WHERE 1=1
   const filterClauses = [];
@@ -651,6 +651,7 @@ app.get("/api/reports/summary", async (req, res) => {
   if (service)     { filterClauses.push("service = ?");       filterParams.push(service); }
   if (workgroup)   { filterClauses.push("workgroup = ?");     filterParams.push(workgroup); }
   if (customer)    { filterClauses.push("customer_name = ?"); filterParams.push(customer); }
+  if (plant)       { filterClauses.push("plant = ?");         filterParams.push(plant); }
 
   // Safe: all extra conditions are AND-appended to WHERE 1=1
   const baseWhere = filterClauses.length
@@ -734,7 +735,7 @@ app.get("/api/reports/summary", async (req, res) => {
 
 // ─── Full ticket export endpoint (no pagination, used by Excel export) ───────
 app.get("/api/reports/export", authenticateJWT, (req, res) => {
-  const { from, to, category, assignee, status, priority } = req.query;
+  const { from, to, category, assignee, status, priority, plant } = req.query;
   const conditions = [];
   const params = [];
   if (from)     { conditions.push("DATE(created_at) >= ?"); params.push(from); }
@@ -742,11 +743,12 @@ app.get("/api/reports/export", authenticateJWT, (req, res) => {
   if (category) { conditions.push("category = ?");          params.push(category); }
   if (status)   { conditions.push("status = ?");            params.push(status); }
   if (priority) { conditions.push("priority = ?");          params.push(priority); }
+  if (plant)    { conditions.push("plant = ?");             params.push(plant); }
   if (assignee) { conditions.push("(assigned_to LIKE ? OR assigned_to_name LIKE ?)"); params.push(`%${assignee}%`, `%${assignee}%`); }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const cols = `ticket_id, title, category, sub_category, priority, status,
     customer_name, requester_email, phone, location,
-    assigned_to, department, workstream, workgroup, service,
+    assigned_to, department, plant, workstream, workgroup, service,
     response_time, resolution_time,
     expected_closure_date, actual_closure_date,
     created_at, updated_at`;
@@ -759,7 +761,7 @@ app.get("/api/reports/export", authenticateJWT, (req, res) => {
 app.get("/api/reports/ageing", (req, res) => { res.json({ data: [] }); });
 
 app.get("/api/reports/detail", (req, res) => {
-  const { from, to, category, assignee } = req.query;
+  const { from, to, category, assignee, plant } = req.query;
 
   // Build WHERE clauses dynamically for all filters
   const conditions = [];
@@ -768,6 +770,7 @@ app.get("/api/reports/detail", (req, res) => {
   if (from) { conditions.push("DATE(created_at) >= ?"); params.push(from); }
   if (to)   { conditions.push("DATE(created_at) <= ?"); params.push(to); }
   if (category) { conditions.push("category = ?"); params.push(category); }
+  if (plant) { conditions.push("plant = ?"); params.push(plant); }
   if (assignee) { conditions.push("(assigned_to LIKE ? OR assigned_to_name LIKE ?)"); params.push(`%${assignee}%`, `%${assignee}%`); }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -1037,7 +1040,7 @@ app.get("/api/user/dashboard", authenticateJWT, requireUser, async (req, res) =>
 app.get("/api/staff/members", authenticateJWT, async (req, res) => {
   try {
     const rows = await query(
-      "SELECT id, name, role, department FROM users WHERE portal_role = 'it_staff' ORDER BY role, name",
+      "SELECT id, name, role, department, plant FROM users WHERE portal_role = 'it_staff' ORDER BY role, name",
       []
     );
     res.json({ data: rows });

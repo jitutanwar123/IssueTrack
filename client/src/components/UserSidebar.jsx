@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import virajLogo from "../viraaj.webp";
 import { useAuth } from "../context/AuthContext.jsx";
+import { plantLabel } from "../utils/plants.js";
 
 const navItems = [
   { to: "/user/dashboard",     label: "Dashboard",     icon: "grid"   },
@@ -120,7 +121,9 @@ export function UserSidebar() {
             </div>
             <div className="min-w-0 leading-tight">
               <div className="truncate text-sm font-semibold text-white">{user.name}</div>
-              <div className="text-[10px]" style={{ color: "rgba(148,163,184,0.66)" }}>{user.department || "User"}</div>
+              <div className="text-[10px]" style={{ color: "rgba(148,163,184,0.66)" }}>
+                {user.plant ? plantLabel(user.plant) : user.department || "User"}
+              </div>
             </div>
           </div>
         )}

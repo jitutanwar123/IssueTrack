@@ -1,5 +1,6 @@
 import { useAuth } from "../context/AuthContext.jsx";
 import { getInitials } from "../utils/helpers.js";
+import { plantLabel } from "../utils/plants.js";
 
 function statusStyle(status) {
   switch ((status || "").toLowerCase()) {
@@ -65,7 +66,9 @@ export function Header() {
             </div>
             <div className="hidden sm:block leading-tight">
               <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-              <div className="text-[11px] text-slate-500 font-medium">{user?.role}</div>
+              <div className="text-[11px] text-slate-500 font-medium">
+                {user?.role}{user?.plant ? ` · ${plantLabel(user.plant)}` : ""}
+              </div>
             </div>
 
             {/* Divider */}

@@ -5,6 +5,7 @@ import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api, getToken } from "../../utils/api.js";
 import { formatDateTime, formatMinutes, getStatusLabel } from "../../utils/helpers.js";
+import { plantLabel } from "../../utils/plants.js";
 
 const STATUS_OPTIONS = [
   "Open",
@@ -118,6 +119,7 @@ export default function StaffTicketDetail() {
       ["Priority", ticket.priority || "—"],
       ["Current Status", getStatusLabel(ticket.status)],
       ["Department", ticket.department || "—"],
+      ["Plant", plantLabel(ticket.plant) || "—"],
       ["Raised By", ticket.customer_name || ticket.requested_by || "—"],
       ["Requester Email", ticket.requester_email || "—"],
       ["Phone", ticket.phone || "—"],

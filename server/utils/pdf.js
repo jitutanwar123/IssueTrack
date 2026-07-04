@@ -1,6 +1,7 @@
 import PDFKit from "pdfkit";
 const PDFDocument = PDFKit.default ?? PDFKit;
 import { formatDateTime } from "./helpers.js";
+import { plantLabel } from "./plants.js";
 
 const NAVY   = "#0f172a";
 const CYAN   = "#0891b2";
@@ -111,6 +112,7 @@ export function buildTicketPdf(ticket, comments = [], events = []) {
       ["Email",      ticket.requester_email || "—"],
       ["Phone",      ticket.phone           || "—"],
       ["Department", ticket.department      || "—"],
+      ["Plant",      plantLabel(ticket.plant) || "—"],
       ["Location",   ticket.location        || "—"],
     ];
 

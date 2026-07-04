@@ -6,6 +6,7 @@ import { StaffSidebar } from "./components/StaffSidebar.jsx";
 import { Header } from "./components/Header.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
+import { plantLabel } from "./utils/plants.js";
 
 // ─── Lazy-loaded pages (code-split per route) ───────────────────────────────
 const Dashboard        = lazy(() => import("./pages/Dashboard.jsx"));
@@ -101,7 +102,9 @@ function UserShell({ children }) {
                 </div>
                 <div className="hidden sm:block leading-tight">
                   <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-                  <div className="text-[11px] text-slate-500">{user?.department || "User"}</div>
+                  <div className="text-[11px] text-slate-500">
+                    {user?.plant ? plantLabel(user.plant) : user?.department || "User"}
+                  </div>
                 </div>
               </div>
               <button
@@ -164,7 +167,9 @@ function StaffShell({ children }) {
                 </div>
                 <div className="hidden sm:block leading-tight">
                   <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
-                  <div className="text-[11px] text-slate-500">{user?.role || "IT Staff"}</div>
+                  <div className="text-[11px] text-slate-500">
+                    {user?.role || "IT Staff"}{user?.plant ? ` · ${plantLabel(user.plant)}` : ""}
+                  </div>
                 </div>
               </div>
               <button

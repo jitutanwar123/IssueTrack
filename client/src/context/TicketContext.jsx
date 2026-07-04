@@ -9,6 +9,7 @@ const defaultFilters = {
   priority: "",
   category: "",
   assignee: "",
+  plant: "",
   from: "",
   to: "",
   search: "",
@@ -21,6 +22,7 @@ const defaultDashboardFilters = {
   service: "",
   workgroup: "",
   customer: "",
+  plant: "",
 };
 
 export function TicketProvider({ children }) {

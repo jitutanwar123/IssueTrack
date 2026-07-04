@@ -4,6 +4,7 @@ import { CommentBox } from "../components/CommentBox.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { api } from "../utils/api.js";
 import { formatDateTime, formatMinutes, getStatusLabel } from "../utils/helpers.js";
+import { plantLabel } from "../utils/plants.js";
 
 function SectionCard({ title, subtitle, children }) {
   return (
@@ -74,6 +75,7 @@ export default function TicketDetail() {
       ["Priority", ticket.priority || "—"],
       ["Status", getStatusLabel(ticket.status)],
       ["Department", ticket.department || "—"],
+      ["Plant", plantLabel(ticket.plant) || "—"],
       ["Raised By", ticket.customer_name || ticket.requested_by || "—"],
       ["Requester Email", ticket.requester_email || "—"],
       ["Phone", ticket.phone || "—"],

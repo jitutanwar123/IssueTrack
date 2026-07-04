@@ -449,6 +449,7 @@ export default function Team() {
                               option.value === "it_staff" ? current.staff_position || "Help Desk Engineer" : "",
                             custom_position: "",
                             department: option.value === "user" ? "" : current.department || "IT",
+                            plant: current.plant || "",
                             status: option.value === "user" ? "Active" : current.status || "Available",
                           }));
                           setNewStaffOpen(option.value === "it_staff");
@@ -489,6 +490,7 @@ export default function Team() {
                           staff_position: current.staff_position || "Help Desk Engineer",
                           custom_position: "",
                           department: "IT",
+                          plant: current.plant || "",
                           status: "Available",
                         }));
                       }}
@@ -547,6 +549,12 @@ export default function Team() {
                       value={form.department}
                       onChange={(value) => setForm((current) => ({ ...current, department: value }))}
                       options={departments}
+                    />
+                    <SelectField
+                      label="Plant / Branch"
+                      value={form.plant}
+                      onChange={(value) => setForm((current) => ({ ...current, plant: value }))}
+                      options={PLANTS.map((plant) => ({ value: plant.value, label: plantLabel(plant.value) }))}
                     />
                     <SelectField
                       label="Status"
@@ -611,6 +619,7 @@ export default function Team() {
                             staff_position: current.staff_position || "Help Desk Engineer",
                             custom_position: "",
                             department: "IT",
+                            plant: current.plant || "",
                             status: "Available",
                           }));
                           return;
@@ -628,6 +637,12 @@ export default function Team() {
                         options={departments}
                       />
                     ) : null}
+                    <SelectField
+                      label="Plant / Branch"
+                      value={form.plant}
+                      onChange={(value) => setForm((current) => ({ ...current, plant: value }))}
+                      options={PLANTS.map((plant) => ({ value: plant.value, label: plantLabel(plant.value) }))}
+                    />
                     <TextField
                       label="Team"
                       value={form.team}

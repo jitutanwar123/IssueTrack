@@ -4,6 +4,7 @@ import { useTickets } from "../context/TicketContext.jsx";
 import { AgeingChart, CategoryPieChart, ResolverChart } from "../components/Charts.jsx";
 import { StatsCard } from "../components/StatsCard.jsx";
 import { TicketCard } from "../components/TicketCard.jsx";
+import { PLANTS } from "../utils/plants.js";
 
 // ─── Static option lists ───────────────────────────────────────────────────────
 
@@ -97,11 +98,15 @@ function FilterSelect({ label, value, onChange, options }) {
         className="pro-select"
       >
         <option value="">All {label}</option>
-        {options.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
+        {options.map((item) => {
+          const optionValue = typeof item === "string" ? item : item?.value ?? "";
+          const optionLabel = typeof item === "string" ? item : item?.label ?? optionValue;
+          return (
+            <option key={optionValue} value={optionValue}>
+              {optionLabel}
+            </option>
+          );
+        })}
       </select>
     </label>
   );
@@ -138,6 +143,7 @@ export default function Dashboard() {
       category:     unique("category"),
       sub_category: unique("sub_category"),
       customer:     unique("customer_name"),
+      plant:        unique("plant"),
     };
   }, [tickets]);
 
@@ -202,16 +208,17 @@ export default function Dashboard() {
           </svg>
           <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Filters</h3>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
           <FilterSelect label="Locations"      value={dashboardFilters.location}     onChange={(v) => setDashboardFilters({ location: v })}      options={INDIA_LOCATIONS} />
           <FilterSelect label="Classifications" value={dashboardFilters.category}     onChange={(v) => setDashboardFilters({ category: v })}      options={dynamicOptions.category} />
           <FilterSelect label="Sub-Categories" value={dashboardFilters.sub_category} onChange={(v) => setDashboardFilters({ sub_category: v })} options={dynamicOptions.sub_category} />
           <FilterSelect label="Services"        value={dashboardFilters.service}      onChange={(v) => setDashboardFilters({ service: v })}       options={SERVICES} />
+          <FilterSelect label="Plants"          value={dashboardFilters.plant}        onChange={(v) => setDashboardFilters({ plant: v })}         options={PLANTS} />
           <FilterSelect label="Workgroups"      value={dashboardFilters.workgroup}    onChange={(v) => setDashboardFilters({ workgroup: v })}     options={WORKGROUPS} />
           <FilterSelect label="Customers"       value={dashboardFilters.customer}     onChange={(v) => setDashboardFilters({ customer: v })}      options={dynamicOptions.customer} />
           <div className="flex items-end">
             <button
-              onClick={() => setDashboardFilters({ location:"", category:"", sub_category:"", service:"", workgroup:"", customer:"" })}
+              onClick={() => setDashboardFilters({ location:"", category:"", sub_category:"", service:"", plant:"", workgroup:"", customer:"" })}
               className="btn-secondary w-full text-xs"
             >
               Reset Filters

@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { plantLabel } from "./utils/plants.js";
 dotenv.config();
 
 // ─── Brevo HTTP API (port 443 — works on Railway, no domain needed) ──
@@ -75,6 +76,7 @@ function ticketTable(t) {
     ["Status",          `<span class="badge" style="background:${sc}">${t.status}</span>`],
     ["Category",        t.category],
     ["Sub-Category",    t.sub_category],
+    ["Plant",           t.plant ? plantLabel(t.plant) : null],
     ["Customer Name",   t.customer_name],
     ["Email",           t.requester_email],
     ["Phone",           t.phone],

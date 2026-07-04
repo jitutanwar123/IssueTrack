@@ -267,7 +267,7 @@ export default function UserCreateTicket() {
                   <option value="">— Select IT Staff Member (optional) —</option>
                   {staffMembers.map((s) => (
                     <option key={s.id} value={s.name}>
-                      {s.name} — {s.role}
+                      {s.name} — {s.role}{s.plant ? ` — ${plantLabel(s.plant)}` : ""}
                     </option>
                   ))}
                 </select>

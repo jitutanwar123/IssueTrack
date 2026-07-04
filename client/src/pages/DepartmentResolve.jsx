@@ -4,6 +4,7 @@ import { api } from "../utils/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { formatDateTime, getStatusLabel } from "../utils/helpers.js";
+import { plantLabel } from "../utils/plants.js";
 
 // ─── Department field definitions ───────────────────────────────────────────
 const DEPARTMENT_FIELDS = {
@@ -67,6 +68,7 @@ function TicketSummaryCard({ ticket }) {
     ["Raised By",       ticket.customer_name || ticket.requested_by || "—"],
     ["Email",           ticket.requester_email || "—"],
     ["Department",      ticket.department || "—"],
+    ["Plant",           plantLabel(ticket.plant) || "—"],
     ["Category",        ticket.category || "—"],
     ["Sub-Category",    ticket.sub_category || null],
     ["Priority",        ticket.priority],

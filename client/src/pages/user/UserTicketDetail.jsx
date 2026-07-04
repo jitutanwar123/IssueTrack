@@ -4,6 +4,7 @@ import { api } from "../../utils/api.js";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { formatDateTime, getStatusLabel } from "../../utils/helpers.js";
+import { plantLabel } from "../../utils/plants.js";
 
 const TRACKER_STEPS = [
   "Open",
@@ -118,6 +119,11 @@ export default function UserTicketDetail() {
               {ticket.category && (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                   {ticket.category}
+                </span>
+              )}
+              {ticket.plant && (
+                <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                  {plantLabel(ticket.plant)}
                 </span>
               )}
             </div>
@@ -339,6 +345,7 @@ export default function UserTicketDetail() {
                 ["Ticket ID", ticket.ticket_id || `#${ticket.id}`],
                 ["Category", ticket.category],
                 ["Sub-Category", ticket.sub_category],
+                ["Plant", plantLabel(ticket.plant)],
                 ["Priority", ticket.priority],
                 ["Status", getStatusLabel(ticket.status)],
                 ["Assigned To", ticket.assigned_to || "Unassigned"],

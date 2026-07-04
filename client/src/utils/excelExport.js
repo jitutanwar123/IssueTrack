@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { api } from "./api.js";
+import { plantLabel } from "./plants.js";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ADMIN_COLUMNS = [
@@ -12,6 +13,7 @@ const ADMIN_COLUMNS = [
   { key: "customer_name",         header: "Requester Name",        width: 24 },
   { key: "requester_email",       header: "Requester Email",       width: 30 },
   { key: "phone",                 header: "Phone",                 width: 16 },
+  { key: "plant",                 header: "Plant",                 width: 28 },
   { key: "location",              header: "Location",              width: 18 },
   { key: "assigned_to",           header: "Assigned To",           width: 24 },
   { key: "workstream",            header: "Workstream",            width: 16 },
@@ -29,6 +31,7 @@ const STAFF_COLUMNS = [
   { key: "ticket_id",           header: "Ticket ID",             width: 12 },
   { key: "title",               header: "Title",                 width: 36 },
   { key: "category",            header: "Category",              width: 20 },
+  { key: "plant",               header: "Plant",                 width: 28 },
   { key: "priority",            header: "Priority",              width: 10 },
   { key: "status",              header: "Status",                width: 20 },
   { key: "customer_name",       header: "Requester Name",        width: 24 },
@@ -105,6 +108,7 @@ function buildTicketSheet(wb, tickets, columns, sheetName = "Tickets") {
 
       if (DATE_KEYS.includes(col.key)) value = fmtDate(value);
       if (NUM_KEYS.includes(col.key))  value = value !== "" ? Number(value) || "" : "";
+      if (col.key === "plant") value = plantLabel(value);
 
       cell.value     = value;
       cell.font      = { size: 10, name: "Calibri", color: { argb: "FF1E293B" } };

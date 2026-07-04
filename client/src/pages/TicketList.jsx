@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
 import { formatDateTime } from "../utils/helpers.js";
+import { PLANTS } from "../utils/plants.js";
 
 function Select({ label, value, onChange, options }) {
   return (
@@ -16,11 +17,15 @@ function Select({ label, value, onChange, options }) {
         className="pro-select"
       >
         <option value="">All</option>
-        {options.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
+        {options.map((item) => {
+          const optionValue = typeof item === "string" ? item : item?.value ?? "";
+          const optionLabel = typeof item === "string" ? item : item?.label ?? optionValue;
+          return (
+            <option key={optionValue} value={optionValue}>
+              {optionLabel}
+            </option>
+          );
+        })}
       </select>
     </label>
   );
@@ -122,7 +127,7 @@ export default function TicketList() {
 
       {/* Filter bar */}
       <div className="pro-card p-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
           <label className="block xl:col-span-2">
             <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Search</span>
             <input
@@ -135,6 +140,7 @@ export default function TicketList() {
           <Select label="Status"   value={draft.status}   onChange={(v) => setDraft((c) => ({ ...c, status: v }))}   options={statuses} />
           <Select label="Priority" value={draft.priority} onChange={(v) => setDraft((c) => ({ ...c, priority: v }))} options={priorities} />
           <Select label="Category" value={draft.category} onChange={(v) => setDraft((c) => ({ ...c, category: v }))} options={categories} />
+          <Select label="Plant" value={draft.plant} onChange={(v) => setDraft((c) => ({ ...c, plant: v }))} options={PLANTS} />
           <div className="flex flex-col gap-1.5">
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Assignee ID</span>
