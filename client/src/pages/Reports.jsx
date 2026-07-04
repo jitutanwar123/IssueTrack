@@ -8,6 +8,7 @@ export default function Reports() {
   const [filters, setFilters] = useState({ from: "", to: "", category: "", assignee: "" });
   const [data, setData] = useState({ byStatus: [], byPriority: [], resolvedPerDay: [], avgResolutionByAssignee: [] });
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadData = useCallback(async (activeFilters) => {
     setLoading(true);
@@ -37,8 +38,15 @@ export default function Reports() {
     loadData({ ...filters });
   }
 
-  function exportExcel() {
-    exportReportExcel(filters).catch(console.error);
+  async function exportExcel() {
+    setExporting(true);
+    try {
+      await exportReportExcel(filters);
+    } catch (err) {
+      console.error("Excel export error:", err);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -52,8 +60,8 @@ export default function Reports() {
           </div>
           <button
             onClick={exportExcel}
-            className="btn-secondary"
-            disabled={!data?.tickets?.length}
+            className="btn-secondary disabled:opacity-40"
+            disabled={loading || exporting}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8.5 17l2-3-2-3H10l1.25 2L12.5 11H14l-2 3 2 3h-1.5L11 15l-1.25 2H8.5z"/>
