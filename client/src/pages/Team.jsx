@@ -813,11 +813,15 @@ function SelectField({ label, value, onChange, options = [] }) {
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
       >
-        {options.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
+        {options.map((item) => {
+          const optionValue = typeof item === "string" ? item : item?.value ?? "";
+          const optionLabel = typeof item === "string" ? item : item?.label ?? optionValue;
+          return (
+            <option key={optionValue} value={optionValue}>
+              {optionLabel}
+            </option>
+          );
+        })}
       </select>
     </label>
   );

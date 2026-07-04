@@ -89,6 +89,20 @@ export default function CreateTicket() {
     }));
   }, [users]);
 
+  const assigneeOptions = useMemo(() => {
+    const selectedPlant = String(form.plant || "");
+    return (users || [])
+      .filter((user) => {
+        if (user.portal_role !== "it_staff") return false;
+        if (!selectedPlant) return true;
+        return String(user.plant || "") === selectedPlant;
+      })
+      .map((user) => ({
+        value: user.id,
+        label: `${user.name} (${user.role})${user.plant ? ` - ${plantLabel(user.plant)}` : ""}`,
+      }));
+  }, [users, form.plant]);
+
   async function submit(event) {
     event.preventDefault();
 
@@ -126,6 +140,7 @@ navigate("/tickets");
   function setField(field, value) {
     setForm((current) => ({
       ...current,
+      ...(field === "plant" ? { assigned_to_id: "" } : {}),
       [field]: value,
     }));
   }
@@ -228,7 +243,7 @@ navigate("/tickets");
             label="Assigned To"
             value={form.assigned_to_id}
             onChange={(value) => setField("assigned_to_id", value)}
-            options={userOptions}
+            options={assigneeOptions}
           />
 
           <Field

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { AvgResolutionBarChart, PriorityBarChart, ResolutionLineChart, StatusPieChart } from "../components/Charts.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
 import { exportReportExcel } from "../utils/excelExport.js";
+import { PLANTS } from "../utils/plants.js";
 
 export default function Reports() {
   const { loadReports } = useTickets();
-  const [filters, setFilters] = useState({ from: "", to: "", category: "", assignee: "" });
+  const [filters, setFilters] = useState({ from: "", to: "", category: "", assignee: "", plant: "" });
   const [data, setData] = useState({ byStatus: [], byPriority: [], resolvedPerDay: [], avgResolutionByAssignee: [] });
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -72,11 +73,12 @@ export default function Reports() {
       </section>
 
       <div className="pro-card p-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <FilterInput label="From" type="date" value={filters.from} onChange={(v) => setFilters((f) => ({ ...f, from: v }))} />
           <FilterInput label="To" type="date" value={filters.to} onChange={(v) => setFilters((f) => ({ ...f, to: v }))} />
           <FilterInput label="Category" value={filters.category} onChange={(v) => setFilters((f) => ({ ...f, category: v }))} />
           <FilterInput label="Assignee" value={filters.assignee} onChange={(v) => setFilters((f) => ({ ...f, assignee: v }))} />
+          <FilterSelect label="Plant" value={filters.plant} onChange={(v) => setFilters((f) => ({ ...f, plant: v }))} options={PLANTS} />
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button
@@ -101,10 +103,10 @@ export default function Reports() {
               </>
             )}
           </button>
-          {(filters.from || filters.to || filters.category || filters.assignee) && (
+          {(filters.from || filters.to || filters.category || filters.assignee || filters.plant) && (
             <button
               onClick={() => {
-                const cleared = { from: "", to: "", category: "", assignee: "" };
+                const cleared = { from: "", to: "", category: "", assignee: "", plant: "" };
                 setFilters(cleared);
                 loadData(cleared);
               }}
@@ -139,6 +141,26 @@ function FilterInput({ label, value, onChange, type = "text" }) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
       />
+    </label>
+  );
+}
+
+function FilterSelect({ label, value, onChange, options = [] }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+      >
+        <option value="">All {label}s</option>
+        {options.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

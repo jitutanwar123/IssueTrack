@@ -64,9 +64,14 @@ export default function UserCreateTicket() {
       .catch(() => {}); // silently fail — dropdown just stays empty
   }, []);
 
+  const filteredStaffMembers = staffMembers.filter((staff) => {
+    if (!form.plant) return true;
+    return String(staff.plant || "") === String(form.plant);
+  });
+
   function setField(field, value) {
     setForm((prev) => {
-      const next = { ...prev, [field]: value };
+      const next = { ...prev, ...(field === "plant" ? { assigned_to: "" } : {}), [field]: value };
       if (field === "service") {
         next.category = "";
         next.sub_category = "";
@@ -265,7 +270,7 @@ export default function UserCreateTicket() {
                   className="pro-select"
                 >
                   <option value="">— Select IT Staff Member (optional) —</option>
-                  {staffMembers.map((s) => (
+                  {filteredStaffMembers.map((s) => (
                     <option key={s.id} value={s.name}>
                       {s.name} — {s.role}{s.plant ? ` — ${plantLabel(s.plant)}` : ""}
                     </option>
