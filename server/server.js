@@ -39,6 +39,13 @@ app.use(express.json());
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -46,6 +53,10 @@ const db = mysql.createConnection({
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
   multipleStatements: true,
+  ssl: {
+    ca: fs.readFileSync(path.join(__dirname, "certs", "aiven-ca.pem")),
+    rejectUnauthorized: true,
+  },
 });
 
 db.connect((err) => {
