@@ -196,6 +196,7 @@ export default function Team() {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [plantFilter, setPlantFilter] = useState("");
   const [newStaffOpen, setNewStaffOpen] = useState(false);
   const [splitPercent, setSplitPercent] = useState(38);
   const [error, setError] = useState("");
@@ -297,9 +298,10 @@ export default function Team() {
         [user.name, user.email, user.username, user.role, user.team, user.department, user.plant]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
-      return matchesFilter && matchesSearch;
+      const matchesPlant = !plantFilter || String(user.plant || "") === plantFilter;
+      return matchesFilter && matchesSearch && matchesPlant;
     });
-  }, [users, filter, search]);
+  }, [users, filter, plantFilter, search]);
 
   const staffRecords = filteredUsers.filter((user) => user.portal_role === "it_staff");
   const userRecords = filteredUsers.filter((user) => !user.portal_role || user.portal_role === "user");
@@ -724,7 +726,7 @@ export default function Team() {
             subtitle="Focus on the record set you want to review."
             badge={`${filteredUsers.length} shown`}
           >
-            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+            <div className="grid gap-3 md:grid-cols-[1fr_220px_260px]">
               <label className="block">
                 <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Search</span>
                 <input
@@ -745,6 +747,21 @@ export default function Team() {
                   <option value="staff">Staff Only</option>
                   <option value="users">Users Only</option>
                   <option value="admins">Admins Only</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Plant</span>
+                <select
+                  value={plantFilter}
+                  onChange={(event) => setPlantFilter(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                >
+                  <option value="">All Plants</option>
+                  {PLANTS.map((plant) => (
+                    <option key={plant.value} value={plant.value}>
+                      {plantLabel(plant.value)}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
