@@ -75,6 +75,7 @@ export default function TicketList() {
     "Service Request",
     "Problem",
     "Change",
+    "SAP Application",
   ];
 
   function applyFilters() {

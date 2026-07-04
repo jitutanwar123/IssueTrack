@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../utils/api.js";
+import { PLANTS, plantLabel } from "../utils/plants.js";
 
 const ROLE_OPTIONS = {
   user: ["User"],
@@ -49,6 +50,7 @@ function emptyForm(portal_role = "it_staff") {
     avatar_color: "#0f172a",
     portal_role,
     department: portal_role === "user" ? "" : "IT",
+    plant: "",
   };
 }
 
@@ -141,7 +143,7 @@ function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
         </div>
       </div>
 
-      <div className={`mt-4 grid gap-3 ${showDepartment ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+      <div className={`mt-4 grid gap-3 ${showDepartment ? "sm:grid-cols-2 xl:grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-4"}`}>
         <div className="rounded-xl bg-slate-50 px-3 py-2">
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Role</div>
           <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.role || "—"}</div>
@@ -149,6 +151,10 @@ function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
         <div className="rounded-xl bg-slate-50 px-3 py-2">
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Access</div>
           <div className="mt-1 text-sm font-medium text-slate-700">{portalLabel}</div>
+        </div>
+        <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Plant</div>
+          <div className="mt-1 text-sm font-medium text-slate-700 break-words">{plantLabel(user.plant) || "—"}</div>
         </div>
         {showDepartment ? (
           <div className="rounded-xl bg-slate-50 px-3 py-2">
@@ -288,7 +294,7 @@ export default function Team() {
         (filter === "admins" && portal === "admin");
       const matchesSearch =
         !term ||
-        [user.name, user.email, user.username, user.role, user.team, user.department]
+        [user.name, user.email, user.username, user.role, user.team, user.department, user.plant]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
       return matchesFilter && matchesSearch;
@@ -323,6 +329,7 @@ export default function Team() {
       avatar_color: user.avatar_color || "#0f172a",
       portal_role: user.portal_role || "user",
       department: user.portal_role === "user" ? "" : user.department || "IT",
+      plant: user.plant || "",
     });
   }
 
@@ -341,6 +348,7 @@ export default function Team() {
               ? form.custom_position || "Custom Position"
               : form.staff_position || form.role,
         department: form.portal_role === "user" ? "" : form.department,
+        plant: form.plant,
       };
       if (editingId) {
         await api.updateUser(editingId, payload);

@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { buildTicketPdf } from "./utils/pdf.js";
+import { plantLabel } from "./utils/plants.js";
 
 function toMySQLDateTime(value) {
   if (!value) return null;
@@ -67,6 +68,8 @@ db.connect((err) => {
     "ALTER TABLE tickets ADD COLUMN attachment_data LONGBLOB DEFAULT NULL",
     // IT Staff portal role support
     "ALTER TABLE users ADD COLUMN department VARCHAR(100) DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN plant VARCHAR(150) DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN plant VARCHAR(150) DEFAULT NULL",
     // Expand portal_role to support it_staff
     "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
     // Speed up staff queue lookups
@@ -174,7 +177,7 @@ function query(sql, params = []) {
 const TICKET_SLIM_COLUMNS = `
   id, ticket_id, title, description, category, sub_category, priority, status,
   customer_name, requester_email, phone, department, user_email, requested_by,
-  assigned_to, location, workstream, workgroup, service,
+  assigned_to, location, workstream, workgroup, service, plant,
   expected_closure_date, actual_closure_date, response_time, resolution_time,
   resolved_at, resolution_note, resolved_by, created_at, updated_at,
   attachment_name, attachment_mime
@@ -301,6 +304,7 @@ app.post("/api/auth/login", (req, res) => {
           role: user.role,
           portal_role: portalRole,
           department: user.department,
+          plant: user.plant,
           phone: user.phone,
         },
         JWT_SECRET,
@@ -316,6 +320,7 @@ app.post("/api/auth/login", (req, res) => {
           role: user.role,
           portal_role: portalRole,
           department: user.department,
+          plant: user.plant,
           phone: user.phone,
           status: user.status || "Available",
           team: user.team || "",
@@ -328,7 +333,7 @@ app.post("/api/auth/login", (req, res) => {
 
 // REGISTER (new users)
 app.post("/api/auth/register", async (req, res) => {
-  const { name, email, password, phone, department } = req.body;
+  const { name, email, password, phone, department, plant } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ message: "Name, email, and password are required" });
   }
@@ -339,9 +344,9 @@ app.post("/api/auth/register", async (req, res) => {
     }
     const hashed = await bcrypt.hash(password, 10);
     await query(
-      `INSERT INTO users (name, email, username, hashed_password, phone, department, portal_role, role, status, avatar_color)
-       VALUES (?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4')`,
-      [name, email, email, hashed, phone || null, department || null]
+      `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4')`,
+      [name, email, email, hashed, phone || null, department || null, plant || null]
     );
     res.json({ success: true, message: "Account created successfully. Please log in." });
   } catch (err) {
@@ -353,7 +358,7 @@ app.post("/api/auth/register", async (req, res) => {
 // CURRENT USER — fetch live from DB so status/team changes reflect immediately
 app.get("/api/auth/me", authenticateJWT, async (req, res) => {
   try {
-    const rows = await query("SELECT id,name,email,role,portal_role,department,phone,status,team,avatar_color FROM users WHERE id = ?", [req.user.id]);
+    const rows = await query("SELECT id,name,email,role,portal_role,department,plant,phone,status,team,avatar_color FROM users WHERE id = ?", [req.user.id]);
     if (rows.length === 0) return res.status(404).json({ message: "User not found" });
     const u = rows[0];
     res.json({
@@ -364,6 +369,7 @@ app.get("/api/auth/me", authenticateJWT, async (req, res) => {
         role: u.role,
         portal_role: u.portal_role || req.user.portal_role,
         department: u.department,
+        plant: u.plant,
         phone: u.phone,
         status: u.status || "Available",
         team: u.team || "",
@@ -480,7 +486,7 @@ app.post("/api/tickets", async (req, res) => {
     customer_name, requester_email, phone, department,
     requested_by, assigned_to, requested_by_id, assigned_to_id,
     expected_closure_date, actual_closure_date,
-    response_time, resolution_time, location, workstream, workgroup, service,
+    response_time, resolution_time, location, workstream, workgroup, service, plant,
   } = req.body;
 
   try {
@@ -490,8 +496,8 @@ app.post("/api/tickets", async (req, res) => {
        customer_name, requester_email, phone, department,
        requested_by, assigned_to,
        expected_closure_date, actual_closure_date,
-       response_time, resolution_time, location, workstream, workgroup, service)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+       response_time, resolution_time, location, workstream, workgroup, service, plant)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const result = await query(sql, [
       ticketId, title, description, category || null, sub_category || null,
       priority, status || "Open",
@@ -499,7 +505,7 @@ app.post("/api/tickets", async (req, res) => {
       requested_by || null, assigned_to || null,
       expected_closure_date || null, actual_closure_date || null,
       response_time || 0, resolution_time || 0,
-      location || null, workstream || null, workgroup || null, service || null,
+      location || null, workstream || null, workgroup || null, service || null, plant || null,
     ]);
 
     // Build ticket object for email notifications
@@ -514,6 +520,7 @@ app.post("/api/tickets", async (req, res) => {
       department: department || null,
       assigned_to: assigned_to || null,
       location: location || null,
+      plant: plant || null,
       created_at: new Date(),
     };
 
@@ -823,7 +830,7 @@ app.get("/api/reports/detail", (req, res) => {
 app.get("/api/users", (req, res) => {
   // Never return password/hashed_password columns
   db.query(
-    "SELECT id, name, email, username, role, team, status, avatar_color, department, phone, portal_role FROM users",
+    "SELECT id, name, email, username, role, team, status, avatar_color, department, plant, phone, portal_role FROM users",
     (err, results) => {
       if (err) return res.status(500).json(err);
       res.json({ data: results });
@@ -832,15 +839,15 @@ app.get("/api/users", (req, res) => {
 });
 
 app.post("/api/users", async (req, res) => {
-  const { name, email, username, password, role, team, status, avatar_color, portal_role, department } = req.body;
+  const { name, email, username, password, role, team, status, avatar_color, portal_role, department, plant } = req.body;
   if (!name || !email || !username || !password) {
     return res.status(400).json({ message: "Name, email, username, and password are required" });
   }
   try {
     const hashed = await bcrypt.hash(password, 10);
     const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
-    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department) VALUES (?,?,?,?,?,?,?,?,?,?)`;
-    const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null]);
+    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
+    const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
     res.json({ success: true, id: result.insertId });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "A user with this email or username already exists" });
@@ -850,8 +857,8 @@ app.post("/api/users", async (req, res) => {
 
 app.put("/api/users/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, email, username, password, role, team, status, avatar_color, portal_role, department } = req.body;
-  console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, portal_role, department, hasPassword: !!(password && password.trim()) });
+  const { name, email, username, password, role, team, status, avatar_color, portal_role, department, plant } = req.body;
+  console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, portal_role, department, plant, hasPassword: !!(password && password.trim()) });
   const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
   try {
     let result;
@@ -859,14 +866,14 @@ app.put("/api/users/:id", async (req, res) => {
       // Update including new hashed password
       const hashed = await bcrypt.hash(password, 10);
       result = await query(
-        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=? WHERE id=?`,
-        [name, email, username, hashed, role, team, status, avatar_color, resolvedPortalRole, department || null, id]
+        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=? WHERE id=?`,
+        [name, email, username, hashed, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, id]
       );
     } else {
       // Update without touching the password
       result = await query(
-        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=? WHERE id=?`,
-        [name, email, username, role, team, status, avatar_color, resolvedPortalRole, department || null, id]
+        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=? WHERE id=?`,
+        [name, email, username, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, id]
       );
     }
     console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
@@ -1115,7 +1122,7 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
 
 app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attachment"), async (req, res) => {
   const user = req.user;
-  const { title, description, category, sub_category, priority, assigned_to } = req.body;
+  const { title, description, category, sub_category, priority, assigned_to, plant } = req.body;
 
   if (!title || !category || !priority) {
     return res.status(400).json({ message: "Title, category, and priority are required" });
@@ -1131,13 +1138,13 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
 
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
-       customer_name, requester_email, phone, department, user_email,
+       customer_name, requester_email, phone, department, user_email, plant,
        assigned_to, attachment_name, attachment_mime, attachment_data)
-      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?)`;
+      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?,?)`;
 
     const result = await query(sql, [
       ticketId, title, description, category, sub_category || null, priority,
-      user.name, user.email, user.phone || null, user.department || null, user.email,
+      user.name, user.email, user.phone || null, user.department || null, user.email, plant || user.plant || null,
       assigned_to || null,
       attachmentName, attachmentMime, attachmentData,
     ]);
@@ -1151,6 +1158,7 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       requester_email: user.email,
       phone: user.phone,
       department: user.department,
+      plant: plant || user.plant || null,
       assigned_to: assigned_to || null,
       created_at: new Date(),
       attachment_name: attachmentName,

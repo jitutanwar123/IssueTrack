@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTickets } from "../context/TicketContext.jsx";
 import { api } from "../utils/api.js";
+import { PLANTS, plantLabel } from "../utils/plants.js";
 
 const categories = ["Incident", "Service Request", "Problem", "Change"];
 const priorities = ["P1", "P2", "P3", "P4"];
@@ -36,6 +37,7 @@ export default function CreateTicket() {
     requester_email: "",
     phone: "",
     department: "",
+    plant: "",
     requested_by_id: "",
     assigned_to_id: "",
     expected_closure_date: "",
@@ -179,6 +181,13 @@ navigate("/tickets");
             label="Department"
             value={form.department}
             onChange={(value) => setField("department", value)}
+          />
+
+          <SelectField
+            label="Plant / Branch"
+            value={form.plant}
+            onChange={(value) => setField("plant", value)}
+            options={PLANTS.map((plant) => ({ value: plant.value, label: plantLabel(plant.value) }))}
           />
 
           <SelectField

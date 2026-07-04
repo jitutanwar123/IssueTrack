@@ -3,14 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api } from "../../utils/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
+import { PLANTS, plantLabel } from "../../utils/plants.js";
 
-const CATEGORIES = ["Incident", "Service Request", "Change", "Problem"];
+const SERVICES = ["AMS"];
 
-const SUB_CATEGORIES = {
-  Incident: ["Hardware Failure", "Software Issue", "Network Outage", "Security Breach", "Other"],
-  "Service Request": ["New Hardware", "Software Installation", "Access Request", "Password Reset", "Other"],
-  Change: ["Infrastructure Change", "Software Upgrade", "Configuration Change", "Other"],
-  Problem: ["Root Cause Analysis", "Known Error", "Workaround Request", "Other"],
+const CATEGORIES_BY_SERVICE = {
+  AMS: ["SAP Application"],
+};
+
+const SUB_CATEGORIES_BY_CATEGORY = {
+  "SAP Application": [
+    "BASIS",
+    "BPC",
+    "BW / BI",
+    "CO",
+    "DMS",
+    "FI",
+    "HCM",
+    "MM",
+    "PM",
+    "SD",
+    "PP",
+    "Other",
+  ],
 };
 
 const PRIORITIES = [
@@ -29,6 +44,8 @@ export default function UserCreateTicket() {
   const [form, setForm] = useState({
     title: "",
     description: "",
+    service: "AMS",
+    plant: "",
     category: "",
     sub_category: "",
     priority: "",
@@ -48,15 +65,26 @@ export default function UserCreateTicket() {
   }, []);
 
   function setField(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "service") {
+        next.category = "";
+        next.sub_category = "";
+      }
+      if (field === "category") {
+        next.sub_category = "";
+      }
+      return next;
+    });
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-    if (field === "category") setForm((prev) => ({ ...prev, category: value, sub_category: "" }));
   }
 
   function validate() {
     const e = {};
     if (!form.title.trim()) e.title = "Title is required";
     if (!form.description.trim()) e.description = "Description is required";
+    if (!form.service) e.service = "Service is required";
+    if (!form.plant) e.plant = "Plant is required";
     if (!form.category) e.category = "Category is required";
     if (!form.priority) e.priority = "Priority is required";
     setErrors(e);
@@ -98,7 +126,8 @@ export default function UserCreateTicket() {
     }
   }
 
-  const subOptions = SUB_CATEGORIES[form.category] || [];
+  const categoryOptions = CATEGORIES_BY_SERVICE[form.service] || [];
+  const subOptions = SUB_CATEGORIES_BY_CATEGORY[form.category] || [];
 
   return (
     <div className="space-y-5">
@@ -159,14 +188,51 @@ export default function UserCreateTicket() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Service *</label>
+                  <select
+                    value={form.service}
+                    onChange={(e) => setField("service", e.target.value)}
+                    className={`pro-select ${errors.service ? "border-red-400 bg-red-50" : ""}`}
+                  >
+                    <option value="">Select service</option>
+                    {SERVICES.map((service) => (
+                      <option key={service} value={service}>
+                        {service}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.service && <p className="mt-1 text-xs text-red-600">{errors.service}</p>}
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Plant / Branch *</label>
+                  <select
+                    value={form.plant}
+                    onChange={(e) => setField("plant", e.target.value)}
+                    className={`pro-select ${errors.plant ? "border-red-400 bg-red-50" : ""}`}
+                  >
+                    <option value="">Select plant</option>
+                    {PLANTS.map((plant) => (
+                      <option key={plant.value} value={plant.value}>
+                        {plantLabel(plant.value)}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
+                </div>
+                <div>
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Category *</label>
                   <select
                     value={form.category}
                     onChange={(e) => setField("category", e.target.value)}
                     className={`pro-select ${errors.category ? "border-red-400 bg-red-50" : ""}`}
+                    disabled={!form.service}
                   >
                     <option value="">Select category</option>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {categoryOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
                   </select>
                   {errors.category && <p className="mt-1 text-xs text-red-600">{errors.category}</p>}
                 </div>
@@ -179,7 +245,11 @@ export default function UserCreateTicket() {
                     className="pro-select disabled:opacity-50"
                   >
                     <option value="">Select sub-category</option>
-                    {subOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {subOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
