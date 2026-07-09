@@ -391,7 +391,7 @@ export default function Team() {
   return (
     <div className="space-y-6">
       <section
-        className="overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
+        className="sticky top-[4.75rem] z-10 overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
         style={{
           border: "1px solid #dbe3ec",
         }}
