@@ -19,8 +19,11 @@ export function Header() {
 
   return (
     <header
-      className="sticky top-0 z-20"
+      className="fixed z-20"
       style={{
+        top: 0,
+        left: "var(--sidebar-width, 15rem)",
+        right: 0,
         background: "rgba(255,255,255,0.92)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
