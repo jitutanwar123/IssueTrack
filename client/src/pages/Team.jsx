@@ -390,48 +390,36 @@ export default function Team() {
 
   return (
     <div className="space-y-6">
-      <div
-        className="sticky z-30 space-y-0"
-        style={{ top: "calc(var(--header-h, 4rem) + 1rem)" }}
+      <section
+        className="overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
+        style={{
+          border: "1px solid #dbe3ec",
+        }}
       >
-        <section
-          className="overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
-          style={{
-            border: "1px solid #dbe3ec",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-          }}
-        >
-          <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Team Directory
-              </div>
-              <h2 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-900">Separate user and staff records in one place</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-                Manage portal access cleanly with dedicated records for users, IT staff, and admins. Create new staff members,
-                update roles, and keep the login structure organized.
-              </p>
+        <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Team Directory
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Metric label="Total Records" value={metrics.total} hint="All portal accounts" accent="cyan" />
-              <Metric label="IT Staff" value={metrics.staff} hint="Staff portal members" accent="purple" />
-              <Metric label="Users" value={metrics.users} hint="End-user accounts" accent="blue" />
-              <Metric label="Admins" value={metrics.admins} hint="Full access accounts" accent="emerald" />
-            </div>
+            <h2 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-900">Separate user and staff records in one place</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+              Manage portal access cleanly with dedicated records for users, IT staff, and admins. Create new staff members,
+              update roles, and keep the login structure organized.
+            </p>
           </div>
-        </section>
-      </div>
 
-      <div className="relative z-20 h-14 xl:h-16" aria-hidden="true">
-        <div className="absolute inset-x-4 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-slate-300/90 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-[#f4f7fb] to-transparent" />
-      </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Metric label="Total Records" value={metrics.total} hint="All portal accounts" accent="cyan" />
+            <Metric label="IT Staff" value={metrics.staff} hint="Staff portal members" accent="purple" />
+            <Metric label="Users" value={metrics.users} hint="End-user accounts" accent="blue" />
+            <Metric label="Admins" value={metrics.admins} hint="Full access accounts" accent="emerald" />
+          </div>
+        </div>
+      </section>
 
       <div
         ref={splitRef}
-        className="grid gap-6 pt-2 xl:items-stretch xl:gap-0"
+        className="grid gap-6 xl:items-stretch xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
         <div
