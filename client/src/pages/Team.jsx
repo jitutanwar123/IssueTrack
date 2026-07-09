@@ -423,14 +423,14 @@ export default function Team() {
           </div>
         </section>
 
-        <div className="px-4 pt-3">
-          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+        <div className="px-2 pt-3">
+          <div className="h-px bg-gradient-to-r from-transparent via-slate-300/90 to-transparent" />
         </div>
       </div>
 
       <div
         ref={splitRef}
-        className="mt-4 grid gap-6 xl:items-stretch xl:gap-0"
+        className="mt-8 border-t border-slate-200/80 pt-6 grid gap-6 xl:items-stretch xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
         <div
