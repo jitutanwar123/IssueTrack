@@ -50,7 +50,6 @@ export default function UserCreateTicket() {
     sub_category: "",
     priority: "",
     assigned_to: "",
-    assigned_to_email: "",
   });
   const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -74,7 +73,7 @@ export default function UserCreateTicket() {
     setForm((prev) => {
       const next = {
         ...prev,
-        ...(field === "plant" ? { assigned_to: "", assigned_to_email: "" } : {}),
+        ...(field === "plant" ? { assigned_to: "" } : {}),
         [field]: value,
       };
       if (field === "service") {
@@ -270,30 +269,17 @@ export default function UserCreateTicket() {
                   Assign To — IT Sub-Branch
                 </label>
                 <select
-                  value={form.assigned_to_email}
-                  onChange={(e) => {
-                    const selected = filteredStaffMembers.find((staff) => staff.email === e.target.value);
-                    setForm((prev) => ({
-                      ...prev,
-                      assigned_to: selected?.name || "",
-                      assigned_to_email: selected?.email || "",
-                    }));
-                    if (errors.assigned_to) setErrors((prev) => ({ ...prev, assigned_to: "" }));
-                  }}
+                  value={form.assigned_to}
+                  onChange={(e) => setField("assigned_to", e.target.value)}
                   className="pro-select"
                 >
                   <option value="">— Select IT Staff Member (optional) —</option>
                   {filteredStaffMembers.map((s) => (
-                    <option key={s.id} value={s.email}>
+                    <option key={s.id} value={s.name}>
                       {s.name} — {s.role}{s.plant ? ` — ${plantLabel(s.plant)}` : ""}
                     </option>
                   ))}
                 </select>
-                {form.assigned_to && form.assigned_to_email && (
-                  <p className="mt-1 text-xs text-emerald-600">
-                    Selected: {form.assigned_to} &lt;{form.assigned_to_email}&gt;
-                  </p>
-                )}
                 <p className="mt-1 text-xs text-slate-400">
                   Select the IT team member who handles your type of issue. They will receive an email notification.
                 </p>

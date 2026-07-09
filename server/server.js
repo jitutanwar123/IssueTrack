@@ -5,7 +5,6 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import nodemailer from "nodemailer";
 import { buildTicketPdf } from "./utils/pdf.js";
 
 function toMySQLDateTime(value) {
@@ -208,70 +207,64 @@ app.get("/", (req, res) => {
 
 // ─── Email diagnostics endpoint (Railway debug) ──────────────────
 app.get("/api/test-email", async (req, res) => {
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const brevoKey  = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.BREVO_FROM_EMAIL;
   const adminEmail= process.env.ADMIN_EMAIL;
 
   const config = {
-    GMAIL_USER:       gmailUser  ? `✅ ${gmailUser}`    : "❌ NOT SET",
-    GMAIL_APP_PASSWORD: gmailPass ? "✅ set (hidden)"    : "❌ NOT SET",
+    BREVO_API_KEY:    brevoKey   ? "✅ set (hidden)"    : "❌ NOT SET",
+    BREVO_FROM_EMAIL: fromEmail  ? `✅ ${fromEmail}`    : "❌ NOT SET",
     ADMIN_EMAIL:      adminEmail ? `✅ ${adminEmail}`   : "❌ NOT SET",
   };
 
-  if (!gmailUser || !gmailPass) {
+  if (!brevoKey || !fromEmail) {
     return res.status(500).json({
       success: false,
-      message: "GMAIL_USER and GMAIL_APP_PASSWORD must be set for Gmail SMTP sending.",
+      message: "BREVO_API_KEY must be set and a verified Brevo sender must exist (BREVO_FROM_EMAIL or ADMIN_EMAIL).",
       config,
     });
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 10,
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
+    const to = adminEmail || fromEmail;
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept":       "application/json",
+        "content-type": "application/json",
+        "api-key":      brevoKey,
       },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
+      body: JSON.stringify({
+        sender:      { name: "Viraj IT Support", email: fromEmail },
+        to:          [{ email: to }],
+        subject:     "✅ Railway Email Test — IssueTrack (Brevo)",
+        htmlContent: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
+          <h2 style="color:#22c55e">Email is working! ✅</h2>
+          <p>Your Railway deployment can send emails via Brevo to <strong>any</strong> recipient.</p>
+          <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+        </div>`,
+      }),
     });
 
-    await transporter.verify();
-    const to = adminEmail || gmailUser;
-    const info = await transporter.sendMail({
-      from: `"Viraj IT Support" <${gmailUser}>`,
-      to,
-      subject: "✅ Railway Email Test — IssueTrack (Gmail SMTP)",
-      html: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
-        <h2 style="color:#22c55e">Email is working! ✅</h2>
-        <p>Your Railway deployment can send emails through Gmail SMTP.</p>
-        <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
-      </div>`,
-    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Brevo ${response.status}: ${data.message || JSON.stringify(data)}`);
 
     res.json({
       success: true,
-      message: `✅ Test email sent to ${to} via Gmail SMTP`,
-      messageId: info.messageId,
+      message: `✅ Test email sent to ${to} via Brevo`,
+      messageId: data.messageId,
       config,
     });
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `❌ Gmail SMTP Error: ${err.message}`,
+      message: `❌ Brevo Error: ${err.message}`,
       config,
-      hint: err.message.toLowerCase().includes("auth")
-        ? "Check that 2-Step Verification is enabled and the Gmail App Password is correct."
-        : err.message.toLowerCase().includes("username and password")
-        ? "Verify GMAIL_USER and GMAIL_APP_PASSWORD in Render."
-        : "Check Gmail SMTP settings and redeploy.",
+      hint: err.message.includes("401") || err.message.includes("unauthorized")
+        ? "BREVO_API_KEY is invalid. Get one at https://app.brevo.com/settings/keys/api"
+        : err.message.includes("sender")
+        ? "BREVO_FROM_EMAIL is not verified in Brevo. Go to Senders & IPs → verify the email."
+        : "Check Railway env vars and redeploy.",
     });
   }
 });
@@ -1143,7 +1136,7 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
 
 app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attachment"), async (req, res) => {
   const user = req.user;
-  const { title, description, category, sub_category, priority, assigned_to, assigned_to_email, plant } = req.body;
+  const { title, description, category, sub_category, priority, assigned_to, plant } = req.body;
 
   if (!title || !category || !priority) {
     return res.status(400).json({ message: "Title, category, and priority are required" });
@@ -1193,40 +1186,41 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       [result.insertId, user.name, null, "Open"]
     ).catch(() => {});
 
-    res.json({ success: true, data: newTicket });
-
-    // Send Gmail SMTP notifications in the background so the API response
-    // isn't blocked by SMTP handshake or provider latency.
-    void (async () => {
-      console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
-      try {
-        await sendTicketConfirmationToUser(newTicket);
+    // Send Brevo notifications before responding so failures are visible in logs.
+    console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
+    const emailJobs = [
+      sendTicketConfirmationToUser(newTicket).then(() => {
         console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`);
-      } catch (emailErr) {
-        console.error(`❌ User email error:`, emailErr.message);
-      }
+      }),
+    ];
 
-      if (!assigned_to) return;
-
+    // Only email the assigned staff member (NOT admin)
+    if (assigned_to) {
       try {
-        const assigneeEmail = assigned_to_email?.trim() || null;
-        const rows = assigneeEmail
-          ? []
-          : await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
-        const resolvedAssigneeEmail = assigneeEmail || rows[0]?.email;
-        if (!resolvedAssigneeEmail) {
+        const rows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
+        const assigneeEmail = rows[0]?.email;
+        if (assigneeEmail) {
+          emailJobs.push(
+            sendTicketAssignedToAssignee(newTicket, assigneeEmail).then(() => {
+              console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`);
+            })
+          );
+        } else {
           console.warn(`⚠️ Could not find email for assigned user "${assigned_to}"`);
-          return;
         }
-
-        await sendTicketAssignedToAssignee(newTicket, resolvedAssigneeEmail);
-        console.log(`✅ Assignment email sent to ${resolvedAssigneeEmail} for ticket ${ticketId}`);
-      } catch (emailErr) {
-        console.error(`❌ Assignment email error:`, emailErr.message);
+      } catch (lookupErr) {
+        console.error(`❌ User lookup error for assignment email:`, lookupErr.message);
       }
-    })().catch((err) => {
-      console.error("❌ Ticket email worker failed:", err?.message || err);
-    });
+    }
+
+    const emailResults = await Promise.allSettled(emailJobs);
+    for (const result of emailResults) {
+      if (result.status === "rejected") {
+        console.error(`❌ Ticket email failed:`, result.reason?.message || result.reason);
+      }
+    }
+
+    res.json({ success: true, data: newTicket });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });

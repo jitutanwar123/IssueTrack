@@ -1,54 +1,48 @@
 import dotenv from "dotenv";
-import nodemailer from "nodemailer";
-
 dotenv.config();
 
-const gmailUser = process.env.GMAIL_USER;
-const gmailPass = process.env.GMAIL_APP_PASSWORD;
-const adminEmail = process.env.ADMIN_EMAIL;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
-console.log("Testing Gmail SMTP with:");
-console.log("  GMAIL_USER:", gmailUser || "NOT SET");
-console.log("  GMAIL_APP_PASSWORD:", gmailPass ? "set" : "NOT SET");
-console.log("  ADMIN_EMAIL:", adminEmail || "NOT SET");
+console.log("Testing Brevo with:");
+console.log("  BREVO_API_KEY:", BREVO_API_KEY ? "set" : "NOT SET");
+console.log("  BREVO_FROM_EMAIL:", BREVO_FROM_EMAIL || "NOT SET");
+console.log("  ADMIN_EMAIL:", ADMIN_EMAIL || "NOT SET");
 
-if (!gmailUser || !gmailPass || !adminEmail) {
-  console.error("❌ Missing Gmail SMTP configuration");
+if (!BREVO_API_KEY || !BREVO_FROM_EMAIL || !ADMIN_EMAIL) {
+  console.error("❌ Missing Brevo configuration");
   process.exitCode = 1;
 } else {
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 10,
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "api-key": BREVO_API_KEY,
       },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
+      body: JSON.stringify({
+        sender: { name: "Viraj IT Support", email: BREVO_FROM_EMAIL },
+        to: [{ email: ADMIN_EMAIL }],
+        subject: "✅ Viraj Ticket System — Brevo Test",
+        htmlContent: `<div style="font-family:sans-serif;padding:20px">
+          <h2 style="color:#1a1f2e">Brevo Email Test Successful</h2>
+          <p>Your Viraj Profiles Ticket Tracking System can send mail through Brevo.</p>
+          <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>
+        </div>`,
+      }),
     });
 
-    await transporter.verify();
-    const info = await transporter.sendMail({
-      from: `"Viraj IT Support" <${gmailUser}>`,
-      to: adminEmail,
-      subject: "✅ Viraj Ticket System — Gmail SMTP Test",
-      html: `<div style="font-family:sans-serif;padding:20px">
-        <h2 style="color:#1a1f2e">Gmail SMTP Email Test Successful</h2>
-        <p>Your Viraj Profiles Ticket Tracking System can send mail through Gmail SMTP.</p>
-        <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>
-      </div>`,
-    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(`Brevo ${response.status}: ${data.message || JSON.stringify(data)}`);
+    }
 
-    console.log("✅ Test email sent to:", adminEmail);
-    console.log("✅ Message ID:", info.messageId);
+    console.log("✅ Test email sent to:", ADMIN_EMAIL);
+    console.log("✅ Brevo messageId:", data.messageId || "(not provided)");
   } catch (err) {
-    console.error("❌ Gmail SMTP error:", err.message);
+    console.error("❌ Brevo error:", err.message);
     process.exitCode = 1;
   }
 }
