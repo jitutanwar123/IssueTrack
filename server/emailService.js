@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import nodemailer from "nodemailer";
 import { plantLabel } from "./utils/plants.js";
 dotenv.config();
 
@@ -6,11 +7,23 @@ dotenv.config();
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const FROM_EMAIL    = process.env.BREVO_FROM_EMAIL || process.env.GMAIL_USER;
 const FROM_NAME     = "Viraj IT Support";
+const GMAIL_USER    = process.env.GMAIL_USER;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+const gmailTransporter = GMAIL_USER && GMAIL_APP_PASSWORD
+  ? nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASSWORD,
+      },
+    })
+  : null;
 
 // ─── Startup diagnostic ──────────────────────────────────────────
 console.log("📧 Email config check (Brevo):");
 console.log("  BREVO_API_KEY   :", BREVO_API_KEY   ? "✅ set"              : "❌ NOT SET");
 console.log("  BREVO_FROM_EMAIL:", FROM_EMAIL       ? `✅ ${FROM_EMAIL}`   : "❌ NOT SET");
+console.log("  GMAIL_USER      :", GMAIL_USER       ? `✅ ${GMAIL_USER}`   : "❌ NOT SET");
 console.log("  ADMIN_EMAIL     :", process.env.ADMIN_EMAIL ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET");
 
 // ─── Priority / status color maps ────────────────────────────────
@@ -94,49 +107,66 @@ function ticketTable(t) {
 // ─── Core send via Brevo REST API ───────────────────────────────
 // attachments: [{ name: string, content: Buffer|string, type: string }]
 async function sendEmail({ to, subject, html, attachments = [] }) {
-  if (!BREVO_API_KEY) {
-    console.warn("⚠️  BREVO_API_KEY not set — skipping email to", to);
-    return;
-  }
   if (!to) {
     console.warn("⚠️  No recipient address — skipping email");
     return;
   }
 
-  const payload = {
-    sender:      { name: FROM_NAME, email: FROM_EMAIL },
-    to:          [{ email: to }],
+  if (BREVO_API_KEY) {
+    const payload = {
+      sender:      { name: FROM_NAME, email: FROM_EMAIL },
+      to:          [{ email: to }],
+      subject,
+      htmlContent: html,
+    };
+
+    // Brevo accepts base64-encoded attachments
+    if (attachments.length > 0) {
+      payload.attachment = attachments.map(({ name, content, type }) => ({
+        name,
+        content: Buffer.isBuffer(content)
+          ? content.toString("base64")
+          : content,         // already base64 string
+        type: type || "application/octet-stream",
+      }));
+    }
+
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method:  "POST",
+      headers: {
+        "accept":       "application/json",
+        "content-type": "application/json",
+        "api-key":      BREVO_API_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(`Brevo ${res.status}: ${data.message || JSON.stringify(data)}`);
+    }
+    console.log(`📧 Email sent to ${to} via Brevo — messageId: ${data.messageId}`);
+    return data;
+  }
+
+  if (!gmailTransporter) {
+    console.warn("⚠️  No Brevo or Gmail credentials configured — skipping email to", to);
+    return;
+  }
+
+  const info = await gmailTransporter.sendMail({
+    from: `"${FROM_NAME}" <${FROM_EMAIL || GMAIL_USER}>`,
+    to,
     subject,
-    htmlContent: html,
-  };
-
-  // Brevo accepts base64-encoded attachments
-  if (attachments.length > 0) {
-    payload.attachment = attachments.map(({ name, content, type }) => ({
-      name,
-      content: Buffer.isBuffer(content)
-        ? content.toString("base64")
-        : content,         // already base64 string
-      type: type || "application/octet-stream",
-    }));
-  }
-
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method:  "POST",
-    headers: {
-      "accept":       "application/json",
-      "content-type": "application/json",
-      "api-key":      BREVO_API_KEY,
-    },
-    body: JSON.stringify(payload),
+    html,
+    attachments: attachments.map(({ name, content, type }) => ({
+      filename: name,
+      content: Buffer.isBuffer(content) ? content : Buffer.from(content, "base64"),
+      contentType: type || "application/octet-stream",
+    })),
   });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`Brevo ${res.status}: ${data.message || JSON.stringify(data)}`);
-  }
-  console.log(`📧 Email sent to ${to} via Brevo — messageId: ${data.messageId}`);
-  return data;
+  console.log(`📧 Email sent to ${to} via Gmail — messageId: ${info.messageId}`);
+  return info;
 }
 
 // ─── Helper: attachment section HTML ────────────────────────────
