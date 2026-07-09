@@ -5,6 +5,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
+import nodemailer from "nodemailer";
 import { buildTicketPdf } from "./utils/pdf.js";
 
 function toMySQLDateTime(value) {
@@ -207,64 +208,62 @@ app.get("/", (req, res) => {
 
 // ─── Email diagnostics endpoint (Railway debug) ──────────────────
 app.get("/api/test-email", async (req, res) => {
-  const brevoKey  = process.env.BREVO_API_KEY;
-  const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.ADMIN_EMAIL;
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
   const adminEmail= process.env.ADMIN_EMAIL;
 
   const config = {
-    BREVO_API_KEY:    brevoKey   ? "✅ set (hidden)"    : "❌ NOT SET",
-    BREVO_FROM_EMAIL: fromEmail  ? `✅ ${fromEmail}`    : "❌ NOT SET",
+    GMAIL_USER:       gmailUser  ? `✅ ${gmailUser}`    : "❌ NOT SET",
+    GMAIL_APP_PASSWORD: gmailPass ? "✅ set (hidden)"    : "❌ NOT SET",
     ADMIN_EMAIL:      adminEmail ? `✅ ${adminEmail}`   : "❌ NOT SET",
   };
 
-  if (!brevoKey || !fromEmail) {
+  if (!gmailUser || !gmailPass) {
     return res.status(500).json({
       success: false,
-      message: "BREVO_API_KEY must be set and a verified Brevo sender must exist (BREVO_FROM_EMAIL or ADMIN_EMAIL).",
+      message: "GMAIL_USER and GMAIL_APP_PASSWORD must be set for Gmail SMTP sending.",
       config,
     });
   }
 
   try {
-    const to = adminEmail || fromEmail;
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "accept":       "application/json",
-        "content-type": "application/json",
-        "api-key":      brevoKey,
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
       },
-      body: JSON.stringify({
-        sender:      { name: "Viraj IT Support", email: fromEmail },
-        to:          [{ email: to }],
-        subject:     "✅ Railway Email Test — IssueTrack (Brevo)",
-        htmlContent: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
-          <h2 style="color:#22c55e">Email is working! ✅</h2>
-          <p>Your Railway deployment can send emails via Brevo to <strong>any</strong> recipient.</p>
-          <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
-        </div>`,
-      }),
     });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Brevo ${response.status}: ${data.message || JSON.stringify(data)}`);
+    await transporter.verify();
+    const to = adminEmail || gmailUser;
+    const info = await transporter.sendMail({
+      from: `"Viraj IT Support" <${gmailUser}>`,
+      to,
+      subject: "✅ Railway Email Test — IssueTrack (Gmail SMTP)",
+      html: `<div style="font-family:sans-serif;padding:20px;max-width:500px">
+        <h2 style="color:#22c55e">Email is working! ✅</h2>
+        <p>Your Railway deployment can send emails through Gmail SMTP.</p>
+        <p style="color:#666;font-size:12px">Sent at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+      </div>`,
+    });
 
     res.json({
       success: true,
-      message: `✅ Test email sent to ${to} via Brevo`,
-      messageId: data.messageId,
+      message: `✅ Test email sent to ${to} via Gmail SMTP`,
+      messageId: info.messageId,
       config,
     });
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: `❌ Brevo Error: ${err.message}`,
+      message: `❌ Gmail SMTP Error: ${err.message}`,
       config,
-      hint: err.message.includes("401") || err.message.includes("unauthorized")
-        ? "BREVO_API_KEY is invalid. Get one at https://app.brevo.com/settings/keys/api"
-        : err.message.includes("sender")
-        ? "BREVO_FROM_EMAIL is not verified in Brevo. Go to Senders & IPs → verify the email."
-        : "Check Railway env vars and redeploy.",
+      hint: err.message.toLowerCase().includes("auth")
+        ? "Check that 2-Step Verification is enabled and the Gmail App Password is correct."
+        : err.message.toLowerCase().includes("username and password")
+        ? "Verify GMAIL_USER and GMAIL_APP_PASSWORD in Render."
+        : "Check Gmail SMTP settings and redeploy.",
     });
   }
 });
@@ -1186,7 +1185,7 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       [result.insertId, user.name, null, "Open"]
     ).catch(() => {});
 
-    // Send Brevo notifications before responding so failures are visible in logs.
+    // Send Gmail SMTP notifications before responding so failures are visible in logs.
     console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
     const emailJobs = [
       sendTicketConfirmationToUser(newTicket).then(() => {

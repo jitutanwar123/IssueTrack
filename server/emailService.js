@@ -1,16 +1,26 @@
 import dotenv from "dotenv";
+import nodemailer from "nodemailer";
 import { plantLabel } from "./utils/plants.js";
 dotenv.config();
 
-// ─── Brevo HTTP API (port 443 — works on Railway, no domain needed) ──
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL || process.env.ADMIN_EMAIL;
-const FROM_NAME     = "Viraj IT Support";
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+const FROM_NAME = "Viraj IT Support";
+
+const gmailTransporter = GMAIL_USER && GMAIL_APP_PASSWORD
+  ? nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASSWORD,
+      },
+    })
+  : null;
 
 // ─── Startup diagnostic ──────────────────────────────────────────
-console.log("📧 Email config check (Brevo only):");
-console.log("  BREVO_API_KEY   :", BREVO_API_KEY   ? "✅ set"              : "❌ NOT SET");
-console.log("  BREVO_FROM_EMAIL:", BREVO_FROM_EMAIL ? `✅ ${BREVO_FROM_EMAIL}` : "❌ NOT SET");
+console.log("📧 Email config check (Gmail SMTP):");
+console.log("  GMAIL_USER      :", GMAIL_USER ? `✅ ${GMAIL_USER}` : "❌ NOT SET");
+console.log("  GMAIL_APP_PASS  :", GMAIL_APP_PASSWORD ? "✅ set" : "❌ NOT SET");
 console.log("  ADMIN_EMAIL     :", process.env.ADMIN_EMAIL ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET");
 
 // ─── Priority / status color maps ────────────────────────────────
@@ -91,7 +101,7 @@ function ticketTable(t) {
   return `<table class="info-table"><tbody>${rows}</tbody></table>`;
 }
 
-// ─── Core send via Brevo REST API ───────────────────────────────
+// ─── Core send via Gmail SMTP ──────────────────────────────────
 // attachments: [{ name: string, content: Buffer|string, type: string }]
 async function sendEmail({ to, subject, html, attachments = [] }) {
   if (!to) {
@@ -99,45 +109,24 @@ async function sendEmail({ to, subject, html, attachments = [] }) {
     return;
   }
 
-  if (!BREVO_API_KEY) {
-    throw new Error("BREVO_API_KEY is not set");
+  if (!gmailTransporter || !GMAIL_USER || !GMAIL_APP_PASSWORD) {
+    throw new Error("GMAIL_USER or GMAIL_APP_PASSWORD is not set");
   }
 
-  if (!BREVO_FROM_EMAIL) {
-    throw new Error("BREVO_FROM_EMAIL is not set");
-  }
-
-  const payload = {
-    sender: { name: FROM_NAME, email: BREVO_FROM_EMAIL },
-    to: [{ email: to }],
+  const info = await gmailTransporter.sendMail({
+    from: `"${FROM_NAME}" <${GMAIL_USER}>`,
+    to,
     subject,
-    htmlContent: html,
-  };
-
-  if (attachments.length > 0) {
-    payload.attachment = attachments.map(({ name, content, type }) => ({
-      name,
-      content: Buffer.isBuffer(content) ? content.toString("base64") : content,
-      type: type || "application/octet-stream",
-    }));
-  }
-
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      "api-key": BREVO_API_KEY,
-    },
-    body: JSON.stringify(payload),
+    html,
+    attachments: attachments.map(({ name, content, type }) => ({
+      filename: name,
+      content: Buffer.isBuffer(content) ? content : Buffer.from(content, "base64"),
+      contentType: type || "application/octet-stream",
+    })),
   });
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`Brevo ${res.status}: ${data.message || JSON.stringify(data)}`);
-  }
-  console.log(`📧 Email sent to ${to} via Brevo — messageId: ${data.messageId}`);
-  return data;
+  console.log(`📧 Email sent to ${to} via Gmail SMTP — messageId: ${info.messageId}`);
+  return info;
 }
 
 // ─── Helper: attachment section HTML ────────────────────────────
