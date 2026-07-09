@@ -55,6 +55,12 @@ function buildFilters(filters = {}) {
     clauses.push("t.priority = ?");
     params.push(filters.priority);
   }
+  if (filters.assigned === "assigned") {
+    clauses.push("((t.assigned_to_id IS NOT NULL AND t.assigned_to_id != '') OR (t.assigned_to IS NOT NULL AND t.assigned_to != ''))");
+  }
+  if (filters.assigned === "unassigned") {
+    clauses.push("((t.assigned_to_id IS NULL OR t.assigned_to_id = '') AND (t.assigned_to IS NULL OR t.assigned_to = ''))");
+  }
   if (filters.category) {
     clauses.push("t.category = ?");
     params.push(filters.category);

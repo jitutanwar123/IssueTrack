@@ -651,7 +651,7 @@ app.delete("/api/tickets/:id", (req, res) => {
 
 // REPORT SUMMARY — uses SQL aggregates instead of loading all rows into JS
 app.get("/api/reports/summary", async (req, res) => {
-  const { location, category, sub_category, service, workgroup, customer, plant } = req.query;
+  const { location, category, sub_category, service, workgroup, customer, plant, status, priority, assigned } = req.query;
 
   // Build a reusable filter clause on top of WHERE 1=1
   const filterClauses = [];
@@ -663,6 +663,14 @@ app.get("/api/reports/summary", async (req, res) => {
   if (workgroup)   { filterClauses.push("workgroup = ?");     filterParams.push(workgroup); }
   if (customer)    { filterClauses.push("customer_name = ?"); filterParams.push(customer); }
   if (plant)       { filterClauses.push("plant = ?");         filterParams.push(plant); }
+  if (status)      { filterClauses.push("status = ?");        filterParams.push(status); }
+  if (priority)    { filterClauses.push("priority = ?");     filterParams.push(priority); }
+  if (assigned === "assigned") {
+    filterClauses.push("((assigned_to_id IS NOT NULL AND assigned_to_id != '') OR (assigned_to IS NOT NULL AND assigned_to != ''))");
+  }
+  if (assigned === "unassigned") {
+    filterClauses.push("((assigned_to_id IS NULL OR assigned_to_id = '') AND (assigned_to IS NULL OR assigned_to = ''))");
+  }
 
   // Safe: all extra conditions are AND-appended to WHERE 1=1
   const baseWhere = filterClauses.length
