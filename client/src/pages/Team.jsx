@@ -418,6 +418,19 @@ export default function Team() {
       </section>
 
       <div
+        className="sticky z-10 hidden xl:block"
+        style={{ top: "calc(var(--header-h, 4rem) + 1rem)" }}
+      >
+        <div className="flex items-center gap-4 py-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-slate-200" />
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
+            Team Workspace
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+        </div>
+      </div>
+
+      <div
         ref={splitRef}
         className="grid gap-6 xl:items-stretch xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
