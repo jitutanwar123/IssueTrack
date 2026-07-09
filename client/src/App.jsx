@@ -56,7 +56,9 @@ function Shell({ children }) {
         style={{ marginLeft: "var(--sidebar-width, 15rem)" }}
       >
         <Header />
-        <main className="flex-1 px-5 py-6 sm:px-7 lg:px-8 animate-fade-in">{children}</main>
+        <main className="flex-1 px-5 pb-6 pt-[calc(var(--header-h,4rem)+1.5rem)] sm:px-7 lg:px-8 animate-fade-in">
+          {children}
+        </main>
       </div>
     </div>
   );

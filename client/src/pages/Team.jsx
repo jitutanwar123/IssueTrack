@@ -419,7 +419,7 @@ export default function Team() {
 
       <div
         ref={splitRef}
-        className="grid gap-6 xl:items-start xl:gap-0"
+        className="grid gap-6 xl:items-stretch xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
         <div
