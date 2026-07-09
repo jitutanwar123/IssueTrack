@@ -1185,44 +1185,40 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       [result.insertId, user.name, null, "Open"]
     ).catch(() => {});
 
-    // Send Gmail SMTP notifications before responding so failures are visible in logs.
-    console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
-    const emailJobs = [
-      sendTicketConfirmationToUser(newTicket).then(() => {
-        console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`);
-      }),
-    ];
+    res.json({ success: true, data: newTicket });
 
-    // Only email the assigned staff member (NOT admin)
-    if (assigned_to) {
+    // Send Gmail SMTP notifications in the background so the API response
+    // isn't blocked by SMTP handshake or provider latency.
+    void (async () => {
+      console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
+      try {
+        await sendTicketConfirmationToUser(newTicket);
+        console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`);
+      } catch (emailErr) {
+        console.error(`❌ User email error:`, emailErr.message);
+      }
+
+      if (!assigned_to) return;
+
       try {
         const assigneeEmail = assigned_to_email?.trim() || null;
         const rows = assigneeEmail
           ? []
           : await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
         const resolvedAssigneeEmail = assigneeEmail || rows[0]?.email;
-        if (resolvedAssigneeEmail) {
-          emailJobs.push(
-            sendTicketAssignedToAssignee(newTicket, resolvedAssigneeEmail).then(() => {
-              console.log(`✅ Assignment email sent to ${resolvedAssigneeEmail} for ticket ${ticketId}`);
-            })
-          );
-        } else {
+        if (!resolvedAssigneeEmail) {
           console.warn(`⚠️ Could not find email for assigned user "${assigned_to}"`);
+          return;
         }
-      } catch (lookupErr) {
-        console.error(`❌ User lookup error for assignment email:`, lookupErr.message);
-      }
-    }
 
-    const emailResults = await Promise.allSettled(emailJobs);
-    for (const result of emailResults) {
-      if (result.status === "rejected") {
-        console.error(`❌ Ticket email failed:`, result.reason?.message || result.reason);
+        await sendTicketAssignedToAssignee(newTicket, resolvedAssigneeEmail);
+        console.log(`✅ Assignment email sent to ${resolvedAssigneeEmail} for ticket ${ticketId}`);
+      } catch (emailErr) {
+        console.error(`❌ Assignment email error:`, emailErr.message);
       }
-    }
-
-    res.json({ success: true, data: newTicket });
+    })().catch((err) => {
+      console.error("❌ Ticket email worker failed:", err?.message || err);
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
