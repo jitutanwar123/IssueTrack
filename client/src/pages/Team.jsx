@@ -390,39 +390,47 @@ export default function Team() {
 
   return (
     <div className="space-y-6">
-      <section
-        className="sticky z-30 overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
-        style={{
-          top: "calc(var(--header-h, 4rem) + 1rem)",
-          border: "1px solid #dbe3ec",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
+      <div
+        className="sticky z-30 space-y-0"
+        style={{ top: "calc(var(--header-h, 4rem) + 1rem)" }}
       >
-        <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Team Directory
+        <section
+          className="overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
+          style={{
+            border: "1px solid #dbe3ec",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
+        >
+          <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Team Directory
+              </div>
+              <h2 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-900">Separate user and staff records in one place</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                Manage portal access cleanly with dedicated records for users, IT staff, and admins. Create new staff members,
+                update roles, and keep the login structure organized.
+              </p>
             </div>
-            <h2 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-900">Separate user and staff records in one place</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-              Manage portal access cleanly with dedicated records for users, IT staff, and admins. Create new staff members,
-              update roles, and keep the login structure organized.
-            </p>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Metric label="Total Records" value={metrics.total} hint="All portal accounts" accent="cyan" />
-            <Metric label="IT Staff" value={metrics.staff} hint="Staff portal members" accent="purple" />
-            <Metric label="Users" value={metrics.users} hint="End-user accounts" accent="blue" />
-            <Metric label="Admins" value={metrics.admins} hint="Full access accounts" accent="emerald" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Metric label="Total Records" value={metrics.total} hint="All portal accounts" accent="cyan" />
+              <Metric label="IT Staff" value={metrics.staff} hint="Staff portal members" accent="purple" />
+              <Metric label="Users" value={metrics.users} hint="End-user accounts" accent="blue" />
+              <Metric label="Admins" value={metrics.admins} hint="Full access accounts" accent="emerald" />
+            </div>
           </div>
+        </section>
+
+        <div className="px-4 pt-3">
+          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
         </div>
-      </section>
+      </div>
 
       <div
         ref={splitRef}
-        className="grid gap-6 xl:items-stretch xl:gap-0"
+        className="mt-4 grid gap-6 xl:items-stretch xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
         <div
