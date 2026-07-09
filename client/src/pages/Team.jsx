@@ -422,15 +422,16 @@ export default function Team() {
             </div>
           </div>
         </section>
+      </div>
 
-        <div className="px-2 pt-3">
-          <div className="h-px bg-gradient-to-r from-transparent via-slate-300/90 to-transparent" />
-        </div>
+      <div className="relative z-20 h-14 xl:h-16" aria-hidden="true">
+        <div className="absolute inset-x-4 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-slate-300/90 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-b from-[#f4f7fb] to-transparent" />
       </div>
 
       <div
         ref={splitRef}
-        className="mt-8 border-t border-slate-200/80 pt-6 grid gap-6 xl:items-stretch xl:gap-0"
+        className="grid gap-6 pt-2 xl:items-stretch xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
         <div
