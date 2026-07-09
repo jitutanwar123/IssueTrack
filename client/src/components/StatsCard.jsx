@@ -8,17 +8,12 @@ const STRIPES = [
   "linear-gradient(90deg,#059669,#10b981)",
 ];
 
-export function StatsCard({ title, value, hint, accentIndex = 0, onClick, active = false }) {
+export function StatsCard({ title, value, hint, accentIndex = 0 }) {
   const stripe = STRIPES[accentIndex % STRIPES.length];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl bg-white p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated ${
-        onClick ? "cursor-pointer" : "cursor-default"
-      } ${active ? "ring-2 ring-brand-500/25" : ""}`}
+    <div
+      className="relative overflow-hidden rounded-2xl bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated"
       style={{ border: "1px solid #dbe3ec", boxShadow: "0 2px 8px rgba(15,23,42,0.04)" }}
-      aria-pressed={active || undefined}
     >
       {/* Top accent stripe */}
       <div
@@ -39,6 +34,6 @@ export function StatsCard({ title, value, hint, accentIndex = 0, onClick, active
         {value}
       </div>
       {hint && <div className="mt-2 text-xs text-slate-400">{hint}</div>}
-    </button>
+    </div>
   );
 }

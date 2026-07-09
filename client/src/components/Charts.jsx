@@ -60,45 +60,35 @@ export function AgeingChart({ data }) {
 }
 
 export function CategoryPieChart({ data }) {
-  const hasData = Array.isArray(data) && data.length > 0;
   return (
     <Panel title="Active Tickets by Category" subtitle="Incident, service request, change and problem split">
-      {hasData ? (
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={105} paddingAngle={4} label>
-              {data.map((entry, index) => (
-                <Cell key={entry.name} fill={colors[index % colors.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-      ) : (
-        <EmptyState message="No category data for this selection" />
-      )}
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={105} paddingAngle={4} label>
+            {data.map((entry, index) => (
+              <Cell key={entry.name} fill={colors[index % colors.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
     </Panel>
   );
 }
 
 export function ResolverChart({ data }) {
-  const hasData = Array.isArray(data) && data.length > 0;
   return (
     <Panel title="Tickets by Resolver / Workstream" subtitle="Current load by resolver">
-      {hasData ? (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis type="number" tick={{ fill: "#64748b", fontSize: 12 }} />
-            <YAxis type="category" dataKey="name" width={110} tick={{ fill: "#64748b", fontSize: 12 }} />
-            <Tooltip />
-            <Bar dataKey="value" fill="#14b8a6" radius={[0, 10, 10, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      ) : (
-        <EmptyState message="No resolver data for this selection" />
-      )}
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="vertical" margin={{ left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis type="number" tick={{ fill: "#64748b", fontSize: 12 }} />
+          <YAxis type="category" dataKey="name" width={110} tick={{ fill: "#64748b", fontSize: 12 }} />
+          <Tooltip />
+          <Bar dataKey="value" fill="#14b8a6" radius={[0, 10, 10, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </Panel>
   );
 }

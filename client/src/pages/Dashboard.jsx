@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../utils/api.js";
 import { useTickets } from "../context/TicketContext.jsx";
 import { AgeingChart, CategoryPieChart, ResolverChart } from "../components/Charts.jsx";
 import { StatsCard } from "../components/StatsCard.jsx";
@@ -85,17 +84,6 @@ const WORKGROUPS = [
   "Management / Leadership",
 ];
 
-const QUICK_VIEWS = {
-  all: { label: "All", filters: {} },
-  open: { label: "Open", filters: { status: "Open" } },
-  assigned: { label: "Assigned", filters: { assigned: "assigned" } },
-  unassigned: { label: "Unassigned", filters: { assigned: "unassigned" } },
-  incidents: { label: "Incidents", filters: { category: "Incident" } },
-  serviceRequests: { label: "Service Requests", filters: { category: "Service Request" } },
-  p1Incidents: { label: "P1 Incidents", filters: { category: "Incident", priority: "P1" } },
-  pendingBreach: { label: "Pending / Breach", filters: { status: "Pending" } },
-};
-
 // ─── FilterSelect component ────────────────────────────────────────────────────
 
 function FilterSelect({ label, value, onChange, options }) {
@@ -128,68 +116,36 @@ function FilterSelect({ label, value, onChange, options }) {
 
 export default function Dashboard() {
   const {
+    tickets,
     summary,
     dashboardFilters,
     setDashboardFilters,
+    refreshSummary,
+    refreshTickets,
   } = useTickets();
-  const [activeView, setActiveView] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
-  const [overviewSummary, setOverviewSummary] = useState(summary);
-  const [overviewTickets, setOverviewTickets] = useState([]);
-  const [overviewError, setOverviewError] = useState("");
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshSummary(), refreshTickets()]);
+      setLastRefreshed(new Date());
+    } catch (_) {}
+    finally { setRefreshing(false); }
+  }
 
   // Dynamic dropdown options derived from already-loaded ticket data
   const dynamicOptions = useMemo(() => {
     const unique = (field) =>
-      [...new Set(overviewTickets.map((t) => t[field]).filter(Boolean))].sort();
+      [...new Set(tickets.map((t) => t[field]).filter(Boolean))].sort();
     return {
       category:     unique("category"),
       sub_category: unique("sub_category"),
       customer:     unique("customer_name"),
       plant:        unique("plant"),
     };
-  }, [overviewTickets]);
-
-  const activeQuickFilters = QUICK_VIEWS[activeView]?.filters || {};
-  const effectiveFilters = useMemo(
-    () => ({ ...dashboardFilters, ...activeQuickFilters }),
-    [dashboardFilters, activeQuickFilters]
-  );
-
-  async function loadDashboardData(filters = effectiveFilters) {
-    setRefreshing(true);
-    setOverviewError("");
-    try {
-      const [summaryResponse, ticketResponse] = await Promise.all([
-        api.reportSummary(filters),
-        api.tickets({ limit: 5, page: 1, ...filters }),
-      ]);
-      setOverviewSummary(summaryResponse);
-      setOverviewTickets(ticketResponse.data || []);
-      setLastRefreshed(new Date());
-    } catch (err) {
-      setOverviewError(err.message || "Failed to load dashboard data.");
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  useEffect(() => {
-    const refresh = () => loadDashboardData().catch(() => {});
-    refresh();
-    const timer = setInterval(refresh, 60_000);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(effectiveFilters)]);
-
-  function handleQuickView(view) {
-    setActiveView(view);
-  }
-
-  function handleRefresh() {
-    loadDashboardData().catch(() => {});
-  }
+  }, [tickets]);
 
   return (
     <div className="space-y-6">
@@ -232,71 +188,13 @@ export default function Dashboard() {
       </section>
 
       {/* ── Stats Cards ── */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
-        <div className="flex flex-wrap items-center gap-2">
-          {Object.entries(QUICK_VIEWS).map(([key, view]) => {
-            const active = activeView === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleQuickView(key)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  active
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {view.label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatsCard
-          title="Total (24h)"
-          value={overviewSummary?.totalTicketsLast24Hours ?? 0}
-          accentIndex={0}
-          onClick={() => handleQuickView("all")}
-          active={activeView === "all"}
-        />
-        <StatsCard
-          title="Unassigned"
-          value={overviewSummary?.unassignedTickets ?? 0}
-          accentIndex={3}
-          onClick={() => handleQuickView("unassigned")}
-          active={activeView === "unassigned"}
-        />
-        <StatsCard
-          title="Incidents"
-          value={overviewSummary?.incidentTickets ?? 0}
-          accentIndex={0}
-          onClick={() => handleQuickView("incidents")}
-          active={activeView === "incidents"}
-        />
-        <StatsCard
-          title="Service Requests"
-          value={overviewSummary?.serviceRequestTickets ?? 0}
-          accentIndex={1}
-          onClick={() => handleQuickView("serviceRequests")}
-          active={activeView === "serviceRequests"}
-        />
-        <StatsCard
-          title="P1 Incidents"
-          value={overviewSummary?.p1Incidents ?? 0}
-          accentIndex={3}
-          onClick={() => handleQuickView("p1Incidents")}
-          active={activeView === "p1Incidents"}
-        />
-        <StatsCard
-          title="Pending / Breach"
-          value={overviewSummary?.pendingBreachTickets ?? 0}
-          accentIndex={2}
-          onClick={() => handleQuickView("pendingBreach")}
-          active={activeView === "pendingBreach"}
-        />
+        <StatsCard title="Total (24h)"       value={summary?.totalTicketsLast24Hours ?? 0} accentIndex={0} />
+        <StatsCard title="Unassigned"         value={summary?.unassignedTickets ?? 0}       accentIndex={3} />
+        <StatsCard title="Incidents"          value={summary?.incidentTickets ?? 0}          accentIndex={0} />
+        <StatsCard title="Service Requests"   value={summary?.serviceRequestTickets ?? 0}   accentIndex={1} />
+        <StatsCard title="P1 Incidents"       value={summary?.p1Incidents ?? 0}              accentIndex={3} />
+        <StatsCard title="Pending / Breach"   value={summary?.pendingBreachTickets ?? 0}     accentIndex={2} />
       </section>
 
       {/* ── Filters ── */}
@@ -317,14 +215,10 @@ export default function Dashboard() {
           <FilterSelect label="Services"        value={dashboardFilters.service}      onChange={(v) => setDashboardFilters({ service: v })}       options={SERVICES} />
           <FilterSelect label="Plants"          value={dashboardFilters.plant}        onChange={(v) => setDashboardFilters({ plant: v })}         options={PLANTS} />
           <FilterSelect label="Workgroups"      value={dashboardFilters.workgroup}    onChange={(v) => setDashboardFilters({ workgroup: v })}     options={WORKGROUPS} />
-          <FilterSelect label="Customers" value={dashboardFilters.customer} onChange={(v) => setDashboardFilters({ customer: v })} options={dynamicOptions.customer} />
+          <FilterSelect label="Customers"       value={dashboardFilters.customer}     onChange={(v) => setDashboardFilters({ customer: v })}      options={dynamicOptions.customer} />
           <div className="flex items-end">
             <button
-              type="button"
-              onClick={() => {
-                setDashboardFilters({ location:"", category:"", sub_category:"", service:"", plant:"", workgroup:"", customer:"" });
-                setActiveView("all");
-              }}
+              onClick={() => setDashboardFilters({ location:"", category:"", sub_category:"", service:"", plant:"", workgroup:"", customer:"" })}
               className="btn-secondary w-full text-xs"
             >
               Reset Filters
@@ -335,12 +229,12 @@ export default function Dashboard() {
 
       {/* ── Charts ── */}
       <section className="grid gap-6 xl:grid-cols-2">
-        <AgeingChart data={overviewSummary?.activeAgeing || []} />
-        <CategoryPieChart data={overviewSummary?.activeByCategory || []} />
+        <AgeingChart data={summary?.activeAgeing || []} />
+        <CategoryPieChart data={summary?.activeByCategory || []} />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <ResolverChart data={overviewSummary?.resolverBreakdown || []} />
+        <ResolverChart data={summary?.resolverBreakdown || []} />
         <div
           className="rounded-2xl bg-white overflow-hidden"
           style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
@@ -352,24 +246,9 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="p-4 space-y-2">
-            {refreshing && !overviewTickets.length ? (
-              <div className="rounded-xl border border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
-                Loading tickets…
-              </div>
-            ) : overviewTickets.length ? (
-              overviewTickets.slice(0, 5).map((ticket, index) => (
-                <TicketCard key={ticket.id || ticket.ticket_id || index} ticket={ticket} />
-              ))
-            ) : !overviewError ? (
-              <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
-                No tickets found for this selection.
-              </div>
-            ) : null}
-            {overviewError ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {overviewError}
-              </div>
-            ) : null}
+            {tickets.slice(0, 5).map((ticket, index) => (
+              <TicketCard key={ticket.id || ticket.ticket_id || index} ticket={ticket} />
+            ))}
           </div>
         </div>
       </section>
