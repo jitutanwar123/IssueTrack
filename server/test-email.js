@@ -18,11 +18,19 @@ if (!gmailUser || !gmailPass || !adminEmail) {
 } else {
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 10,
       auth: {
         user: gmailUser,
         pass: gmailPass,
       },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
     });
 
     await transporter.verify();

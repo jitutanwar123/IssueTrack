@@ -9,11 +9,19 @@ const FROM_NAME = "Viraj IT Support";
 
 const gmailTransporter = GMAIL_USER && GMAIL_APP_PASSWORD
   ? nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 10,
       auth: {
         user: GMAIL_USER,
         pass: GMAIL_APP_PASSWORD,
       },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
     })
   : null;
 
