@@ -1154,7 +1154,7 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       (ticket_id, title, description, category, sub_category, priority, status,
        customer_name, requester_email, phone, department, user_email, plant,
        assigned_to, attachment_name, attachment_mime, attachment_data)
-      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?,?)`;
+      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?)`;
 
     const result = await query(sql, [
       ticketId, title, description, category, sub_category || null, priority,
