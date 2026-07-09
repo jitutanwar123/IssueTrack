@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
+const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL || process.env.ADMIN_EMAIL;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 console.log("Testing Brevo with:");

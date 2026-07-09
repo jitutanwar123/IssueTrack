@@ -4,7 +4,7 @@ dotenv.config();
 
 // ─── Brevo HTTP API (port 443 — works on Railway, no domain needed) ──
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
+const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL || process.env.ADMIN_EMAIL;
 const FROM_NAME     = "Viraj IT Support";
 
 // ─── Startup diagnostic ──────────────────────────────────────────

@@ -208,7 +208,7 @@ app.get("/", (req, res) => {
 // ─── Email diagnostics endpoint (Railway debug) ──────────────────
 app.get("/api/test-email", async (req, res) => {
   const brevoKey  = process.env.BREVO_API_KEY;
-  const fromEmail = process.env.BREVO_FROM_EMAIL;
+  const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.ADMIN_EMAIL;
   const adminEmail= process.env.ADMIN_EMAIL;
 
   const config = {
@@ -220,7 +220,7 @@ app.get("/api/test-email", async (req, res) => {
   if (!brevoKey || !fromEmail) {
     return res.status(500).json({
       success: false,
-      message: "BREVO_API_KEY and BREVO_FROM_EMAIL must be set for Brevo-only email sending.",
+      message: "BREVO_API_KEY must be set and a verified Brevo sender must exist (BREVO_FROM_EMAIL or ADMIN_EMAIL).",
       config,
     });
   }
