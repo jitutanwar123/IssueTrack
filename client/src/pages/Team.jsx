@@ -391,9 +391,12 @@ export default function Team() {
   return (
     <div className="space-y-6">
       <section
-        className="overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
+        className="sticky z-30 overflow-hidden rounded-3xl bg-white text-slate-900 shadow-soft"
         style={{
+          top: "calc(var(--header-h, 4rem) + 1rem)",
           border: "1px solid #dbe3ec",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
         }}
       >
         <div className="grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
@@ -416,19 +419,6 @@ export default function Team() {
           </div>
         </div>
       </section>
-
-      <div
-        className="sticky z-10 hidden xl:block"
-        style={{ top: "calc(var(--header-h, 4rem) + 1rem)" }}
-      >
-        <div className="flex items-center gap-4 py-3">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-slate-200" />
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-            Team Workspace
-          </span>
-          <div className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
-        </div>
-      </div>
 
       <div
         ref={splitRef}
