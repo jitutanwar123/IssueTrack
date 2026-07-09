@@ -202,6 +202,7 @@ export default function Team() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const splitRef = useRef(null);
+  const editorRef = useRef(null);
 
   useEffect(() => {
     if (!success) return;
@@ -333,6 +334,9 @@ export default function Team() {
       department: user.portal_role === "user" ? "" : user.department || "IT",
       plant: user.plant || "",
     });
+    window.requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   async function submit(event) {
@@ -415,10 +419,14 @@ export default function Team() {
 
       <div
         ref={splitRef}
-        className="grid gap-6 xl:items-stretch xl:gap-0"
+        className="grid gap-6 xl:items-start xl:gap-0"
         style={{ gridTemplateColumns: `${splitPercent}% 14px ${100 - splitPercent}%` }}
       >
-        <div className="min-w-0 xl:pr-3" style={{ gridColumn: "1" }}>
+        <div
+          ref={editorRef}
+          className="min-w-0 xl:sticky xl:top-[5.25rem] xl:self-start xl:max-h-[calc(100vh-6.25rem)] xl:overflow-y-auto xl:pr-3"
+          style={{ gridColumn: "1", scrollMarginTop: "6rem" }}
+        >
           <SectionShell
             title={editingId ? "Edit Team Member" : "Create Team Member"}
             subtitle="Choose the login type first, then fill in the profile details."
