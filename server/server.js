@@ -1051,7 +1051,7 @@ app.get("/api/user/dashboard", authenticateJWT, requireUser, async (req, res) =>
 app.get("/api/staff/members", authenticateJWT, async (req, res) => {
   try {
     const rows = await query(
-      "SELECT id, name, role, department, plant FROM users WHERE portal_role = 'it_staff' ORDER BY role, name",
+      "SELECT id, name, email, role, department, plant FROM users WHERE portal_role = 'it_staff' ORDER BY role, name",
       []
     );
     res.json({ data: rows });
@@ -1136,7 +1136,7 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
 
 app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attachment"), async (req, res) => {
   const user = req.user;
-  const { title, description, category, sub_category, priority, assigned_to, plant } = req.body;
+  const { title, description, category, sub_category, priority, assigned_to, assigned_to_email, plant } = req.body;
 
   if (!title || !category || !priority) {
     return res.status(400).json({ message: "Title, category, and priority are required" });
@@ -1197,12 +1197,15 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     // Only email the assigned staff member (NOT admin)
     if (assigned_to) {
       try {
-        const rows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
-        const assigneeEmail = rows[0]?.email;
-        if (assigneeEmail) {
+        const assigneeEmail = assigned_to_email?.trim() || null;
+        const rows = assigneeEmail
+          ? []
+          : await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
+        const resolvedAssigneeEmail = assigneeEmail || rows[0]?.email;
+        if (resolvedAssigneeEmail) {
           emailJobs.push(
-            sendTicketAssignedToAssignee(newTicket, assigneeEmail).then(() => {
-              console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`);
+            sendTicketAssignedToAssignee(newTicket, resolvedAssigneeEmail).then(() => {
+              console.log(`✅ Assignment email sent to ${resolvedAssigneeEmail} for ticket ${ticketId}`);
             })
           );
         } else {

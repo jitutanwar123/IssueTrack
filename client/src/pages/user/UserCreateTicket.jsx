@@ -50,6 +50,7 @@ export default function UserCreateTicket() {
     sub_category: "",
     priority: "",
     assigned_to: "",
+    assigned_to_email: "",
   });
   const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +72,11 @@ export default function UserCreateTicket() {
 
   function setField(field, value) {
     setForm((prev) => {
-      const next = { ...prev, ...(field === "plant" ? { assigned_to: "" } : {}), [field]: value };
+      const next = {
+        ...prev,
+        ...(field === "plant" ? { assigned_to: "", assigned_to_email: "" } : {}),
+        [field]: value,
+      };
       if (field === "service") {
         next.category = "";
         next.sub_category = "";
@@ -266,12 +271,20 @@ export default function UserCreateTicket() {
                 </label>
                 <select
                   value={form.assigned_to}
-                  onChange={(e) => setField("assigned_to", e.target.value)}
+                  onChange={(e) => {
+                    const selected = filteredStaffMembers.find((staff) => staff.email === e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      assigned_to: selected?.name || "",
+                      assigned_to_email: selected?.email || "",
+                    }));
+                    if (errors.assigned_to) setErrors((prev) => ({ ...prev, assigned_to: "" }));
+                  }}
                   className="pro-select"
                 >
                   <option value="">— Select IT Staff Member (optional) —</option>
                   {filteredStaffMembers.map((s) => (
-                    <option key={s.id} value={s.name}>
+                    <option key={s.id} value={s.email}>
                       {s.name} — {s.role}{s.plant ? ` — ${plantLabel(s.plant)}` : ""}
                     </option>
                   ))}
