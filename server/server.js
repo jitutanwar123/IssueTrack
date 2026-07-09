@@ -208,7 +208,7 @@ app.get("/", (req, res) => {
 // ─── Email diagnostics endpoint (Railway debug) ──────────────────
 app.get("/api/test-email", async (req, res) => {
   const brevoKey  = process.env.BREVO_API_KEY;
-  const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.GMAIL_USER;
+  const fromEmail = process.env.BREVO_FROM_EMAIL;
   const adminEmail= process.env.ADMIN_EMAIL;
 
   const config = {
@@ -220,7 +220,7 @@ app.get("/api/test-email", async (req, res) => {
   if (!brevoKey || !fromEmail) {
     return res.status(500).json({
       success: false,
-      message: "BREVO_API_KEY or BREVO_FROM_EMAIL not set in Railway variables.",
+      message: "BREVO_API_KEY and BREVO_FROM_EMAIL must be set for Brevo-only email sending.",
       config,
     });
   }
@@ -1186,25 +1186,38 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       [result.insertId, user.name, null, "Open"]
     ).catch(() => {});
 
-    // Send emails async (don't block response)
-    // 1. Confirmation to the user who raised the ticket
+    // Send Brevo notifications before responding so failures are visible in logs.
     console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
-    sendTicketConfirmationToUser(newTicket)
-      .then(() => console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`))
-      .catch((e) => console.error(`❌ User email error:`, e.message));
+    const emailJobs = [
+      sendTicketConfirmationToUser(newTicket).then(() => {
+        console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`);
+      }),
+    ];
 
-    // 2. Only email the assigned staff member (NOT admin)
+    // Only email the assigned staff member (NOT admin)
     if (assigned_to) {
-      query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to])
-        .then((rows) => {
-          const assigneeEmail = rows[0]?.email;
-          if (assigneeEmail) {
-            return sendTicketAssignedToAssignee(newTicket, assigneeEmail)
-              .then(() => console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`))
-              .catch((e) => console.error(`❌ Assignment email error:`, e.message));
-          }
-        })
-        .catch(() => {});
+      try {
+        const rows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
+        const assigneeEmail = rows[0]?.email;
+        if (assigneeEmail) {
+          emailJobs.push(
+            sendTicketAssignedToAssignee(newTicket, assigneeEmail).then(() => {
+              console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`);
+            })
+          );
+        } else {
+          console.warn(`⚠️ Could not find email for assigned user "${assigned_to}"`);
+        }
+      } catch (lookupErr) {
+        console.error(`❌ User lookup error for assignment email:`, lookupErr.message);
+      }
+    }
+
+    const emailResults = await Promise.allSettled(emailJobs);
+    for (const result of emailResults) {
+      if (result.status === "rejected") {
+        console.error(`❌ Ticket email failed:`, result.reason?.message || result.reason);
+      }
     }
 
     res.json({ success: true, data: newTicket });
