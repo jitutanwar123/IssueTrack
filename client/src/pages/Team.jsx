@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "../utils/api.js";
 import { PLANTS, plantLabel } from "../utils/plants.js";
 import {
@@ -877,9 +878,9 @@ export default function Team() {
 }
 
 function StaffUpdateModal({ name, onConfirm, onCancel }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)" }}
       onClick={onCancel}
     >
@@ -923,7 +924,8 @@ function StaffUpdateModal({ name, onConfirm, onCancel }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

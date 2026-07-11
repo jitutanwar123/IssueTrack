@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -666,9 +667,9 @@ function PriorityConfirmModal({ current, target, priorities, onConfirm, onCancel
   const toMeta = PRIORITY_META[target] || PRIORITY_META.P3;
   const isEscalation = ["P1", "P2"].includes(target);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)" }}
       onClick={onCancel}
     >
@@ -696,7 +697,6 @@ function PriorityConfirmModal({ current, target, priorities, onConfirm, onCancel
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          {/* From → To */}
           <div className="flex items-center gap-3">
             <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${PRIORITY_META[current]?.badge}`}>
               {PRIORITY_META[current]?.icon} {from?.label}
@@ -709,7 +709,6 @@ function PriorityConfirmModal({ current, target, priorities, onConfirm, onCancel
             </span>
           </div>
 
-          {/* Impact banner */}
           <div className={`rounded-xl border p-3 ${toMeta.banner}`}>
             <p className="text-xs font-semibold text-slate-700">{to?.desc}</p>
           </div>
@@ -744,6 +743,7 @@ function PriorityConfirmModal({ current, target, priorities, onConfirm, onCancel
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
