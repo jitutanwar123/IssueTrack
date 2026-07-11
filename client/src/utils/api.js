@@ -14,7 +14,7 @@ async function request(path, options = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
-  const timeoutMs = options.timeoutMs ?? 20000;
+  const timeoutMs = options.timeoutMs ?? 60000;
   const timeoutId = setTimeout(() => controller.abort(new DOMException("Request timed out", "AbortError")), timeoutMs);
 
   let response;
@@ -51,7 +51,7 @@ async function requestForm(path, formData) {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(new DOMException("Request timed out", "AbortError")), 20000);
+  const timeoutId = setTimeout(() => controller.abort(new DOMException("Request timed out", "AbortError")), 60000);
 
   let response;
   try {
