@@ -698,7 +698,25 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(400).json({ message: "Name, email, and password are required" });
   }
   try {
-    const existing = await query("SELECT id FROM users WHERE email = ?", [email]);
+    // ── Block staff-reserved emails ──────────────────────────────────────────
+    const staffEmails = new Set(VIRAJ_STAFF_ROSTER.map((p) => p.email.toLowerCase()));
+    if (staffEmails.has(email.toLowerCase())) {
+      return res.status(403).json({
+        message: "This email address is reserved for IT staff and cannot be used to create a user account.",
+      });
+    }
+    // Also block if the email is already registered as an IT staff account in the DB
+    const staffInDb = await query(
+      "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND portal_role = 'it_staff'",
+      [email]
+    );
+    if (staffInDb.length > 0) {
+      return res.status(403).json({
+        message: "This email address is reserved for IT staff and cannot be used to create a user account.",
+      });
+    }
+    // ── Duplicate check ──────────────────────────────────────────────────────
+    const existing = await query("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", [email]);
     if (existing.length > 0) {
       return res.status(409).json({ message: "An account with this email already exists" });
     }
@@ -1217,8 +1235,27 @@ app.post("/api/users", async (req, res) => {
     return res.status(400).json({ message: "Name, email, username, and password are required" });
   }
   try {
-    const hashed = await bcrypt.hash(password, 10);
+    // ── Block staff-reserved emails (unless creating an it_staff account) ────
     const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
+    if (resolvedPortalRole !== "it_staff") {
+      const staffEmails = new Set(VIRAJ_STAFF_ROSTER.map((p) => p.email.toLowerCase()));
+      if (staffEmails.has(email.toLowerCase())) {
+        return res.status(403).json({
+          message: "This email address belongs to an IT staff member and cannot be assigned to a regular user account.",
+        });
+      }
+      // Also check the DB for any existing it_staff row with this email
+      const staffInDb = await query(
+        "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND portal_role = 'it_staff'",
+        [email]
+      );
+      if (staffInDb.length > 0) {
+        return res.status(403).json({
+          message: "This email address belongs to an IT staff member and cannot be assigned to a regular user account.",
+        });
+      }
+    }
+    const hashed = await bcrypt.hash(password, 10);
     const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
     const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
     res.json({ success: true, id: result.insertId });
