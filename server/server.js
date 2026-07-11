@@ -830,11 +830,9 @@ app.get("/api/tickets", (req, res) => {
   if (customer_name){ whereSql += " AND customer_name = ?";    params.push(customer_name); }
   if (plant)        { whereSql += " AND plant = ?";            params.push(plant); }
 
-  // Exclude attachment_data (LONGBLOB) — fetched only via /api/tickets/:id/attachment
   const dataSql  = `SELECT ${TICKET_SLIM_COLUMNS} FROM tickets ${whereSql} ORDER BY created_at ASC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS total FROM tickets ${whereSql}`;
 
-  // Run both queries in parallel using the promise-based interface
   Promise.all([
     db.promise().query(dataSql,  [...params, limit, offset]),
     db.promise().query(countSql, params),
@@ -848,6 +846,38 @@ app.get("/api/tickets", (req, res) => {
       });
     })
     .catch((err) => res.status(500).json({ message: err.message }));
+});
+
+// ONE-TIME ADMIN FIX: rename legacy INC*/SR26*/CR26* ticket IDs to clean SR/CR 6-digit format
+app.get("/api/admin/fix-ticket-ids", authenticateJWT, requireAdmin, async (req, res) => {
+  try {
+    const legacyTickets = await query(
+      `SELECT id, ticket_id, service FROM tickets WHERE ticket_id NOT REGEXP '^(SR|CR)[0-9]{6}$' ORDER BY id ASC`
+    );
+    if (legacyTickets.length === 0) {
+      return res.json({ message: "All ticket IDs are already correct.", renamed: [] });
+    }
+    const srCountRows = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^SR[0-9]{6}$'`);
+    const crCountRows = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^CR[0-9]{6}$'`);
+    let srCounter = Number(srCountRows[0]?.cnt || 0);
+    let crCounter = Number(crCountRows[0]?.cnt || 0);
+    const renamed = [];
+    for (const row of legacyTickets) {
+      const isChange = String(row.service || "").toLowerCase().includes("change");
+      const newId = isChange
+        ? `CR${String(++crCounter).padStart(6, "0")}`
+        : `SR${String(++srCounter).padStart(6, "0")}`;
+      await query(`UPDATE tickets SET ticket_id = ? WHERE id = ?`, [newId, row.id]);
+      renamed.push({ from: row.ticket_id, to: newId });
+    }
+    const finalSr = (await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^SR[0-9]{6}$'`))[0]?.cnt || 0;
+    const finalCr = (await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^CR[0-9]{6}$'`))[0]?.cnt || 0;
+    await query(`UPDATE ticket_sequences SET last_sequence = ? WHERE service IN ('Incident', 'Service Request')`, [finalSr]);
+    await query(`UPDATE ticket_sequences SET last_sequence = ? WHERE service = 'Change Request'`, [finalCr]);
+    res.json({ message: `Fixed ${renamed.length} ticket(s). SR counter → ${finalSr}, CR counter → ${finalCr}`, renamed });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // NEXT TICKET ID — MUST be before /:id to avoid Express param capture
