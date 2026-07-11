@@ -28,6 +28,10 @@ const DEFAULT_FORM = {
   sub_category: "",
   priority: "",
   assigned_to: "",
+  name: "",
+  email: "",
+  phone: "",
+  cisco_number: "",
 };
 
 function normalizeAssignment(item) {
@@ -60,6 +64,19 @@ export function CreateTicketForm({ variant = "user" }) {
   const [loadingMetadata, setLoadingMetadata] = useState(true);
   const [errors, setErrors] = useState({});
   const [dragging, setDragging] = useState(false);
+
+  // Pre-fill requester info from logged-in user
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name || user.name || "",
+        email: prev.email || user.email || "",
+        phone: prev.phone || user.phone || "",
+        cisco_number: prev.cisco_number || user.cisco_number || "",
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;
@@ -273,9 +290,54 @@ export function CreateTicketForm({ variant = "user" }) {
               <h3 className="text-sm font-semibold text-slate-900">Requester Information</h3>
             </div>
             <div className="p-5 grid gap-3 sm:grid-cols-2">
-              <ReadOnlyField label="Your Name" value={user?.name} />
-              <ReadOnlyField label="Email Address" value={user?.email} />
-              <ReadOnlyField label="Phone" value={user?.phone || "—"} />
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setField("name", e.target.value)}
+                  placeholder="Your full name"
+                  className="pro-input"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setField("email", e.target.value)}
+                  placeholder="your@email.com"
+                  className="pro-input"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  placeholder="+91 XXXXX XXXXX"
+                  className="pro-input"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Cisco Number
+                </label>
+                <input
+                  type="text"
+                  value={form.cisco_number}
+                  onChange={(e) => setField("cisco_number", e.target.value)}
+                  placeholder="e.g. 1234"
+                  className="pro-input"
+                />
+              </div>
             </div>
           </div>
 
@@ -284,74 +346,28 @@ export function CreateTicketForm({ variant = "user" }) {
               <h3 className="text-sm font-semibold text-slate-900">Ticket Details</h3>
             </div>
             <div className="p-5 space-y-4">
+              {/* Row 1: Plant full width */}
               <div>
                 <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Title / Subject *
+                  Plant / Branch *
                 </label>
-                <input
-                  type="text"
-                  placeholder="Brief description of the issue"
-                  value={form.title}
-                  onChange={(e) => setField("title", e.target.value)}
-                  className={`pro-input ${errors.title ? "border-red-400 bg-red-50" : ""}`}
-                />
-                {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
+                <select
+                  value={form.plant}
+                  onChange={(e) => setField("plant", e.target.value)}
+                  className={`pro-select ${errors.plant ? "border-red-400 bg-red-50" : ""}`}
+                >
+                  <option value="">Select plant</option>
+                  {plantOptions.map((plant) => (
+                    <option key={plant.value} value={plant.value}>
+                      {plantLabel(plant.value)}
+                    </option>
+                  ))}
+                </select>
+                {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Description *
-                </label>
-                <textarea
-                  placeholder="Provide as much detail as possible — steps to reproduce, error messages, affected systems..."
-                  value={form.description}
-                  onChange={(e) => setField("description", e.target.value)}
-                  rows={5}
-                  className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-200 resize-none focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10 ${
-                    errors.description ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50/30"
-                  }`}
-                />
-                {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
-              </div>
-
+              {/* Row 2: Category & Sub-Category side by side */}
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                    Service *
-                  </label>
-                  <select
-                    value={form.service}
-                    onChange={(e) => setField("service", e.target.value)}
-                    className={`pro-select ${errors.service ? "border-red-400 bg-red-50" : ""}`}
-                    disabled={variant === "user"}
-                  >
-                    <option value="">Select service</option>
-                    {serviceOptions.map((service) => (
-                      <option key={service} value={service}>
-                        {service}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.service && <p className="mt-1 text-xs text-red-600">{errors.service}</p>}
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                    Plant / Branch *
-                  </label>
-                  <select
-                    value={form.plant}
-                    onChange={(e) => setField("plant", e.target.value)}
-                    className={`pro-select ${errors.plant ? "border-red-400 bg-red-50" : ""}`}
-                  >
-                    <option value="">Select plant</option>
-                    {plantOptions.map((plant) => (
-                      <option key={plant.value} value={plant.value}>
-                        {plantLabel(plant.value)}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
-                </div>
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                     Category *
@@ -360,7 +376,6 @@ export function CreateTicketForm({ variant = "user" }) {
                     value={form.category}
                     onChange={(e) => setField("category", e.target.value)}
                     className={`pro-select ${errors.category ? "border-red-400 bg-red-50" : ""}`}
-                    disabled={!form.service}
                   >
                     <option value="">Select category</option>
                     {categoryOptions.map((category) => (
@@ -390,6 +405,38 @@ export function CreateTicketForm({ variant = "user" }) {
                   </select>
                   {errors.sub_category && <p className="mt-1 text-xs text-red-600">{errors.sub_category}</p>}
                 </div>
+              </div>
+
+              {/* Row 3: Title */}
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Title / Subject *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Brief description of the issue"
+                  value={form.title}
+                  onChange={(e) => setField("title", e.target.value)}
+                  className={`pro-input ${errors.title ? "border-red-400 bg-red-50" : ""}`}
+                />
+                {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
+              </div>
+
+              {/* Row 4: Description */}
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Description *
+                </label>
+                <textarea
+                  placeholder="Provide as much detail as possible — steps to reproduce, error messages, affected systems..."
+                  value={form.description}
+                  onChange={(e) => setField("description", e.target.value)}
+                  rows={5}
+                  className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-200 resize-none focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10 ${
+                    errors.description ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50/30"
+                  }`}
+                />
+                {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
               </div>
 
               <div>
