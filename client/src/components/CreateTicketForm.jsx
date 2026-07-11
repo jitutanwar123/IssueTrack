@@ -407,38 +407,7 @@ export function CreateTicketForm({ variant = "user" }) {
                 </div>
               </div>
 
-              {/* Row 3: Title */}
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Title / Subject *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Brief description of the issue"
-                  value={form.title}
-                  onChange={(e) => setField("title", e.target.value)}
-                  className={`pro-input ${errors.title ? "border-red-400 bg-red-50" : ""}`}
-                />
-                {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
-              </div>
-
-              {/* Row 4: Description */}
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Description *
-                </label>
-                <textarea
-                  placeholder="Provide as much detail as possible — steps to reproduce, error messages, affected systems..."
-                  value={form.description}
-                  onChange={(e) => setField("description", e.target.value)}
-                  rows={5}
-                  className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-200 resize-none focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10 ${
-                    errors.description ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50/30"
-                  }`}
-                />
-                {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
-              </div>
-
+              {/* Row 3: Assign To */}
               <div>
                 <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                   Assign To — IT Sub-Branch
@@ -467,6 +436,38 @@ export function CreateTicketForm({ variant = "user" }) {
                     Select the IT team member who handles your type of issue. They will receive an email notification.
                   </p>
                 )}
+              </div>
+
+              {/* Row 4: Title */}
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Title / Subject *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Brief description of the issue"
+                  value={form.title}
+                  onChange={(e) => setField("title", e.target.value)}
+                  className={`pro-input ${errors.title ? "border-red-400 bg-red-50" : ""}`}
+                />
+                {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
+              </div>
+
+              {/* Row 5: Description */}
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Description *
+                </label>
+                <textarea
+                  placeholder="Provide as much detail as possible — steps to reproduce, error messages, affected systems..."
+                  value={form.description}
+                  onChange={(e) => setField("description", e.target.value)}
+                  rows={5}
+                  className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-200 resize-none focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10 ${
+                    errors.description ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50/30"
+                  }`}
+                />
+                {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
               </div>
 
               <div>
