@@ -57,12 +57,10 @@ const SERVICE_PREFIXES = {
   "Change Request": "CR",
 };
 
-export function createTicketId(existingIds = new Set(), service = "Incident", now = new Date()) {
+export function createTicketId(existingIds = new Set(), service = "Incident") {
   const normalizedService = SERVICE_PREFIXES[service] ? service : "Incident";
   const prefix = SERVICE_PREFIXES[normalizedService] || SERVICE_PREFIXES.Incident;
-  const year = String(now.getFullYear()).slice(-2);
-  const base = `${prefix}${year}`;
-  const pattern = new RegExp(`^${prefix}${year}(\\d{6})$`);
+  const pattern = new RegExp(`^${prefix}(\\d{6})$`);
   let maxSequence = 0;
 
   for (const value of existingIds) {
@@ -72,7 +70,7 @@ export function createTicketId(existingIds = new Set(), service = "Incident", no
     maxSequence = Math.max(maxSequence, Number(match[1] || 0));
   }
 
-  return `${base}${String(maxSequence + 1).padStart(6, "0")}`;
+  return `${prefix}${String(maxSequence + 1).padStart(6, "0")}`;
 }
 
 export function safeJsonParse(text, fallback) {

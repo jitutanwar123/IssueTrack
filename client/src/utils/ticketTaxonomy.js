@@ -4,7 +4,7 @@ export const SERVICE_OPTIONS_BY_PORTAL = {
 };
 
 export const SERVICE_PREFIXES = {
-  Incident: "INC",
+  Incident: "SR",
   "Service Request": "SR",
   "Change Request": "CR",
 };
