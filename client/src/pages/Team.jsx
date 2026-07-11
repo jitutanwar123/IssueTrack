@@ -5,6 +5,7 @@ import {
   VIRAJ_HELPDESK_ALIAS_NAMES,
   VIRAJ_HELPDESK_SHARED_EMAIL,
   VIRAJ_HELPDESK_SHARED_LOGIN_NAME,
+  VIRAJ_HELPDESK_MEMBER_ROWS,
   VIRAJ_STAFF_DEFAULT_PASSWORD,
 } from "../utils/ticketTaxonomy.js";
 
@@ -431,8 +432,8 @@ export default function Team() {
             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Staff Access</div>
             <h3 className="mt-1 text-sm font-semibold text-slate-900">Default staff login setup</h3>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              All IT staff use their email address to sign in with the shared default password.
-              The Helpdesk team uses a shared login for the aliases below.
+              IT staff sign in with their own portal account, and the Helpdesk group uses one shared login.
+              Every name below maps to the same email and password.
             </p>
           </div>
           <div className="rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800">
@@ -447,15 +448,19 @@ export default function Team() {
             Shared Helpdesk roster: {VIRAJ_HELPDESK_ALIAS_NAMES.length} members
           </span>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {VIRAJ_HELPDESK_ALIAS_NAMES.map((name) => (
-            <span
-              key={name}
-              className="rounded-full border border-cyan-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm"
-            >
-              {name}
-            </span>
-          ))}
+        <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-100 bg-white shadow-sm">
+          <div className="grid grid-cols-[1.15fr_1fr] gap-3 border-b border-cyan-100 bg-cyan-50/80 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-700">
+            <span>Staff Member</span>
+            <span>Shared Login Email</span>
+          </div>
+          <div className="max-h-72 divide-y divide-slate-100 overflow-auto">
+            {VIRAJ_HELPDESK_MEMBER_ROWS.map((person) => (
+              <div key={person.name} className="grid grid-cols-[1.15fr_1fr] gap-3 px-4 py-3 text-sm">
+                <span className="font-semibold text-slate-800">{person.name}</span>
+                <span className="break-all text-slate-500">{person.email}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

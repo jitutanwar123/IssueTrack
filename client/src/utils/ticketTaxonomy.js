@@ -137,19 +137,21 @@ export const CTM_PLANT_ASSIGNMENTS = [
 export const VIRAJ_STAFF_DEFAULT_PASSWORD = "Viraj@123";
 export const VIRAJ_HELPDESK_SHARED_EMAIL = "Helpdesk@viraj.com";
 export const VIRAJ_HELPDESK_SHARED_LOGIN_NAME = "Helpdesk Team";
-export const VIRAJ_HELPDESK_ALIAS_NAMES = [
-  "Bipin Jadhav",
-  "Jay Bari",
-  "Ajay Dhodi",
-  "Mahesh Rahubansi",
-  "Aaquib Raje",
-  "Amol Chaudhari",
-  "Vikas Tandel",
-  "Yogesh Ule",
-  "Kapil Sankhe",
-  "Roshan Cerejo",
-  "Amol Chaugule",
+export const VIRAJ_HELPDESK_MEMBER_ROWS = [
+  { name: "Bipin Jadhav", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Jay Bari", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Ajay Dhodi", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Mahesh Rahubansi", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Aaquib Raje", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Amol Chaudhari", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Vikas Tandel", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Yogesh Ule", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Kapil Sankhe", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Roshan Cerejo", email: VIRAJ_HELPDESK_SHARED_EMAIL },
+  { name: "Amol Chaugule", email: VIRAJ_HELPDESK_SHARED_EMAIL },
 ];
+
+export const VIRAJ_HELPDESK_ALIAS_NAMES = VIRAJ_HELPDESK_MEMBER_ROWS.map((person) => person.name);
 
 export function getServiceOptions(portal) {
   return SERVICE_OPTIONS_BY_PORTAL[portal] || SERVICE_OPTIONS_BY_PORTAL.user;
