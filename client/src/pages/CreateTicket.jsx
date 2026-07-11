@@ -47,7 +47,7 @@ export default function CreateTicket() {
     location: "",
     workstream: "",
     workgroup: "",
-    service: "",
+    service: "Incident",
   });
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function CreateTicket() {
       try {
         // Fetch next ticket ID and users in parallel
         const [idResponse, usersResponse] = await Promise.all([
-          api.nextTicketId(),
+          api.nextTicketId("Incident"),
           api.users(),
         ]);
 

@@ -1,5 +1,3 @@
-import { randomInt } from "node:crypto";
-
 const TZ = "Asia/Kolkata";
 
 export function formatDateTime(value) {
@@ -53,12 +51,28 @@ export function ageingBucket(days) {
   return "21+ Days";
 }
 
-export function createTicketId(existingIds = new Set()) {
-  for (let i = 0; i < 1000; i += 1) {
-    const candidate = `SRN${randomInt(100000, 1000000)}`;
-    if (!existingIds.has(candidate)) return candidate;
+const SERVICE_PREFIXES = {
+  Incident: "INC",
+  "Service Request": "SR",
+  "Change Request": "CR",
+};
+
+export function createTicketId(existingIds = new Set(), service = "Incident", now = new Date()) {
+  const normalizedService = SERVICE_PREFIXES[service] ? service : "Incident";
+  const prefix = SERVICE_PREFIXES[normalizedService] || SERVICE_PREFIXES.Incident;
+  const year = String(now.getFullYear()).slice(-2);
+  const base = `${prefix}${year}`;
+  const pattern = new RegExp(`^${prefix}${year}(\\d{6})$`);
+  let maxSequence = 0;
+
+  for (const value of existingIds) {
+    const candidate = String(value || "");
+    const match = candidate.match(pattern);
+    if (!match) continue;
+    maxSequence = Math.max(maxSequence, Number(match[1] || 0));
   }
-  return `SRN${Date.now().toString().slice(-6)}`;
+
+  return `${base}${String(maxSequence + 1).padStart(6, "0")}`;
 }
 
 export function safeJsonParse(text, fallback) {

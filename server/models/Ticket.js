@@ -184,7 +184,7 @@ export function addTicketEvent(ticketId, data) {
 
 export function createTicket(data, actor = {}) {
   const existing = new Set(db.prepare("SELECT ticket_id FROM tickets").all().map((row) => row.ticket_id));
-  const ticketId = data.ticket_id || createTicketId(existing);
+  const ticketId = data.ticket_id || createTicketId(existing, data.service || "Incident");
   const now = new Date().toISOString();
   const result = db.prepare(`
     INSERT INTO tickets (
@@ -417,16 +417,6 @@ export function getAllTickets(filters = {}) {
     LEFT JOIN users u ON u.id = t.assigned_to_id
     ${where}
   `).all(...params).map(mapTicket);
-}
-
-export function getCategoryCounts(filters = {}) {
-  const tickets = getAllTickets(filters);
-  const counts = new Map();
-  for (const ticket of tickets) {
-    const key = ticket.category || "Uncategorized";
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  return Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
 }
 
 export function getAgeingBuckets(filters = {}) {

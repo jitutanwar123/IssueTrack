@@ -86,8 +86,9 @@ export function ticketPdfHandler(ctx) {
 
 export function ticketNextIdHandler(ctx) {
   return async (req, res) => {
+    const service = req.url.searchParams.get("service") || "Incident";
     const existing = new Set(db.prepare("SELECT ticket_id FROM tickets").all().map((row) => row.ticket_id));
-    const ticketId = createTicketId(existing);
+    const ticketId = createTicketId(existing, service);
     ctx.sendJson(res, 200, { ticket_id: ticketId });
   };
 }

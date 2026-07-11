@@ -129,9 +129,16 @@ db.connect((err) => {
           service VARCHAR(50) PRIMARY KEY,
           prefix VARCHAR(10) NOT NULL,
           last_sequence BIGINT NOT NULL DEFAULT 26000000,
+          sequence_year CHAR(2) DEFAULT NULL,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
       `);
+
+      await query(`ALTER TABLE ticket_sequences ADD COLUMN sequence_year CHAR(2) DEFAULT NULL`).catch((err) => {
+        if (err?.errno !== 1060) {
+          console.warn("⚠️ ticket_sequences migration warning:", err.message);
+        }
+      });
 
       await query(`
         CREATE TABLE IF NOT EXISTS ticket_services (
@@ -181,10 +188,16 @@ db.connect((err) => {
 
       for (const [service, prefix] of Object.entries(SERVICE_PREFIXES)) {
         await query(
-          `INSERT INTO ticket_sequences (service, prefix, last_sequence)
-           VALUES (?, ?, 26000000)
-           ON DUPLICATE KEY UPDATE prefix = VALUES(prefix)`,
-          [service, prefix]
+          `INSERT INTO ticket_sequences (service, prefix, last_sequence, sequence_year)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             prefix = VALUES(prefix),
+             sequence_year = VALUES(sequence_year),
+             last_sequence = CASE
+               WHEN sequence_year <> VALUES(sequence_year) OR sequence_year IS NULL THEN VALUES(last_sequence)
+               ELSE last_sequence
+             END`,
+          [service, prefix, CURRENT_TICKET_BASE, CURRENT_TICKET_YEAR]
         );
       }
 
@@ -247,6 +260,8 @@ db.connect((err) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || "viraj_jwt_secret_change_me";
 const STAFF_DEFAULT_PASSWORD = "Viraj@123";
+const CURRENT_TICKET_YEAR = String(new Date().getFullYear()).slice(-2);
+const CURRENT_TICKET_BASE = Number(`${CURRENT_TICKET_YEAR}000000`);
 const VIRAJ_STAFF_ROSTER = [
   { name: "Subodh Kumar", email: "Subodh.Kumar@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
   { name: "Saurabh Kulkarni", email: "Saurabh.Kulkarni@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
@@ -414,6 +429,34 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
 async function generateTicketId(service = "Incident") {
   const normalizedService = normalizeService(service, "staff") || "Incident";
   const prefix = SERVICE_PREFIXES[normalizedService] || SERVICE_PREFIXES.Incident;
+  const currentYear = String(new Date().getFullYear()).slice(-2);
+  const yearBase = Number(`${currentYear}000000`);
+
+  const currentRows = await query(
+    `SELECT prefix, last_sequence, sequence_year
+     FROM ticket_sequences
+     WHERE service = ?
+     LIMIT 1`,
+    [normalizedService]
+  );
+
+  if (currentRows.length === 0) {
+    await query(
+      `INSERT INTO ticket_sequences (service, prefix, last_sequence, sequence_year)
+       VALUES (?, ?, ?, ?)`,
+      [normalizedService, prefix, yearBase, currentYear]
+    );
+  } else {
+    const current = currentRows[0];
+    if (String(current.sequence_year || "") !== currentYear || String(current.prefix || "") !== prefix) {
+      await query(
+        `UPDATE ticket_sequences
+           SET prefix = ?, last_sequence = ?, sequence_year = ?
+         WHERE service = ?`,
+        [prefix, yearBase, currentYear, normalizedService]
+      );
+    }
+  }
 
   await query(
     `UPDATE ticket_sequences
