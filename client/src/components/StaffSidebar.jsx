@@ -12,6 +12,16 @@ const NAV = [
     ),
   },
   {
+    to: "/staff/create-ticket",
+    label: "Create Ticket",
+    icon: (
+      <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v8M8 12h8" />
+      </svg>
+    ),
+  },
+  {
     to: "/staff/history",
     label: "Resolved History",
     icon: (

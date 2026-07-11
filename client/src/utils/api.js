@@ -92,6 +92,7 @@ export const api = {
   register: (payload) =>
     request("/auth/register", { method: "POST", body: JSON.stringify(payload), token: "" }),
   me: () => request("/auth/me"),
+  ticketMetadata: () => request("/ticket-metadata"),
 
   // ── Admin: Tickets ────────────────────────────────────────────
   tickets: (params = {}) => {
@@ -101,7 +102,8 @@ export const api = {
     });
     return request(`/tickets?${search.toString()}`);
   },
-  nextTicketId: () => request("/tickets/next-id"),
+  nextTicketId: (service = "") =>
+    request(`/tickets/next-id${service ? `?service=${encodeURIComponent(service)}` : ""}`),
   ticket: (id) => request(`/tickets/${id}`),
   createTicket: (payload) => request("/tickets", { method: "POST", body: JSON.stringify(payload) }),
   updateTicket: (id, payload) => request(`/tickets/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
@@ -140,6 +142,7 @@ export const api = {
   },
   userTicket: (id) => request(`/user/tickets/${id}`),
   createUserTicket: (formData) => requestForm("/user/tickets", formData),
+  createStaffTicket: (formData) => requestForm("/staff/tickets", formData),
   addUserComment: (id, body) =>
     request(`/user/tickets/${id}/comment`, { method: "POST", body: JSON.stringify({ body }) }),
 

@@ -6,6 +6,16 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { buildTicketPdf } from "./utils/pdf.js";
+import {
+  CATEGORY_OPTIONS,
+  CTM_PLANT_ASSIGNMENTS,
+  SERVICE_OPTIONS_BY_PORTAL,
+  SERVICE_PREFIXES,
+  STAFF_ASSIGNMENTS,
+  SUB_CATEGORIES_BY_CATEGORY,
+  getServiceOptions,
+} from "../client/src/utils/ticketTaxonomy.js";
+import { PLANTS } from "./utils/plants.js";
 
 function toMySQLDateTime(value) {
   if (!value) return null;
@@ -112,20 +122,124 @@ db.connect((err) => {
   });
   console.log("✅ Migration queued (resolved_at, resolution_note, resolved_by, attachment columns, it_staff role)");
 
-  // ─── Renumber ticket_ids to be sequential (INC1, INC2, …) ──────
-  // Runs on every boot: fixes gaps caused by deleted tickets
-  db.query("SELECT id FROM tickets ORDER BY id ASC", (err, rows) => {
-    if (err || !rows || rows.length === 0) return;
-    rows.forEach((row, index) => {
-      const correctId = `INC${index + 1}`;
-      db.query(
-        "UPDATE tickets SET ticket_id = ? WHERE id = ? AND ticket_id != ?",
-        [correctId, row.id, correctId],
-        () => {} // silently ignore
-      );
-    });
-    console.log(`✅ Ticket IDs renumbered (${rows.length} tickets)`);
-  });
+  (async () => {
+    try {
+      await query(`
+        CREATE TABLE IF NOT EXISTS ticket_sequences (
+          service VARCHAR(50) PRIMARY KEY,
+          prefix VARCHAR(10) NOT NULL,
+          last_sequence BIGINT NOT NULL DEFAULT 26000000,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS ticket_services (
+          service VARCHAR(50) PRIMARY KEY,
+          display_order INT NOT NULL DEFAULT 0
+        )
+      `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS ticket_categories (
+          category VARCHAR(100) PRIMARY KEY,
+          display_order INT NOT NULL DEFAULT 0
+        )
+      `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS ticket_sub_categories (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          category VARCHAR(100) NOT NULL,
+          sub_category VARCHAR(100) NOT NULL,
+          display_order INT NOT NULL DEFAULT 0,
+          UNIQUE KEY unique_category_sub_category (category, sub_category)
+        )
+      `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS staff_assignment (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          category VARCHAR(100) NOT NULL,
+          sub_category VARCHAR(100) NOT NULL,
+          staff_name VARCHAR(255) NOT NULL,
+          staff_email VARCHAR(255) NOT NULL,
+          display_order INT NOT NULL DEFAULT 0,
+          UNIQUE KEY unique_staff_assignment (category, sub_category, staff_email)
+        )
+      `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS ctm_plant_assignment (
+          plant_code VARCHAR(20) PRIMARY KEY,
+          plant_name VARCHAR(255) NOT NULL,
+          staff_name VARCHAR(255) DEFAULT NULL,
+          staff_email VARCHAR(255) DEFAULT NULL,
+          display_order INT NOT NULL DEFAULT 0
+        )
+      `);
+
+      for (const [service, prefix] of Object.entries(SERVICE_PREFIXES)) {
+        await query(
+          `INSERT INTO ticket_sequences (service, prefix, last_sequence)
+           VALUES (?, ?, 26000000)
+           ON DUPLICATE KEY UPDATE prefix = VALUES(prefix)`,
+          [service, prefix]
+        );
+      }
+
+      for (const [index, service] of getServiceOptions("staff").entries()) {
+        await query(
+          `INSERT INTO ticket_services (service, display_order)
+           VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE display_order = VALUES(display_order)`,
+          [service, index]
+        );
+      }
+
+      for (const [index, category] of CATEGORY_OPTIONS.entries()) {
+        await query(
+          `INSERT INTO ticket_categories (category, display_order)
+           VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE display_order = VALUES(display_order)`,
+          [category, index]
+        );
+      }
+
+      for (const [category, subCategories] of Object.entries(SUB_CATEGORIES_BY_CATEGORY)) {
+        for (const [index, subCategory] of subCategories.entries()) {
+          await query(
+            `INSERT INTO ticket_sub_categories (category, sub_category, display_order)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE display_order = VALUES(display_order)`,
+            [category, subCategory, index]
+          );
+        }
+      }
+
+      for (const [index, assignment] of STAFF_ASSIGNMENTS.entries()) {
+        await query(
+          `INSERT INTO staff_assignment (category, sub_category, staff_name, staff_email, display_order)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE display_order = VALUES(display_order), staff_name = VALUES(staff_name)`,
+          [assignment.category, assignment.sub_category, assignment.name, assignment.email, index]
+        );
+      }
+
+      for (const [index, assignment] of CTM_PLANT_ASSIGNMENTS.entries()) {
+        await query(
+          `INSERT INTO ctm_plant_assignment (plant_code, plant_name, staff_name, staff_email, display_order)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE plant_name = VALUES(plant_name), staff_name = VALUES(staff_name), staff_email = VALUES(staff_email), display_order = VALUES(display_order)`,
+          [assignment.plant_code, assignment.plant_name, assignment.staff_name, assignment.staff_email, index]
+        );
+      }
+
+      console.log("✅ Ticket lookup tables seeded");
+    } catch (bootstrapErr) {
+      console.warn("⚠️ Ticket lookup bootstrap warning:", bootstrapErr.message);
+    }
+  })();
 
 });
 
@@ -187,6 +301,127 @@ function isClosedStatus(status) {
   return String(status || "").toLowerCase() === "closed";
 }
 
+function normalizeService(service, portal = "user") {
+  const allowed = getServiceOptions(portal);
+  if (allowed.includes(service)) return service;
+  return portal === "staff" ? null : allowed[0];
+}
+
+async function loadTicketLookups() {
+  const [
+    serviceRows,
+    categoryRows,
+    subCategoryRows,
+    staffRows,
+    ctmRows,
+  ] = await Promise.all([
+    query("SELECT service, display_order FROM ticket_services ORDER BY display_order ASC, service ASC"),
+    query("SELECT category, display_order FROM ticket_categories ORDER BY display_order ASC, category ASC"),
+    query("SELECT category, sub_category, display_order FROM ticket_sub_categories ORDER BY category ASC, display_order ASC, sub_category ASC"),
+    query("SELECT category, sub_category, staff_name, staff_email, display_order FROM staff_assignment ORDER BY category ASC, sub_category ASC, display_order ASC, staff_name ASC"),
+    query("SELECT plant_code, plant_name, staff_name, staff_email, display_order FROM ctm_plant_assignment ORDER BY display_order ASC, plant_code ASC"),
+  ]);
+
+  const servicesByPortal = {
+    user: serviceRows.map((row) => row.service).filter((service) => SERVICE_OPTIONS_BY_PORTAL.user.includes(service)),
+    staff: serviceRows.map((row) => row.service).filter((service) => SERVICE_OPTIONS_BY_PORTAL.staff.includes(service)),
+  };
+
+  return {
+    servicesByPortal,
+    categories: categoryRows.map((row) => row.category),
+    subCategoriesByCategory: subCategoryRows.reduce((acc, row) => {
+      if (!acc[row.category]) acc[row.category] = [];
+      acc[row.category].push(row.sub_category);
+      return acc;
+    }, {}),
+    staffAssignments: staffRows.map((row) => ({
+      category: row.category,
+      sub_category: row.sub_category,
+      name: row.staff_name,
+      email: row.staff_email,
+    })),
+    ctmPlantAssignments: ctmRows.map((row) => ({
+      plant_code: row.plant_code,
+      plant_name: row.plant_name,
+      name: row.staff_name,
+      email: row.staff_email,
+    })),
+    plants: PLANTS,
+  };
+}
+
+async function loadAssignableStaffFromDb(category, subCategory, plant) {
+  if (!category || !subCategory) return [];
+
+  if (category === "SAP Application" && subCategory === "CTM") {
+    const rows = await query(
+      `SELECT plant_code, plant_name, staff_name, staff_email
+       FROM ctm_plant_assignment
+       WHERE plant_code = ? AND staff_name IS NOT NULL AND staff_name != ''
+       LIMIT 1`,
+      [String(plant || "")]
+    );
+    return rows.map((row) => ({
+      name: row.staff_name,
+      email: row.staff_email,
+      plant_code: row.plant_code,
+      plant_name: row.plant_name,
+    }));
+  }
+
+  const rows = await query(
+    `SELECT staff_name, staff_email
+     FROM staff_assignment
+     WHERE category = ? AND sub_category = ?
+     ORDER BY display_order ASC, staff_name ASC`,
+    [category, subCategory]
+  );
+  return rows.map((row) => ({
+    name: row.staff_name,
+    email: row.staff_email,
+  }));
+}
+
+async function generateTicketId(service = "Incident") {
+  const normalizedService = normalizeService(service, "staff") || "Incident";
+  const prefix = SERVICE_PREFIXES[normalizedService] || SERVICE_PREFIXES.Incident;
+
+  await query(
+    `UPDATE ticket_sequences
+       SET last_sequence = LAST_INSERT_ID(last_sequence + 1)
+     WHERE service = ?`,
+    [normalizedService]
+  );
+  const rows = await query("SELECT LAST_INSERT_ID() AS seq");
+  const seq = rows[0]?.seq || 26000001;
+  return `${prefix}${seq}`;
+}
+
+function validateTicketInputs({ service, category, sub_category, plant, portal = "user" }) {
+  const errors = [];
+  const allowedServices = getServiceOptions(portal);
+  const normalizedService = allowedServices.includes(service) ? service : (portal === "user" ? allowedServices[0] : null);
+  if (!normalizedService) {
+    errors.push(`Service must be one of: ${allowedServices.join(", ")}`);
+  }
+  if (!CATEGORY_OPTIONS.includes(category)) {
+    errors.push(`Category must be one of: ${CATEGORY_OPTIONS.join(", ")}`);
+  }
+  const subCategories = SUB_CATEGORIES_BY_CATEGORY[category] || [];
+  if (!subCategories.includes(sub_category)) {
+    errors.push(`Sub-category must match the selected category`);
+  }
+  if (!plant) {
+    errors.push("Plant is required");
+  }
+  return {
+    ok: errors.length === 0,
+    errors,
+    service: normalizedService || allowedServices[0] || "Incident",
+  };
+}
+
 // ─── Helper: query as promise ────────────────────────────────────
 function query(sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -205,14 +440,6 @@ const TICKET_SLIM_COLUMNS = `
   resolved_at, resolution_note, resolved_by, created_at, updated_at,
   attachment_name, attachment_mime
 `;
-
-// ─── Helper: auto-generate ticket ID ────────────────────────────
-async function generateTicketId() {
-  // Count existing tickets so IDs stay sequential even after deletes
-  const rows = await query("SELECT COUNT(*) as total FROM tickets");
-  const next = (rows[0]?.total || 0) + 1;
-  return `INC${next}`;
-}
 
 app.get("/", (req, res) => {
   res.send("Server Running");
@@ -451,7 +678,8 @@ app.get("/api/tickets", (req, res) => {
 // NEXT TICKET ID — MUST be before /:id to avoid Express param capture
 app.get("/api/tickets/next-id", async (req, res) => {
   try {
-    const id = await generateTicketId();
+    const requestedService = req.query.service || "Incident";
+    const id = await generateTicketId(requestedService);
     res.json({ ticket_id: id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -514,7 +742,7 @@ app.post("/api/tickets", async (req, res) => {
   } = req.body;
 
   try {
-    const ticketId = await generateTicketId();
+    const ticketId = await generateTicketId(service || "Incident");
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
        customer_name, requester_email, phone, department,
@@ -1081,6 +1309,15 @@ app.get("/api/staff/members", authenticateJWT, async (req, res) => {
   }
 });
 
+app.get("/api/ticket-metadata", authenticateJWT, async (req, res) => {
+  try {
+    const metadata = await loadTicketLookups();
+    res.json({ data: metadata });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // POST: Staff transfer/reassign ticket to another staff member
 app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async (req, res) => {
   const { id } = req.params;
@@ -1155,18 +1392,48 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
   }
 });
 
-app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attachment"), async (req, res) => {
+async function createPortalTicket(req, res, portal) {
   const user = req.user;
-  const { title, description, category, sub_category, priority, assigned_to, plant } = req.body;
+  const { title, description, service, category, sub_category, priority, assigned_to, plant } = req.body;
 
   if (!title || !category || !priority) {
     return res.status(400).json({ message: "Title, category, and priority are required" });
   }
 
-  try {
-    const ticketId = await generateTicketId();
+  const validation = validateTicketInputs({ service, category, sub_category, plant, portal });
+  if (!validation.ok) {
+    return res.status(400).json({ message: validation.errors[0] });
+  }
 
-    // Handle optional file attachment
+  const normalizedService = validation.service;
+  const selectedPlant = plant || user.plant || null;
+  const allowedAssignments = await loadAssignableStaffFromDb(category, sub_category, selectedPlant).catch(() => []);
+  const allowedNames = allowedAssignments.map((item) => item.name || item.staff_name).filter(Boolean);
+  const manualAssignee = String(assigned_to || "").trim();
+  let finalAssignee = manualAssignee || "";
+
+  if (manualAssignee && !allowedNames.includes(manualAssignee)) {
+    return res.status(400).json({ message: "Selected assignee is not valid for the chosen sub-category" });
+  }
+
+  if (!finalAssignee && allowedNames.length === 1) {
+    finalAssignee = allowedNames[0];
+  }
+
+  if (category === "SAP Application" && sub_category === "CTM") {
+    const ctmAssignment = allowedAssignments[0] || null;
+    if (ctmAssignment?.staff_name) {
+      finalAssignee = ctmAssignment.staff_name;
+    } else if (ctmAssignment?.name) {
+      finalAssignee = ctmAssignment.name;
+    } else {
+      finalAssignee = "";
+    }
+  }
+
+  try {
+    const ticketId = await generateTicketId(normalizedService);
+
     const attachmentName = req.file ? req.file.originalname : null;
     const attachmentMime = req.file ? req.file.mimetype : null;
     const attachmentData = req.file ? req.file.buffer : null;
@@ -1174,40 +1441,56 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
        customer_name, requester_email, phone, department, user_email, plant,
-       assigned_to, attachment_name, attachment_mime, attachment_data)
-      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?)`;
+       assigned_to, service, attachment_name, attachment_mime, attachment_data)
+      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?,?)`;
 
     const result = await query(sql, [
-      ticketId, title, description, category, sub_category || null, priority,
-      user.name, user.email, user.phone || null, user.department || null, user.email, plant || user.plant || null,
-      assigned_to || null,
-      attachmentName, attachmentMime, attachmentData,
+      ticketId,
+      title,
+      description,
+      category,
+      sub_category || null,
+      priority,
+      user.name,
+      user.email,
+      user.phone || null,
+      user.department || null,
+      user.email,
+      selectedPlant,
+      finalAssignee || null,
+      normalizedService,
+      attachmentName,
+      attachmentMime,
+      attachmentData,
     ]);
 
     const newTicket = {
       id: result.insertId,
       ticket_id: ticketId,
-      title, description, category, sub_category, priority,
+      title,
+      description,
+      category,
+      sub_category,
+      priority,
+      service: normalizedService,
       status: "Open",
       customer_name: user.name,
       requester_email: user.email,
       phone: user.phone,
       department: user.department,
-      plant: plant || user.plant || null,
-      assigned_to: assigned_to || null,
+      plant: selectedPlant,
+      assigned_to: finalAssignee || null,
       created_at: new Date(),
       attachment_name: attachmentName,
       attachment_mime: attachmentMime,
       attachment_data: attachmentData,
     };
 
-    // Status history
     await query(
       "INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status) VALUES (?,?,?,?)",
       [result.insertId, user.name, null, "Open"]
     ).catch(() => {});
 
-    // Send Brevo notifications before responding so failures are visible in logs.
     console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
     const emailJobs = [
       sendTicketConfirmationToUser(newTicket).then(() => {
@@ -1215,10 +1498,9 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
       }),
     ];
 
-    // Only email the assigned staff member (NOT admin)
-    if (assigned_to) {
+    if (finalAssignee) {
       try {
-        const rows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [assigned_to]);
+        const rows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [finalAssignee]);
         const assigneeEmail = rows[0]?.email;
         if (assigneeEmail) {
           emailJobs.push(
@@ -1227,7 +1509,7 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
             })
           );
         } else {
-          console.warn(`⚠️ Could not find email for assigned user "${assigned_to}"`);
+          console.warn(`⚠️ Could not find email for assigned user "${finalAssignee}"`);
         }
       } catch (lookupErr) {
         console.error(`❌ User lookup error for assignment email:`, lookupErr.message);
@@ -1235,9 +1517,9 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     }
 
     const emailResults = await Promise.allSettled(emailJobs);
-    for (const result of emailResults) {
-      if (result.status === "rejected") {
-        console.error(`❌ Ticket email failed:`, result.reason?.message || result.reason);
+    for (const resultItem of emailResults) {
+      if (resultItem.status === "rejected") {
+        console.error(`❌ Ticket email failed:`, resultItem.reason?.message || resultItem.reason);
       }
     }
 
@@ -1246,6 +1528,14 @@ app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attac
     console.error(err);
     res.status(500).json({ message: err.message });
   }
+}
+
+app.post("/api/user/tickets", authenticateJWT, requireUser, upload.single("attachment"), async (req, res) => {
+  return createPortalTicket(req, res, "user");
+});
+
+app.post("/api/staff/tickets", authenticateJWT, requireStaff, upload.single("attachment"), async (req, res) => {
+  return createPortalTicket(req, res, "staff");
 });
 
 // SERVE TICKET ATTACHMENT — accepts token via header OR ?token= query param (for browser links)

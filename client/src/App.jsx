@@ -27,6 +27,7 @@ const DepartmentResolve = lazy(() => import("./pages/DepartmentResolve.jsx"));
 // ─── Staff portal pages ──────────────────────────────────────────────────────
 const StaffLogin          = lazy(() => import("./pages/staff/StaffLogin.jsx"));
 const StaffDashboard      = lazy(() => import("./pages/staff/StaffDashboard.jsx"));
+const StaffCreateTicket   = lazy(() => import("./pages/staff/StaffCreateTicket.jsx"));
 const StaffTicketDetail   = lazy(() => import("./pages/staff/StaffTicketDetail.jsx"));
 const StaffResolvedHistory = lazy(() => import("./pages/staff/StaffResolvedHistory.jsx"));
 const StaffReports         = lazy(() => import("./pages/staff/StaffReports.jsx"));
@@ -282,6 +283,7 @@ export default function App() {
                 <StaffShell>
                   <Routes>
                     <Route path="/dashboard" element={<StaffDashboard />} />
+                    <Route path="/create-ticket" element={<StaffCreateTicket />} />
                     <Route path="/tickets/:id" element={<StaffTicketDetail />} />
                     <Route path="/history" element={<StaffResolvedHistory />} />
                     <Route path="/reports" element={<StaffReports />} />
