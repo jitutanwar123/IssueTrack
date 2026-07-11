@@ -20,11 +20,11 @@ const priorityColors = {
   P4: { bg: "#16a34a", label: "P4 — Low"      },
 };
 const statusColors = {
-  Open:        "#3b82f6",
-  "In Progress":"#f97316",
-  Pending:     "#eab308",
-  Resolved:    "#22c55e",
-  Closed:      "#64748b",
+  Open:          "#3b82f6",
+  "In Progress": "#f97316",
+  Pending:       "#eab308",
+  Resolved:      "#22c55e",
+  Closed:        "#64748b",
 };
 
 // ─── Base HTML template ──────────────────────────────────────────
@@ -231,12 +231,29 @@ export async function sendUserCommentToAdmin(ticket, comment, userName) {
 }
 
 // ─── 6. Ticket assigned → Assignee ──────────────────────────────
-export async function sendTicketAssignedToAssignee(ticket, assigneeEmail) {
+// raisedByStaff: name of the IT staff who created the ticket on behalf of a user (optional)
+export async function sendTicketAssignedToAssignee(ticket, assigneeEmail, raisedByStaff) {
   if (!assigneeEmail) return;
   const pc = priorityColors[ticket.priority] || { bg: "#64748b", label: ticket.priority };
+
+  // Show a prominent banner when the ticket was raised on behalf of a user by a staff member
+  const onBehalfBanner = raisedByStaff
+    ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px 18px;margin:0 0 18px;display:flex;align-items:flex-start;gap:12px;">
+         <span style="font-size:22px;line-height:1.2">&#x1F9D1;&#x200D;&#x1F4BC;</span>
+         <div>
+           <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#92400e;">Raised on Behalf of User</p>
+           <p style="margin:0;font-size:13px;color:#78350f;">
+             This ticket was created by IT staff member <strong>${raisedByStaff}</strong> on behalf of requester
+             ${ticket.customer_name ? `<strong>${ticket.customer_name}</strong>` : "the user"}${ticket.request_source ? ` via <strong>${ticket.request_source}</strong>` : ""}.
+           </p>
+         </div>
+       </div>`
+    : "";
+
   const html = baseTemplate("A Ticket Has Been Assigned to You",
-    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">📌 A new ticket has been assigned to you</p>
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">&#x1F4CC; A new ticket has been assigned to you</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A support ticket has been assigned to you. Please log in to your staff portal to view and resolve it.</p>
+     ${onBehalfBanner}
      ${ticketTable(ticket)}`);
   await sendEmail({ to: assigneeEmail, subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
 }
@@ -246,7 +263,7 @@ export async function sendTicketTransferredToAssignee(ticket, assigneeEmail, tra
   if (!assigneeEmail) return;
   const pc = priorityColors[ticket.priority] || { bg: "#64748b", label: ticket.priority };
   const html = baseTemplate("A Ticket Has Been Transferred to You",
-    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">🔁 A ticket has been transferred to you</p>
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">&#x1F501; A ticket has been transferred to you</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">
        <strong>${transferredBy || "Another staff member"}</strong> has handed this ticket over to you. Please review it in your staff portal.
      </p>
@@ -263,7 +280,7 @@ export async function sendAdminCreatedTicketToAdmin(ticket) {
   if (!process.env.ADMIN_EMAIL) return;
   const pc = priorityColors[ticket.priority] || { label: ticket.priority };
   const html = baseTemplate("Ticket Created by Admin",
-    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">📋 New Ticket Created</p>
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">&#x1F4CB; New Ticket Created</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A new support ticket has been created by the admin.</p>
      ${ticketTable(ticket)}
      <p class="section-title">Description</p>
@@ -278,7 +295,7 @@ export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
     ? new Date(ticket.resolved_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
     : new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   const html = baseTemplate("Your Ticket Has Been Resolved",
-    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">✅ Your ticket has been resolved!</p>
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">&#x2705; Your ticket has been resolved!</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">Dear <strong>${ticket.customer_name || "User"}</strong>, ticket <strong>${ticket.ticket_id || ticket.id}</strong> has been resolved.</p>
      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin:16px 0;">
        <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#15803d;">Resolution Details</p>
@@ -295,7 +312,7 @@ export async function sendSubBranchResolutionToAdmin(ticket, resolvedBy, resolut
   if (!process.env.ADMIN_EMAIL) return;
   const resolvedAt = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   const html = baseTemplate("Sub-Branch Ticket Resolved",
-    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">✅ A sub-branch member has resolved a ticket</p>
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">&#x2705; A sub-branch member has resolved a ticket</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">IT Staff member <strong>${resolvedBy}</strong> has resolved the following ticket.</p>
      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin:16px 0;">
        <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#15803d;">Resolution Details</p>

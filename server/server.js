@@ -114,6 +114,8 @@ db.connect((err) => {
     "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
     // Speed up staff queue lookups
     "ALTER TABLE tickets ADD INDEX idx_tickets_assigned_created (assigned_to, created_at)",
+    "ALTER TABLE tickets ADD COLUMN request_source VARCHAR(50) DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN raised_by_staff VARCHAR(255) DEFAULT NULL",
   ];
   migrationCols.forEach((sql) => {
     db.query(sql, (migErr) => {
@@ -1625,7 +1627,12 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
 
 async function createPortalTicket(req, res, portal) {
   const user = req.user;
-  const { title, description, service, category, sub_category, priority, assigned_to, plant } = req.body;
+  const {
+    title, description, service, category, sub_category, priority, assigned_to, plant,
+    // Staff-on-behalf fields (only used when portal === "staff")
+    requester_name, requester_email: bodyRequesterEmail, requester_phone, requester_cisco_number,
+    request_source,
+  } = req.body;
 
   if (!title || !category || !priority) {
     return res.status(400).json({ message: "Title, category, and priority are required" });
@@ -1662,6 +1669,14 @@ async function createPortalTicket(req, res, portal) {
     }
   }
 
+  // For staff portal: use the submitted requester info (not the staff's own info)
+  const isStaffPortal = portal === "staff";
+  const customerName    = isStaffPortal ? (requester_name   || user.name)         : user.name;
+  const customerEmail   = isStaffPortal ? (bodyRequesterEmail || user.email)       : user.email;
+  const customerPhone   = isStaffPortal ? (requester_phone  || user.phone || null) : (user.phone || null);
+  const raisedByStaff   = isStaffPortal ? user.name : null;
+  const finalRequestSource = isStaffPortal ? (request_source || null) : null;
+
   try {
     const ticketId = await generateTicketId(normalizedService);
 
@@ -1672,8 +1687,9 @@ async function createPortalTicket(req, res, portal) {
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
        customer_name, requester_email, phone, department, user_email, plant,
-       assigned_to, service, attachment_name, attachment_mime, attachment_data)
-      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?,?)`;
+       assigned_to, service, attachment_name, attachment_mime, attachment_data,
+       request_source, raised_by_staff)
+      VALUES (?,?,?,?,?,?,'Open',?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 
     const result = await query(sql, [
       ticketId,
@@ -1682,17 +1698,19 @@ async function createPortalTicket(req, res, portal) {
       category,
       sub_category || null,
       priority,
-      user.name,
-      user.email,
-      user.phone || null,
+      customerName,
+      customerEmail,
+      customerPhone,
       user.department || null,
-      user.email,
+      customerEmail,
       selectedPlant,
       finalAssignee || null,
       normalizedService,
       attachmentName,
       attachmentMime,
       attachmentData,
+      finalRequestSource,
+      raisedByStaff,
     ]);
 
     const newTicket = {
@@ -1705,9 +1723,9 @@ async function createPortalTicket(req, res, portal) {
       priority,
       service: normalizedService,
       status: "Open",
-      customer_name: user.name,
-      requester_email: user.email,
-      phone: user.phone,
+      customer_name: customerName,
+      requester_email: customerEmail,
+      phone: customerPhone,
       department: user.department,
       plant: selectedPlant,
       assigned_to: finalAssignee || null,
@@ -1715,6 +1733,8 @@ async function createPortalTicket(req, res, portal) {
       attachment_name: attachmentName,
       attachment_mime: attachmentMime,
       attachment_data: attachmentData,
+      request_source: finalRequestSource,
+      raised_by_staff: raisedByStaff,
     };
 
     await query(
@@ -1722,10 +1742,12 @@ async function createPortalTicket(req, res, portal) {
       [result.insertId, user.name, null, "Open"]
     ).catch(() => {});
 
-    console.log(`📧 Sending confirmation email to user ${user.email} for ticket ${ticketId}`);
+    // For staff portal, send confirmation to the requester's email (not staff's)
+    const confirmationRecipient = customerEmail;
+    console.log(`📧 Sending confirmation email to ${confirmationRecipient} for ticket ${ticketId}`);
     const emailJobs = [
       sendTicketConfirmationToUser(newTicket).then(() => {
-        console.log(`✅ User confirmation email sent to ${user.email} for ${ticketId}`);
+        console.log(`✅ Confirmation email sent to ${confirmationRecipient} for ${ticketId}`);
       }),
     ];
 
@@ -1735,7 +1757,7 @@ async function createPortalTicket(req, res, portal) {
         const assigneeEmail = rows[0]?.email;
         if (assigneeEmail) {
           emailJobs.push(
-            sendTicketAssignedToAssignee(newTicket, assigneeEmail).then(() => {
+            sendTicketAssignedToAssignee(newTicket, assigneeEmail, raisedByStaff).then(() => {
               console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`);
             })
           );

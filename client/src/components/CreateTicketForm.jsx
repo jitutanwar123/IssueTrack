@@ -20,6 +20,12 @@ const PRIORITIES = [
   { value: "P4", label: "P4 — Low", desc: "Minor issue, minimal impact", color: "border-emerald-200 bg-emerald-50 text-emerald-800" },
 ];
 
+const REQUEST_SOURCES = [
+  { value: "Phone", label: "📞 Phone" },
+  { value: "WhatsApp", label: "💬 WhatsApp" },
+  { value: "Gmail", label: "📧 Gmail" },
+];
+
 const DEFAULT_FORM = {
   title: "",
   description: "",
@@ -33,6 +39,12 @@ const DEFAULT_FORM = {
   email: "",
   phone: "",
   cisco_number: "",
+  // Staff-on-behalf fields
+  requester_name: "",
+  requester_email: "",
+  requester_phone: "",
+  requester_cisco_number: "",
+  request_source: "",
 };
 
 function normalizeAssignment(item) {
@@ -200,9 +212,7 @@ export function CreateTicketForm({ variant = "user" }) {
   }
 
   function handlePriorityClick(targetPriority) {
-    // If clicking the already-selected priority, do nothing
     if (targetPriority === form.priority) return;
-    // Always show confirmation modal when changing priority
     setPriorityModal({ targetPriority });
   }
 
@@ -222,6 +232,12 @@ export function CreateTicketForm({ variant = "user" }) {
     if (!form.category) nextErrors.category = "Category is required";
     if (!form.sub_category) nextErrors.sub_category = "Sub-category is required";
     if (!form.priority) nextErrors.priority = "Priority is required";
+    // Staff variant: requester fields validation
+    if (variant === "staff") {
+      if (!form.requester_name.trim()) nextErrors.requester_name = "Requester name is required";
+      if (!form.requester_email.trim()) nextErrors.requester_email = "Requester email is required";
+      if (!form.request_source) nextErrors.request_source = "Request source is required";
+    }
     if (form.category === "SAP Application" && form.sub_category === "CTM" && !assignedStaffOption?.name) {
       nextErrors.assigned_to = "No CTM assignee is mapped for the selected plant.";
     }
@@ -284,12 +300,16 @@ export function CreateTicketForm({ variant = "user" }) {
   const isCtm = form.category === "SAP Application" && form.sub_category === "CTM";
   const assignToDisabled = !form.category || !form.sub_category || (isCtm && !currentAssignees.length);
 
+  const isStaff = variant === "staff";
+
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Raise a New Ticket</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Describe your issue below. Our team will respond within the SLA for your selected priority.
+          {isStaff
+            ? "Creating ticket on behalf of a user. Fill in the requester's details below."
+            : "Describe your issue below. Our team will respond within the SLA for your selected priority."}
         </p>
       </div>
 
@@ -301,85 +321,209 @@ export function CreateTicketForm({ variant = "user" }) {
 
       <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
+
+          {/* ── REQUESTER INFORMATION ─────────────────────────────── */}
           <div className="pro-card overflow-hidden">
             <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
-              <h3 className="text-sm font-semibold text-slate-900">Requester Information</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {isStaff ? "Requester Information" : "Requester Information"}
+                </h3>
+                {isStaff && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    On Behalf of User
+                  </span>
+                )}
+              </div>
+              {isStaff && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Enter the user's contact details below. The ticket will be recorded as raised by you on their behalf.
+                </p>
+              )}
             </div>
+
+            {/* Staff: show their own info as read-only context strip */}
+            {isStaff && user && (
+              <div className="px-5 pt-4 pb-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-wrap gap-4">
+                  <div className="text-xs text-slate-500">
+                    <span className="block font-semibold uppercase tracking-wide text-slate-400 text-[10px] mb-0.5">Staff Member (You)</span>
+                    <span className="font-semibold text-slate-700">{user.name}</span>
+                    <span className="ml-2 text-slate-400">{user.email}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* User's 4 editable requester fields (staff variant) OR the normal user fields */}
             <div className="p-5 grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setField("name", e.target.value)}
-                  placeholder="Your full name"
-                  className="pro-input"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setField("email", e.target.value)}
-                  placeholder="your@email.com"
-                  className="pro-input"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setField("phone", e.target.value)}
-                  placeholder="+91 XXXXX XXXXX"
-                  className="pro-input"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Cisco Number
-                </label>
-                <input
-                  type="text"
-                  value={form.cisco_number}
-                  onChange={(e) => setField("cisco_number", e.target.value)}
-                  placeholder="e.g. 1234"
-                  className="pro-input"
-                />
-              </div>
+              {isStaff ? (
+                <>
+                  {/* Requester Name */}
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Requester Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={form.requester_name}
+                      onChange={(e) => setField("requester_name", e.target.value)}
+                      placeholder="User's full name"
+                      className={`pro-input ${errors.requester_name ? "border-red-400 bg-red-50" : ""}`}
+                    />
+                    {errors.requester_name && <p className="mt-1 text-xs text-red-600">{errors.requester_name}</p>}
+                  </div>
+
+                  {/* Requester Email */}
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Requester Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={form.requester_email}
+                      onChange={(e) => setField("requester_email", e.target.value)}
+                      placeholder="user@viraj.com"
+                      className={`pro-input ${errors.requester_email ? "border-red-400 bg-red-50" : ""}`}
+                    />
+                    {errors.requester_email && <p className="mt-1 text-xs text-red-600">{errors.requester_email}</p>}
+                  </div>
+
+                  {/* Requester Phone */}
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Requester Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={form.requester_phone}
+                      onChange={(e) => setField("requester_phone", e.target.value)}
+                      placeholder="+91 XXXXX XXXXX"
+                      className="pro-input"
+                    />
+                  </div>
+
+                  {/* Requester Cisco Number */}
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Requester Cisco Number
+                    </label>
+                    <input
+                      type="text"
+                      value={form.requester_cisco_number}
+                      onChange={(e) => setField("requester_cisco_number", e.target.value)}
+                      placeholder="e.g. 1234"
+                      className="pro-input"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Your Name
+                    </label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setField("name", e.target.value)}
+                      placeholder="Your full name"
+                      className="pro-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setField("email", e.target.value)}
+                      placeholder="your@email.com"
+                      className="pro-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setField("phone", e.target.value)}
+                      placeholder="+91 XXXXX XXXXX"
+                      className="pro-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Cisco Number
+                    </label>
+                    <input
+                      type="text"
+                      value={form.cisco_number}
+                      onChange={(e) => setField("cisco_number", e.target.value)}
+                      placeholder="e.g. 1234"
+                      className="pro-input"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
+          {/* ── TICKET DETAILS ────────────────────────────────────── */}
           <div className="pro-card overflow-hidden">
             <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
               <h3 className="text-sm font-semibold text-slate-900">Ticket Details</h3>
             </div>
             <div className="p-5 space-y-4">
-              {/* Row 1: Plant full width */}
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Plant / Branch *
-                </label>
-                <select
-                  value={form.plant}
-                  onChange={(e) => setField("plant", e.target.value)}
-                  className={`pro-select ${errors.plant ? "border-red-400 bg-red-50" : ""}`}
-                >
-                  <option value="">Select plant</option>
-                  {plantOptions.map((plant) => (
-                    <option key={plant.value} value={plant.value}>
-                      {plantLabel(plant.value)}
-                    </option>
-                  ))}
-                </select>
-                {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
+
+              {/* Row 1: Plant + Request Source (staff only) */}
+              <div className={isStaff ? "grid gap-4 sm:grid-cols-2" : ""}>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Plant / Branch *
+                  </label>
+                  <select
+                    value={form.plant}
+                    onChange={(e) => setField("plant", e.target.value)}
+                    className={`pro-select ${errors.plant ? "border-red-400 bg-red-50" : ""}`}
+                  >
+                    <option value="">Select plant</option>
+                    {plantOptions.map((plant) => (
+                      <option key={plant.value} value={plant.value}>
+                        {plantLabel(plant.value)}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
+                </div>
+
+                {/* Request Source — staff portal only */}
+                {isStaff && (
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Request Source *
+                    </label>
+                    <select
+                      value={form.request_source}
+                      onChange={(e) => setField("request_source", e.target.value)}
+                      className={`pro-select ${errors.request_source ? "border-red-400 bg-red-50" : ""}`}
+                    >
+                      <option value="">How did user contact you?</option>
+                      {REQUEST_SOURCES.map((src) => (
+                        <option key={src.value} value={src.value}>
+                          {src.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.request_source && <p className="mt-1 text-xs text-red-600">{errors.request_source}</p>}
+                  </div>
+                )}
               </div>
 
               {/* Row 2: Category & Sub-Category side by side */}
