@@ -199,6 +199,7 @@ export default function Team() {
   const [splitPercent, setSplitPercent] = useState(38);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [updateConfirm, setUpdateConfirm] = useState(null); // { id, name, payload }
   const splitRef = useRef(null);
   const editorRef = useRef(null);
 
@@ -344,26 +345,48 @@ export default function Team() {
     event.preventDefault();
     setError("");
     setSuccess("");
+
+    const payload = {
+      ...form,
+      role:
+        form.portal_role === "user"
+          ? "User"
+          : form.staff_position === "New Position"
+            ? form.custom_position || "Custom Position"
+            : form.staff_position || form.role,
+      department: form.portal_role === "user" ? "" : form.department,
+      plant: form.plant,
+    };
+
+    // Show confirmation modal when updating an existing member
+    if (editingId) {
+      const memberName = users.find((u) => u.id === editingId)?.name || form.name || "this member";
+      setUpdateConfirm({ id: editingId, name: memberName, payload });
+      return;
+    }
+
+    // Creating new member — no confirmation needed
     setSubmitting(true);
     try {
-      const payload = {
-        ...form,
-        role:
-          form.portal_role === "user"
-            ? "User"
-            : form.staff_position === "New Position"
-              ? form.custom_position || "Custom Position"
-              : form.staff_position || form.role,
-        department: form.portal_role === "user" ? "" : form.department,
-        plant: form.plant,
-      };
-      if (editingId) {
-        await api.updateUser(editingId, payload);
-        setSuccess("Member updated successfully.");
-      } else {
-        await api.createUser(payload);
-        setSuccess(form.portal_role === "it_staff" ? "Staff member created successfully." : "Member created successfully.");
-      }
+      await api.createUser(payload);
+      setSuccess(form.portal_role === "it_staff" ? "Staff member created successfully." : "Member created successfully.");
+      resetForm(form.portal_role);
+      await load();
+    } catch (err) {
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function doUpdate() {
+    if (!updateConfirm) return;
+    setUpdateConfirm(null);
+    setSubmitting(true);
+    setError("");
+    try {
+      await api.updateUser(updateConfirm.id, updateConfirm.payload);
+      setSuccess("Member updated successfully.");
       resetForm(form.portal_role);
       await load();
     } catch (err) {
@@ -836,11 +859,63 @@ export default function Team() {
               onDelete={remove}
               showDepartment
               loading={loading}
-            />
-          </SectionShell>
+    >
+      <div
+        className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl"
+        style={{ border: "1px solid #e2e8f0" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+            <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6-6m-6 6l-1.5 4.5L12 16l6-6-6 6zm-3.75 3.75L3 21l3.75-3.75" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Update Member Details</h3>
+            <p className="text-xs text-slate-400">Please review before confirming</p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-3">
+          <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Member</p>
+            <p className="text-sm font-bold text-slate-800">{name}</p>
+          </div>
+          <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <p className="text-xs text-amber-700 font-medium">
+              You are about to save changes to this member&apos;s profile. This action will update their role, plant, and access settings immediately.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-slate-700 transition"
+          >
+            Yes, Save Changes
+          </button>
         </div>
       </div>
-
     </div>
   );
 }

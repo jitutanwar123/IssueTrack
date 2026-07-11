@@ -26,7 +26,7 @@ const DEFAULT_FORM = {
   plant: "",
   category: "",
   sub_category: "",
-  priority: "",
+  priority: "P3",
   assigned_to: "",
   name: "",
   email: "",
@@ -64,6 +64,7 @@ export function CreateTicketForm({ variant = "user" }) {
   const [loadingMetadata, setLoadingMetadata] = useState(true);
   const [errors, setErrors] = useState({});
   const [dragging, setDragging] = useState(false);
+  const [priorityModal, setPriorityModal] = useState(null); // { targetPriority }
 
   // Pre-fill requester info from logged-in user
   useEffect(() => {
@@ -195,6 +196,20 @@ export function CreateTicketForm({ variant = "user" }) {
     });
 
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  }
+
+  function handlePriorityClick(targetPriority) {
+    // If clicking the already-selected priority, do nothing
+    if (targetPriority === form.priority) return;
+    // Always show confirmation modal when changing priority
+    setPriorityModal({ targetPriority });
+  }
+
+  function confirmPriorityChange() {
+    if (priorityModal?.targetPriority) {
+      setField("priority", priorityModal.targetPriority);
+    }
+    setPriorityModal(null);
   }
 
   function validate() {
@@ -548,6 +563,7 @@ export function CreateTicketForm({ variant = "user" }) {
               {PRIORITIES.map((priority) => (
                 <label
                   key={priority.value}
+                  onClick={() => handlePriorityClick(priority.value)}
                   className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-all duration-150 ${
                     form.priority === priority.value ? priority.color + " shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
@@ -557,7 +573,7 @@ export function CreateTicketForm({ variant = "user" }) {
                     name="priority"
                     value={priority.value}
                     checked={form.priority === priority.value}
-                    onChange={() => setField("priority", priority.value)}
+                    onChange={() => {}}
                     className="mt-0.5 accent-current"
                   />
                   <div>
@@ -613,6 +629,17 @@ export function CreateTicketForm({ variant = "user" }) {
           </button>
         </div>
       </form>
+
+      {/* Priority Change Confirmation Modal */}
+      {priorityModal && (
+        <PriorityConfirmModal
+          current={form.priority}
+          target={priorityModal.targetPriority}
+          priorities={PRIORITIES}
+          onConfirm={confirmPriorityChange}
+          onCancel={() => setPriorityModal(null)}
+        />
+      )}
     </div>
   );
 }
@@ -622,6 +649,101 @@ function ReadOnlyField({ label, value }) {
     <div className="rounded-xl px-3.5 py-3" style={{ background: "#f8fafc", border: "1px solid #dbe3ec" }}>
       <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</div>
       <div className="mt-1 text-sm font-semibold text-slate-800">{value || "—"}</div>
+    </div>
+  );
+}
+
+const PRIORITY_META = {
+  P1: { icon: "🔴", badge: "bg-red-100 text-red-700", ring: "ring-red-300", banner: "bg-red-50 border-red-200" },
+  P2: { icon: "🟠", badge: "bg-amber-100 text-amber-700", ring: "ring-amber-300", banner: "bg-amber-50 border-amber-200" },
+  P3: { icon: "🟡", badge: "bg-slate-100 text-slate-600", ring: "ring-slate-300", banner: "bg-slate-50 border-slate-200" },
+  P4: { icon: "🟢", badge: "bg-emerald-100 text-emerald-700", ring: "ring-emerald-300", banner: "bg-emerald-50 border-emerald-200" },
+};
+
+function PriorityConfirmModal({ current, target, priorities, onConfirm, onCancel }) {
+  const from = priorities.find((p) => p.value === current);
+  const to = priorities.find((p) => p.value === target);
+  const toMeta = PRIORITY_META[target] || PRIORITY_META.P3;
+  const isEscalation = ["P1", "P2"].includes(target);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl"
+        style={{ border: "1px solid #e2e8f0" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl">
+            {toMeta.icon}
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Change Priority?</h3>
+            <p className="text-xs text-slate-400">This affects SLA response time</p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {/* From → To */}
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${PRIORITY_META[current]?.badge}`}>
+              {PRIORITY_META[current]?.icon} {from?.label}
+            </span>
+            <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ring-2 ${toMeta.badge} ${toMeta.ring}`}>
+              {toMeta.icon} {to?.label}
+            </span>
+          </div>
+
+          {/* Impact banner */}
+          <div className={`rounded-xl border p-3 ${toMeta.banner}`}>
+            <p className="text-xs font-semibold text-slate-700">{to?.desc}</p>
+          </div>
+
+          {isEscalation && (
+            <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5">
+              <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <p className="text-xs text-red-700 font-medium">
+                Escalating to {to?.label} will notify IT management and require justification. Please ensure this is accurate.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+          >
+            Keep {from?.value}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`rounded-xl px-5 py-2 text-sm font-bold text-white transition ${
+              isEscalation ? "bg-red-600 hover:bg-red-700" : "bg-slate-800 hover:bg-slate-700"
+            }`}
+          >
+            Yes, change to {to?.value}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
