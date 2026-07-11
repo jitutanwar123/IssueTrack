@@ -52,7 +52,7 @@ export function ageingBucket(days) {
 }
 
 const SERVICE_PREFIXES = {
-  Incident: "INC",
+  Incident: "SR",
   "Service Request": "SR",
   "Change Request": "CR",
 };
