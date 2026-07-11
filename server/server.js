@@ -10,12 +10,19 @@ import {
   CATEGORY_OPTIONS,
   CTM_PLANT_ASSIGNMENTS,
   SERVICE_OPTIONS_BY_PORTAL,
-  SERVICE_PREFIXES,
   STAFF_ASSIGNMENTS,
   SUB_CATEGORIES_BY_CATEGORY,
   getServiceOptions,
 } from "../client/src/utils/ticketTaxonomy.js";
 import { PLANTS } from "./utils/plants.js";
+
+// Ticket ID prefixes — defined here to avoid cross-package import caching issues
+// Incident → SR, Service Request → SR, Change Request → CR
+const SERVICE_PREFIXES = {
+  "Incident":        "SR",
+  "Service Request": "SR",
+  "Change Request":  "CR",
+};
 
 function toMySQLDateTime(value) {
   if (!value) return null;
