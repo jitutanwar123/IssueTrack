@@ -245,6 +245,65 @@ db.connect((err) => {
 
       await syncVirajStaffAccounts();
 
+      // ── One-time migration: rename legacy INC*/SR26*/CR26* ticket IDs ────
+      try {
+        // Tickets whose IDs don't match the new clean format (PREFIX + exactly 6 digits)
+        const legacyTickets = await query(
+          `SELECT id, ticket_id, service FROM tickets
+           WHERE ticket_id NOT REGEXP '^(SR|CR)[0-9]{6}$'
+           ORDER BY id ASC`
+        );
+        if (legacyTickets.length > 0) {
+          // Count existing clean-format SR and CR tickets to continue from
+          const srCountRows = await query(
+            `SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^SR[0-9]{6}$'`
+          );
+          const crCountRows = await query(
+            `SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^CR[0-9]{6}$'`
+          );
+          let srCounter = Number(srCountRows[0]?.cnt || 0);
+          let crCounter = Number(crCountRows[0]?.cnt || 0);
+
+          for (const row of legacyTickets) {
+            const isChangeRequest = String(row.service || "").toLowerCase().includes("change");
+            let newId;
+            if (isChangeRequest) {
+              crCounter += 1;
+              newId = `CR${String(crCounter).padStart(6, "0")}`;
+            } else {
+              srCounter += 1;
+              newId = `SR${String(srCounter).padStart(6, "0")}`;
+            }
+            await query(`UPDATE tickets SET ticket_id = ? WHERE id = ?`, [newId, row.id]);
+            console.log(`✅ Renamed legacy ticket ${row.ticket_id} → ${newId}`);
+          }
+
+          // Reset sequence counters to match actual ticket counts
+          const finalSrRows = await query(
+            `SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^SR[0-9]{6}$'`
+          );
+          const finalCrRows = await query(
+            `SELECT COUNT(*) AS cnt FROM tickets WHERE ticket_id REGEXP '^CR[0-9]{6}$'`
+          );
+          const finalSr = Number(finalSrRows[0]?.cnt || 0);
+          const finalCr = Number(finalCrRows[0]?.cnt || 0);
+
+          await query(
+            `UPDATE ticket_sequences SET last_sequence = ? WHERE service IN ('Incident', 'Service Request')`,
+            [finalSr]
+          );
+          await query(
+            `UPDATE ticket_sequences SET last_sequence = ? WHERE service = 'Change Request'`,
+            [finalCr]
+          );
+          console.log(`✅ Sequences reset — SR: ${finalSr}, CR: ${finalCr}`);
+        }
+      } catch (migErr) {
+        console.warn("⚠️ Ticket ID migration warning:", migErr.message);
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
+
       console.log("✅ Ticket lookup tables seeded");
     } catch (bootstrapErr) {
       console.warn("⚠️ Ticket lookup bootstrap warning:", bootstrapErr.message);
