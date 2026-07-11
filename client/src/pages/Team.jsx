@@ -424,42 +424,43 @@ export default function Team() {
         </div>
       </section>
 
-      <section
-        className="rounded-3xl border border-cyan-200 bg-cyan-50/70 px-5 py-4 shadow-soft"
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-3xl border border-cyan-200 bg-cyan-50/70 px-5 py-4 shadow-soft">
+        <div className="grid gap-4 xl:grid-cols-[1fr_420px] xl:items-start">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Staff Access</div>
             <h3 className="mt-1 text-sm font-semibold text-slate-900">Default staff login setup</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
               IT staff sign in with their own portal account, and the Helpdesk group uses one shared login.
               Every name below maps to the same email and password.
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+              <span className="rounded-full border border-cyan-200 bg-white px-3 py-1 font-semibold text-cyan-700">
+                Default Password: {VIRAJ_STAFF_DEFAULT_PASSWORD}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                Shared Helpdesk roster: {VIRAJ_HELPDESK_ALIAS_NAMES.length} members
+              </span>
+            </div>
           </div>
-          <div className="rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800">
-            {VIRAJ_HELPDESK_SHARED_LOGIN_NAME} · {VIRAJ_HELPDESK_SHARED_EMAIL}
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-          <span className="rounded-full border border-cyan-200 bg-white px-3 py-1 font-semibold text-cyan-700">
-            Default Password: {VIRAJ_STAFF_DEFAULT_PASSWORD}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
-            Shared Helpdesk roster: {VIRAJ_HELPDESK_ALIAS_NAMES.length} members
-          </span>
-        </div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-100 bg-white shadow-sm">
-          <div className="grid grid-cols-[1.15fr_1fr] gap-3 border-b border-cyan-100 bg-cyan-50/80 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-700">
-            <span>Staff Member</span>
-            <span>Shared Login Email</span>
-          </div>
-          <div className="max-h-72 divide-y divide-slate-100 overflow-auto">
-            {VIRAJ_HELPDESK_MEMBER_ROWS.map((person) => (
-              <div key={person.name} className="grid grid-cols-[1.15fr_1fr] gap-3 px-4 py-3 text-sm">
-                <span className="font-semibold text-slate-800">{person.name}</span>
-                <span className="break-all text-slate-500">{person.email}</span>
+
+          <div className="rounded-2xl border border-cyan-200 bg-white px-4 py-3 shadow-sm">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Shared Login</div>
+            <div className="mt-1 text-sm font-semibold text-slate-900">{VIRAJ_HELPDESK_SHARED_LOGIN_NAME}</div>
+            <div className="mt-0.5 break-all text-xs text-slate-500">{VIRAJ_HELPDESK_SHARED_EMAIL}</div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-100 bg-white">
+              <div className="grid grid-cols-[1.15fr_1fr] gap-3 border-b border-cyan-100 bg-cyan-50/80 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-700">
+                <span>Staff Member</span>
+                <span>Shared Login Email</span>
               </div>
-            ))}
+              <div className="max-h-72 divide-y divide-slate-100 overflow-auto">
+                {VIRAJ_HELPDESK_MEMBER_ROWS.map((person) => (
+                  <div key={person.name} className="grid grid-cols-[1.15fr_1fr] gap-3 px-4 py-3 text-sm">
+                    <span className="font-semibold text-slate-800">{person.name}</span>
+                    <span className="break-all text-slate-500">{person.email}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
