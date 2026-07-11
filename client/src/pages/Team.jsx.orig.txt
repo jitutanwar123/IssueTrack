@@ -1,0 +1,200 @@
+﻿                  onChange={(event) => setFilter(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                >
+                  <option value="all">All Records</option>
+                  <option value="staff">Staff Only</option>
+                  <option value="users">Users Only</option>
+                  <option value="admins">Admins Only</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Plant</span>
+                <select
+                  value={plantFilter}
+                  onChange={(event) => setPlantFilter(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+                >
+                  <option value="">All Plants</option>
+                  {PLANTS.map((plant) => (
+                    <option key={plant.value} value={plant.value}>
+                      {plantLabel(plant.value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </SectionShell>
+
+          <SectionShell title="IT Staff Records" subtitle="Accounts that can sign in to the staff portal." badge={`${staffRecords.length}`}>
+            <RecordsTable
+              records={staffRecords}
+              emptyText="No IT staff members found."
+              onEdit={startEdit}
+              onDelete={remove}
+              showDepartment
+              loading={loading}
+            />
+          </SectionShell>
+
+          <SectionShell title="User Records" subtitle="End-user accounts used for the user portal." badge={`${userRecords.length}`}>
+            <RecordsTable
+              records={userRecords}
+              emptyText="No user accounts found."
+              onEdit={startEdit}
+              onDelete={remove}
+              showDepartment={false}
+              loading={loading}
+            />
+          </SectionShell>
+
+          <SectionShell title="Admin Records" subtitle="Privileged accounts with full access." badge={`${adminRecords.length}`}>
+            <RecordsTable
+              records={adminRecords}
+              emptyText="No admin accounts found."
+              onEdit={startEdit}
+              onDelete={remove}
+              showDepartment
+              loading={loading}
+    >
+      <div
+        className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl"
+        style={{ border: "1px solid #e2e8f0" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+            <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6-6m-6 6l-1.5 4.5L12 16l6-6-6 6zm-3.75 3.75L3 21l3.75-3.75" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Update Member Details</h3>
+            <p className="text-xs text-slate-400">Please review before confirming</p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+          >
+            Γ£ò
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-3">
+          <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Member</p>
+            <p className="text-sm font-bold text-slate-800">{name}</p>
+          </div>
+          <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <p className="text-xs text-amber-700 font-medium">
+              You are about to save changes to this member&apos;s profile. This action will update their role, plant, and access settings immediately.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-slate-700 transition"
+          >
+            Yes, Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange, type = "text", placeholder = "" }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <input
+        type={type}
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+      />
+    </label>
+  );
+}
+
+function SelectField({ label, value, onChange, options = [] }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <select
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
+      >
+        {options.map((item) => {
+          const optionValue = typeof item === "string" ? item : item?.value ?? "";
+          const optionLabel = typeof item === "string" ? item : item?.label ?? optionValue;
+          return (
+            <option key={optionValue} value={optionValue}>
+              {optionLabel}
+            </option>
+          );
+        })}
+      </select>
+    </label>
+  );
+}
+
+function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = true, loading = false }) {
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-4 w-40 rounded bg-slate-200" />
+                <div className="h-3 w-56 rounded bg-slate-200" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-6 w-16 rounded-full bg-slate-200" />
+                <div className="h-6 w-16 rounded-full bg-slate-200" />
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="h-14 rounded-xl bg-slate-200" />
+              <div className="h-14 rounded-xl bg-slate-200" />
+              <div className="h-14 rounded-xl bg-slate-200" />
+              <div className="h-14 rounded-xl bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!records.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-10 text-center text-sm text-slate-400">
+        {emptyText}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {records.map((user) => (
+        <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} showDepartment={showDepartment} />
+      ))}
+    </div>
+  );
+}

@@ -859,32 +859,47 @@ export default function Team() {
               onDelete={remove}
               showDepartment
               loading={loading}
+            />
+          </SectionShell>
+        </div>
+      </div>
+
+      {/* Staff Update Confirmation Modal */}
+      {updateConfirm && (
+        <StaffUpdateModal
+          name={updateConfirm.name}
+          onConfirm={doUpdate}
+          onCancel={() => setUpdateConfirm(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function StaffUpdateModal({ name, onConfirm, onCancel }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={onCancel}
     >
       <div
         className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl"
         style={{ border: "1px solid #e2e8f0" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
             <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6-6m-6 6l-1.5 4.5L12 16l6-6-6 6zm-3.75 3.75L3 21l3.75-3.75" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900">Update Member Details</h3>
             <p className="text-xs text-slate-400">Please review before confirming</p>
           </div>
-          <button
-            onClick={onCancel}
-            className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
-          >
-            ✕
-          </button>
+          <button onClick={onCancel} className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">✕</button>
         </div>
-
-        {/* Body */}
         <div className="px-6 py-5 space-y-3">
           <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Member</p>
@@ -895,23 +910,15 @@ export default function Team() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
             <p className="text-xs text-amber-700 font-medium">
-              You are about to save changes to this member&apos;s profile. This action will update their role, plant, and access settings immediately.
+              You are about to save changes to this member&apos;s profile. This will update their role, plant, and access settings immediately.
             </p>
           </div>
         </div>
-
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
-          <button
-            onClick={onCancel}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
-          >
+          <button onClick={onCancel} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
             Cancel
           </button>
-          <button
-            onClick={onConfirm}
-            className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-slate-700 transition"
-          >
+          <button onClick={onConfirm} className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white hover:bg-slate-700 transition">
             Yes, Save Changes
           </button>
         </div>
