@@ -8,30 +8,22 @@ import {
   VIRAJ_STAFF_DEFAULT_PASSWORD,
 } from "../utils/ticketTaxonomy.js";
 
-const ROLE_OPTIONS = {
-  user: ["User"],
-  it_staff: [
-    "Help Desk Engineer",
-    "Technical Support Engineer",
-    "Network Administrator",
-    "System Administrator",
-    "Infrastructure Manager",
-  ],
-  admin: [
-    "Administrator",
-    "System Administrator",
-    "IT Manager",
-  ],
-};
-
 const STAFF_ROLE_OPTIONS = [
+  "SAP Consultant",
+  "SAP Technical Consultant",
+  "SAP Basis Analyst",
+  "SAP MDM Analyst",
   "Help Desk Engineer",
-  "Technical Support Engineer",
   "Network Administrator",
-  "System Administrator",
-  "Infrastructure Manager",
+  "Plant IT Coordinator",
   "New Position",
 ];
+
+const ROLE_OPTIONS = {
+  user: ["User"],
+  it_staff: STAFF_ROLE_OPTIONS,
+  admin: ["Administrator", "System Administrator", "IT Manager"],
+};
 
 const portalRoles = [
   { value: "user", label: "User" },
@@ -48,8 +40,8 @@ function emptyForm(portal_role = "it_staff") {
     email: "",
     username: "",
     password: portal_role === "it_staff" ? VIRAJ_STAFF_DEFAULT_PASSWORD : "",
-    role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : "Help Desk Engineer",
-    staff_position: portal_role === "user" ? "" : "Help Desk Engineer",
+    role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : STAFF_ROLE_OPTIONS[0],
+    staff_position: portal_role === "user" ? "" : STAFF_ROLE_OPTIONS[0],
     custom_position: "",
     team: "",
     status: portal_role === "user" ? "Active" : "Available",
@@ -323,15 +315,18 @@ export default function Team() {
   function startEdit(user) {
     setNewStaffOpen(false);
     setEditingId(user.id);
-    const staffRole = user.portal_role === "it_staff" ? user.role || "Help Desk Engineer" : "";
+    const staffRole = user.portal_role === "it_staff" ? user.role || STAFF_ROLE_OPTIONS[0] : "";
     const isCustomStaffRole = user.portal_role === "it_staff" && staffRole && !STAFF_ROLE_OPTIONS.includes(staffRole);
     setForm({
       name: user.name || "",
       email: user.email || "",
       username: user.username || "",
       password: "",
-      role: user.portal_role === "it_staff" && isCustomStaffRole ? "New Position" : user.role || (user.portal_role === "user" ? "User" : "Help Desk Engineer"),
-      staff_position: user.portal_role === "it_staff" ? (isCustomStaffRole ? "New Position" : staffRole || "Help Desk Engineer") : "",
+      role:
+        user.portal_role === "it_staff" && isCustomStaffRole
+          ? "New Position"
+          : user.role || (user.portal_role === "user" ? "User" : STAFF_ROLE_OPTIONS[0]),
+      staff_position: user.portal_role === "it_staff" ? (isCustomStaffRole ? "New Position" : staffRole || STAFF_ROLE_OPTIONS[0]) : "",
       custom_position: user.portal_role === "it_staff" && isCustomStaffRole ? staffRole : "",
       team: user.team || "",
       status: user.status || (user.portal_role === "user" ? "Active" : "Available"),
@@ -488,7 +483,7 @@ export default function Team() {
                             portal_role: option.value,
                             role: nextRole,
                             staff_position:
-                              option.value === "it_staff" ? current.staff_position || "Help Desk Engineer" : "",
+                              option.value === "it_staff" ? current.staff_position || STAFF_ROLE_OPTIONS[0] : "",
                             custom_position: "",
                             department: option.value === "user" ? "" : current.department || "IT",
                             plant: current.plant || "",
@@ -528,9 +523,9 @@ export default function Team() {
                         setNewStaffOpen(false);
                         setForm((current) => ({
                           ...current,
-                          role: current.staff_position || "Help Desk Engineer",
+                          role: current.staff_position || STAFF_ROLE_OPTIONS[0],
                           portal_role: "it_staff",
-                          staff_position: current.staff_position || "Help Desk Engineer",
+                          staff_position: current.staff_position || STAFF_ROLE_OPTIONS[0],
                           custom_position: "",
                           department: "IT",
                           plant: current.plant || "",
@@ -661,7 +656,7 @@ export default function Team() {
                             ...current,
                             portal_role: "it_staff",
                             role: "New Position",
-                            staff_position: current.staff_position || "Help Desk Engineer",
+                            staff_position: current.staff_position || STAFF_ROLE_OPTIONS[0],
                             custom_position: "",
                             department: "IT",
                             plant: current.plant || "",
