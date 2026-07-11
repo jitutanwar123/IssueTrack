@@ -244,6 +244,36 @@ db.connect((err) => {
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || "viraj_jwt_secret_change_me";
+const STAFF_DEFAULT_PASSWORD = "Viraj@123";
+const VIRAJ_STAFF_ROSTER = [
+  { name: "Subodh Kumar", email: "Subodh.Kumar@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
+  { name: "Saurabh Kulkarni", email: "Saurabh.Kulkarni@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
+  { name: "Rupesh Pawade", email: "rupesh.pawade@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
+  { name: "Sharad Desai", email: "sharad.desai@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
+  { name: "Jayesh Meher", email: "Jayesh.Meher@viraj.com", role: "SAP Consultant", team: "SAP Application", department: "IT" },
+  { name: "Sanjay Garhpandey", email: "Sanjay.Garhpandey@viraj.com", role: "SAP Technical Consultant", team: "SAP Application", department: "IT" },
+  { name: "Sanjay Dash", email: "Sanjay.Dash@viraj.com", role: "SAP Technical Consultant", team: "SAP Application", department: "IT" },
+  { name: "Harshad Bari", email: "Harshad.Bari@viraj.com", role: "SAP Basis Analyst", team: "SAP Application", department: "IT" },
+  { name: "Komal Kalgamwala", email: "sap.mm@viraj.com", role: "SAP MDM Analyst", team: "SAP Application", department: "IT" },
+  { name: "Bipin Jadhav", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Jay Bari", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Ajay Dhodi", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Mahesh Rahubansi", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Aaquib Raje", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Amol Chaudhari", email: "a.chaudhari@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Vikas Tandel", email: "Vikas.Tandel@viraj.com", role: "Network Administrator", team: "Network", department: "IT" },
+  { name: "Yogesh Ule", email: "helpdesk@vaishnoyard.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Kapil Sankhe", email: "kapil.sankhe@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Roshan Cerejo", email: "Roshan.Cerejo@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Amol Chaugule", email: "Amol.Chaugule@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Akhilesh Shukla", email: "Akhilesh.Sukla@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+  { name: "Abhijeet Nalawade", email: "Sap.Pp@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+  { name: "Yogesh Gaikwad", email: "Yogesh.Gaikwad@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+  { name: "Mohan Patel", email: "Mohan.Patel@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+  { name: "Yogendrasingh Rathore", email: "Yogendrasingh.Rathore@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+  { name: "Sachin Bansode", email: "sachin.bansode@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+  { name: "Krishna Kasvekar", email: "Krishna.Kasvekar@viraj.com", role: "Plant IT Coordinator", team: "CTM", department: "IT" },
+];
 
 // ─── JWT Middleware ──────────────────────────────────────────────
 function authenticateJWT(req, res, next) {
