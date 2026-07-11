@@ -134,6 +134,23 @@ export const CTM_PLANT_ASSIGNMENTS = [
   { plant_code: "1106", plant_name: "Tarapur Corporate", staff_name: null, staff_email: null },
 ];
 
+export const VIRAJ_STAFF_DEFAULT_PASSWORD = "Viraj@123";
+export const VIRAJ_HELPDESK_SHARED_EMAIL = "Helpdesk@viraj.com";
+export const VIRAJ_HELPDESK_SHARED_LOGIN_NAME = "Helpdesk Team";
+export const VIRAJ_HELPDESK_ALIAS_NAMES = [
+  "Bipin Jadhav",
+  "Jay Bari",
+  "Ajay Dhodi",
+  "Mahesh Rahubansi",
+  "Aaquib Raje",
+  "Amol Chaudhari",
+  "Vikas Tandel",
+  "Yogesh Ule",
+  "Kapil Sankhe",
+  "Roshan Cerejo",
+  "Amol Chaugule",
+];
+
 export function getServiceOptions(portal) {
   return SERVICE_OPTIONS_BY_PORTAL[portal] || SERVICE_OPTIONS_BY_PORTAL.user;
 }

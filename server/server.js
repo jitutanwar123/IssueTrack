@@ -235,6 +235,8 @@ db.connect((err) => {
         );
       }
 
+      await syncVirajStaffAccounts();
+
       console.log("✅ Ticket lookup tables seeded");
     } catch (bootstrapErr) {
       console.warn("⚠️ Ticket lookup bootstrap warning:", bootstrapErr.message);
@@ -255,11 +257,7 @@ const VIRAJ_STAFF_ROSTER = [
   { name: "Sanjay Dash", email: "Sanjay.Dash@viraj.com", role: "SAP Technical Consultant", team: "SAP Application", department: "IT" },
   { name: "Harshad Bari", email: "Harshad.Bari@viraj.com", role: "SAP Basis Analyst", team: "SAP Application", department: "IT" },
   { name: "Komal Kalgamwala", email: "sap.mm@viraj.com", role: "SAP MDM Analyst", team: "SAP Application", department: "IT" },
-  { name: "Bipin Jadhav", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
-  { name: "Jay Bari", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
-  { name: "Ajay Dhodi", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
-  { name: "Mahesh Rahubansi", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
-  { name: "Aaquib Raje", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
+  { name: "Helpdesk Team", email: "Helpdesk@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
   { name: "Amol Chaudhari", email: "a.chaudhari@viraj.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
   { name: "Vikas Tandel", email: "Vikas.Tandel@viraj.com", role: "Network Administrator", team: "Network", department: "IT" },
   { name: "Yogesh Ule", email: "helpdesk@vaishnoyard.com", role: "Help Desk Engineer", team: "Help Desk", department: "IT" },
@@ -450,6 +448,45 @@ function validateTicketInputs({ service, category, sub_category, plant, portal =
     errors,
     service: normalizedService || allowedServices[0] || "Incident",
   };
+}
+
+async function syncVirajStaffAccounts() {
+  const passwordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, 10);
+  const allowedEmails = new Set(VIRAJ_STAFF_ROSTER.map((person) => person.email.toLowerCase()));
+
+  for (const staff of VIRAJ_STAFF_ROSTER) {
+    await query(
+      `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
+       VALUES (?, ?, ?, ?, NULL, ?, NULL, 'it_staff', ?, 'Available', ?)
+       ON DUPLICATE KEY UPDATE
+         name = VALUES(name),
+         username = VALUES(username),
+         hashed_password = VALUES(hashed_password),
+         department = VALUES(department),
+         portal_role = VALUES(portal_role),
+         role = VALUES(role),
+         status = VALUES(status),
+         avatar_color = VALUES(avatar_color)`,
+      [
+        staff.name,
+        staff.email,
+        staff.email,
+        passwordHash,
+        staff.department || "IT",
+        staff.role || "Help Desk Engineer",
+        staff.avatar_color || "#0f172a",
+      ]
+    );
+  }
+
+  await query(
+    `DELETE FROM users
+     WHERE portal_role = 'it_staff'
+       AND LOWER(email) NOT IN (${Array.from(allowedEmails).map(() => "?").join(", ") || "''"})`,
+    Array.from(allowedEmails)
+  ).catch((err) => {
+    console.warn("⚠️ Staff cleanup warning:", err.message);
+  });
 }
 
 // ─── Helper: query as promise ────────────────────────────────────

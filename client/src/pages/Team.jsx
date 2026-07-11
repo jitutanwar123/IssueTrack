@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../utils/api.js";
 import { PLANTS, plantLabel } from "../utils/plants.js";
+import {
+  VIRAJ_HELPDESK_ALIAS_NAMES,
+  VIRAJ_HELPDESK_SHARED_EMAIL,
+  VIRAJ_HELPDESK_SHARED_LOGIN_NAME,
+  VIRAJ_STAFF_DEFAULT_PASSWORD,
+} from "../utils/ticketTaxonomy.js";
 
 const ROLE_OPTIONS = {
   user: ["User"],
@@ -41,7 +47,7 @@ function emptyForm(portal_role = "it_staff") {
     name: "",
     email: "",
     username: "",
-    password: "",
+    password: portal_role === "it_staff" ? VIRAJ_STAFF_DEFAULT_PASSWORD : "",
     role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : "Help Desk Engineer",
     staff_position: portal_role === "user" ? "" : "Help Desk Engineer",
     custom_position: "",
@@ -417,6 +423,42 @@ export default function Team() {
         </div>
       </section>
 
+      <section
+        className="rounded-3xl border border-cyan-200 bg-cyan-50/70 px-5 py-4 shadow-soft"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Staff Access</div>
+            <h3 className="mt-1 text-sm font-semibold text-slate-900">Default staff login setup</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              All IT staff use their email address to sign in with the shared default password.
+              The Helpdesk team uses a shared login for the aliases below.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800">
+            {VIRAJ_HELPDESK_SHARED_LOGIN_NAME} · {VIRAJ_HELPDESK_SHARED_EMAIL}
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+          <span className="rounded-full border border-cyan-200 bg-white px-3 py-1 font-semibold text-cyan-700">
+            Default Password: {VIRAJ_STAFF_DEFAULT_PASSWORD}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+            Shared Helpdesk roster: {VIRAJ_HELPDESK_ALIAS_NAMES.length} members
+          </span>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {VIRAJ_HELPDESK_ALIAS_NAMES.map((name) => (
+            <span
+              key={name}
+              className="rounded-full border border-cyan-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm"
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      </section>
+
       <div
         ref={splitRef}
         className="grid gap-6 xl:items-stretch xl:gap-0"
@@ -461,6 +503,7 @@ export default function Team() {
                             department: option.value === "user" ? "" : current.department || "IT",
                             plant: current.plant || "",
                             status: option.value === "user" ? "Active" : current.status || "Available",
+                            password: option.value === "it_staff" ? current.password || VIRAJ_STAFF_DEFAULT_PASSWORD : current.password,
                           }));
                           setNewStaffOpen(option.value === "it_staff");
                         }}
@@ -502,6 +545,7 @@ export default function Team() {
                           department: "IT",
                           plant: current.plant || "",
                           status: "Available",
+                          password: current.password || VIRAJ_STAFF_DEFAULT_PASSWORD,
                         }));
                       }}
                       className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
@@ -531,7 +575,7 @@ export default function Team() {
                       type="password"
                       value={form.password}
                       onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                      placeholder="Set staff login password"
+                      placeholder={VIRAJ_STAFF_DEFAULT_PASSWORD}
                     />
                     <SelectField
                       label="Role / Position"
@@ -542,6 +586,7 @@ export default function Team() {
                           staff_position: value,
                           role: value === "New Position" ? "New Position" : value,
                           custom_position: value === "New Position" ? current.custom_position : "",
+                          password: current.password || VIRAJ_STAFF_DEFAULT_PASSWORD,
                         }))
                       }
                       options={STAFF_ROLE_OPTIONS}
@@ -611,7 +656,7 @@ export default function Team() {
                       type="password"
                       value={form.password}
                       onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                      placeholder={editingId ? "Leave blank to keep current" : "Set a login password"}
+                      placeholder={editingId ? "Leave blank to keep current" : VIRAJ_STAFF_DEFAULT_PASSWORD}
                     />
                   </div>
 
@@ -631,6 +676,7 @@ export default function Team() {
                             department: "IT",
                             plant: current.plant || "",
                             status: "Available",
+                            password: current.password || VIRAJ_STAFF_DEFAULT_PASSWORD,
                           }));
                           return;
                         }
