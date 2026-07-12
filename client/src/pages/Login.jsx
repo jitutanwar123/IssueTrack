@@ -158,22 +158,16 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => navigate("/user-login", { replace: true })}
-                className="group flex min-h-[66px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
               >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
-                  User Portal
-                </span>
-                <span className="mt-1 text-sm font-semibold text-white">Go to user login</span>
+                User Portal
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/staff-login", { replace: true })}
-                className="group flex min-h-[66px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
               >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
-                  IT Staff
-                </span>
-                <span className="mt-1 text-sm font-semibold text-white">Go to staff login</span>
+                IT Staff
               </button>
             </div>
           </div>

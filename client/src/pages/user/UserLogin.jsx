@@ -40,6 +40,22 @@ export default function UserLogin() {
         className="w-full max-w-md rounded-3xl px-10 py-10"
         style={{ background: "#0f172a", boxShadow: "0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06)" }}
       >
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate("/login", { replace: true })}
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 transition-all duration-200 hover:-translate-y-px hover:border-cyan-400/40 hover:bg-white/10 hover:text-white"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+            User Portal
+          </span>
+        </div>
+
         {/* Logo + Company */}
         <div className="mb-8 flex flex-col items-center text-center">
           <img src={virajLogo} alt="Viraj Profiles Limited" className="h-16 w-auto object-contain mb-4" />
@@ -150,23 +166,6 @@ export default function UserLogin() {
           <Link to="/forgot-password?portal=user" className="inline-flex min-h-11 items-center font-semibold text-cyan-300 hover:text-cyan-200 transition-colors">
             Forgot password? Reset here →
           </Link>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-300">
-          <button
-            type="button"
-            onClick={() => navigate("/login", { replace: true })}
-            className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 font-semibold transition-colors hover:bg-white/5 hover:text-white"
-          >
-            Admin Portal
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/staff-login", { replace: true })}
-            className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 font-semibold transition-colors hover:bg-white/5 hover:text-white"
-          >
-            Staff Portal
-          </button>
         </div>
       </form>
     </div>
