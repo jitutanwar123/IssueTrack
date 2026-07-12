@@ -3,9 +3,6 @@ import { createPortal } from "react-dom";
 import { api } from "../utils/api.js";
 import { PLANTS, plantLabel } from "../utils/plants.js";
 import {
-  VIRAJ_HELPDESK_ALIAS_NAMES,
-  VIRAJ_HELPDESK_SHARED_EMAIL,
-  VIRAJ_HELPDESK_SHARED_LOGIN_NAME,
   VIRAJ_STAFF_DEFAULT_PASSWORD,
 } from "../utils/ticketTaxonomy.js";
 
@@ -105,83 +102,29 @@ function GhostButton({ children, className = "", ...props }) {
   );
 }
 
-function RecordRow({ user, onEdit, onDelete, showDepartment = true }) {
-  const portalLabel =
-    user.portal_role === "it_staff" ? "IT Staff" : user.portal_role === "admin" ? "Admin" : "User";
-  const statusTone =
-    user.status === "Available"
-      ? "bg-emerald-100 text-emerald-700"
-      : user.status === "Busy"
-        ? "bg-amber-100 text-amber-700"
-        : user.status === "Away"
-          ? "bg-orange-100 text-orange-700"
-          : "bg-slate-100 text-slate-600";
-
+function RecordRow({ user, onEdit, onDelete }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <article className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition hover:border-slate-300 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-base font-semibold leading-6 text-slate-900 break-words">{user.name}</div>
-          <div className="mt-1 text-sm leading-5 text-slate-500 break-words">{user.email}</div>
+          <div className="text-base font-semibold leading-6 text-slate-900 truncate">{user.name}</div>
         </div>
-        <div className="flex flex-wrap gap-2 md:justify-end">
-          <span
-            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-              user.portal_role === "admin"
-                ? "bg-purple-100 text-purple-700"
-                : user.portal_role === "it_staff"
-                  ? "bg-cyan-100 text-cyan-700"
-                  : "bg-slate-100 text-slate-600"
-            }`}
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onEdit(user)}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
           >
-            {portalLabel}
-          </span>
-          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone}`}>
-            {user.status || "—"}
-          </span>
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(user.id)}
+            className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
+          >
+            Delete
+          </button>
         </div>
-      </div>
-
-      <div className={`mt-4 grid gap-3 ${showDepartment ? "sm:grid-cols-2 xl:grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-4"}`}>
-        <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Role</div>
-          <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.role || "—"}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Access</div>
-          <div className="mt-1 text-sm font-medium text-slate-700">{portalLabel}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Plant</div>
-          <div className="mt-1 text-sm font-medium text-slate-700 break-words">{plantLabel(user.plant) || "—"}</div>
-        </div>
-        {showDepartment ? (
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Department</div>
-            <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.department || "—"}</div>
-          </div>
-        ) : null}
-        <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Team</div>
-          <div className="mt-1 text-sm font-medium text-slate-700 break-words">{user.team || "—"}</div>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => onEdit(user)}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(user.id)}
-          className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
-        >
-          Delete
-        </button>
       </div>
     </article>
   );
@@ -439,32 +382,6 @@ export default function Team() {
             <Metric label="Users" value={metrics.users} hint="End-user accounts" accent="blue" />
             <Metric label="Admins" value={metrics.admins} hint="Full access accounts" accent="emerald" />
           </div>
-        </div>
-      </section>
-
-      <section
-        className="rounded-3xl border border-cyan-200 bg-cyan-50/70 px-5 py-4 shadow-soft"
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Staff Access</div>
-            <h3 className="mt-1 text-sm font-semibold text-slate-900">Default staff login setup</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              IT staff sign in with their own portal account, and the Helpdesk group uses one shared login.
-              Every name below maps to the same email and password.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800">
-            {VIRAJ_HELPDESK_SHARED_LOGIN_NAME} · {VIRAJ_HELPDESK_SHARED_EMAIL}
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-          <span className="rounded-full border border-cyan-200 bg-white px-3 py-1 font-semibold text-cyan-700">
-            Default Password: {VIRAJ_STAFF_DEFAULT_PASSWORD}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
-            Shared Helpdesk roster: {VIRAJ_HELPDESK_ALIAS_NAMES.length} members
-          </span>
         </div>
       </section>
 
@@ -836,7 +753,6 @@ export default function Team() {
               emptyText="No IT staff members found."
               onEdit={startEdit}
               onDelete={remove}
-              showDepartment
               loading={loading}
             />
           </SectionShell>
@@ -847,7 +763,6 @@ export default function Team() {
               emptyText="No user accounts found."
               onEdit={startEdit}
               onDelete={remove}
-              showDepartment={false}
               loading={loading}
             />
           </SectionShell>
@@ -858,7 +773,6 @@ export default function Team() {
               emptyText="No admin accounts found."
               onEdit={startEdit}
               onDelete={remove}
-              showDepartment
               loading={loading}
             />
           </SectionShell>
@@ -967,7 +881,7 @@ function SelectField({ label, value, onChange, options = [] }) {
   );
 }
 
-function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = true, loading = false }) {
+function RecordsTable({ records, emptyText, onEdit, onDelete, loading = false }) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -1006,7 +920,7 @@ function RecordsTable({ records, emptyText, onEdit, onDelete, showDepartment = t
   return (
     <div className="space-y-3">
       {records.map((user) => (
-        <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} showDepartment={showDepartment} />
+        <RecordRow key={user.id} user={user} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </div>
   );
