@@ -45,6 +45,7 @@ const DEFAULT_FORM = {
   requester_phone: "",
   requester_cisco_number: "",
   request_source: "",
+  staff_mode: "on_behalf", // 'on_behalf' | 'self'
 };
 
 function normalizeAssignment(item) {
@@ -79,6 +80,9 @@ export function CreateTicketForm({ variant = "user" }) {
   const [dragging, setDragging] = useState(false);
   const [priorityModal, setPriorityModal] = useState(null); // { targetPriority }
 
+  // Staff mode: 'on_behalf' = create ticket for another user, 'self' = staff's own issue
+  const [staffMode, setStaffMode] = useState("on_behalf");
+
   // Pre-fill requester info from logged-in user
   useEffect(() => {
     if (user) {
@@ -91,6 +95,31 @@ export function CreateTicketForm({ variant = "user" }) {
       }));
     }
   }, [user]);
+
+  // When staff switches to 'self' mode, pre-fill their own info into requester fields
+  useEffect(() => {
+    if (variant !== "staff" || !user) return;
+    if (staffMode === "self") {
+      setForm((prev) => ({
+        ...prev,
+        requester_name: user.name || "",
+        requester_email: user.email || "",
+        requester_phone: user.phone || "",
+        requester_cisco_number: user.cisco_number || "",
+        request_source: "Self",
+      }));
+    } else {
+      // Reset requester fields when switching back to on_behalf
+      setForm((prev) => ({
+        ...prev,
+        requester_name: "",
+        requester_email: "",
+        requester_phone: "",
+        requester_cisco_number: "",
+        request_source: "",
+      }));
+    }
+  }, [staffMode, variant, user]);
 
   useEffect(() => {
     let mounted = true;
@@ -232,8 +261,8 @@ export function CreateTicketForm({ variant = "user" }) {
     if (!form.category) nextErrors.category = "Category is required";
     if (!form.sub_category) nextErrors.sub_category = "Sub-category is required";
     if (!form.priority) nextErrors.priority = "Priority is required";
-    // Staff variant: requester fields validation
-    if (variant === "staff") {
+    // Staff variant: requester fields validation only for on_behalf mode
+    if (variant === "staff" && staffMode === "on_behalf") {
       if (!form.requester_name.trim()) nextErrors.requester_name = "Requester name is required";
       if (!form.requester_email.trim()) nextErrors.requester_email = "Requester email is required";
       if (!form.request_source) nextErrors.request_source = "Request source is required";
@@ -281,7 +310,9 @@ export function CreateTicketForm({ variant = "user" }) {
       });
       if (attachment) formData.append("attachment", attachment);
 
+      // Pass staffMode so the server knows how to handle requester info
       if (variant === "staff") {
+        formData.set("staff_mode", staffMode);
         await api.createStaffTicket(formData);
       } else {
         await api.createUserTicket(formData);
@@ -301,6 +332,7 @@ export function CreateTicketForm({ variant = "user" }) {
   const assignToDisabled = !form.category || !form.sub_category || (isCtm && !currentAssignees.length);
 
   const isStaff = variant === "staff";
+  const isSelfMode = isStaff && staffMode === "self";
 
   return (
     <div className="space-y-5">
@@ -308,10 +340,87 @@ export function CreateTicketForm({ variant = "user" }) {
         <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Raise a New Ticket</h2>
         <p className="mt-1 text-sm text-slate-500">
           {isStaff
-            ? "Creating ticket on behalf of a user. Fill in the requester's details below."
+            ? isSelfMode
+              ? "Creating a ticket for your own issue. Your details will be prefilled."
+              : "Creating ticket on behalf of a user. Fill in the requester's details below."
             : "Describe your issue below. Our team will respond within the SLA for your selected priority."}
         </p>
       </div>
+
+      {/* ── STAFF MODE SELECTOR ──────────────────────────────────── */}
+      {isStaff && (
+        <div className="pro-card overflow-hidden">
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid #e8eef5" }}>
+            <h3 className="text-sm font-semibold text-slate-900">Ticket Type</h3>
+            <p className="mt-0.5 text-xs text-slate-500">Choose whether you're raising this ticket on behalf of a user or for your own issue.</p>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-2 gap-3">
+              {/* On Behalf of User */}
+              <button
+                type="button"
+                onClick={() => setStaffMode("on_behalf")}
+                className={`flex flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                  staffMode === "on_behalf"
+                    ? "border-amber-400 bg-amber-50 shadow-sm"
+                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg ${
+                    staffMode === "on_behalf" ? "bg-amber-100" : "bg-slate-100"
+                  }`}>
+                    👤
+                  </div>
+                  <div>
+                    <div className={`text-sm font-bold ${
+                      staffMode === "on_behalf" ? "text-amber-800" : "text-slate-700"
+                    }`}>On Behalf of User</div>
+                    <div className="text-xs text-slate-500">Enter the user's details</div>
+                  </div>
+                </div>
+                {staffMode === "on_behalf" && (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="text-xs font-semibold text-amber-700">Selected</span>
+                  </div>
+                )}
+              </button>
+
+              {/* My Own Issue */}
+              <button
+                type="button"
+                onClick={() => setStaffMode("self")}
+                className={`flex flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                  staffMode === "self"
+                    ? "border-blue-400 bg-blue-50 shadow-sm"
+                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg ${
+                    staffMode === "self" ? "bg-blue-100" : "bg-slate-100"
+                  }`}>
+                    🧑‍💻
+                  </div>
+                  <div>
+                    <div className={`text-sm font-bold ${
+                      staffMode === "self" ? "text-blue-800" : "text-slate-700"
+                    }`}>My Own Issue</div>
+                    <div className="text-xs text-slate-500">Raise a ticket for yourself</div>
+                  </div>
+                </div>
+                {staffMode === "self" && (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-blue-500" />
+                    <span className="text-xs font-semibold text-blue-700">Selected</span>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loadingMetadata && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
@@ -330,17 +439,23 @@ export function CreateTicketForm({ variant = "user" }) {
                   {isStaff ? "Requester Information" : "Requester Information"}
                 </h3>
                 {isStaff && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                    isSelfMode
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}>
                     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    On Behalf of User
+                    {isSelfMode ? "Your Own Ticket" : "On Behalf of User"}
                   </span>
                 )}
               </div>
               {isStaff && (
                 <p className="mt-1 text-xs text-slate-500">
-                  Enter the user's contact details below. The ticket will be recorded as raised by you on their behalf.
+                  {isSelfMode
+                    ? "Your information has been prefilled. You can update it if needed."
+                    : "Enter the user's contact details below. The ticket will be recorded as raised by you on their behalf."}
                 </p>
               )}
             </div>
@@ -348,9 +463,13 @@ export function CreateTicketForm({ variant = "user" }) {
             {/* Staff: show their own info as read-only context strip */}
             {isStaff && user && (
               <div className="px-5 pt-4 pb-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-wrap gap-4">
+                <div className={`rounded-xl border px-4 py-3 flex flex-wrap gap-4 ${
+                  isSelfMode ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"
+                }`}>
                   <div className="text-xs text-slate-500">
-                    <span className="block font-semibold uppercase tracking-wide text-slate-400 text-[10px] mb-0.5">Staff Member (You)</span>
+                    <span className={`block font-semibold uppercase tracking-wide text-[10px] mb-0.5 ${
+                      isSelfMode ? "text-blue-400" : "text-slate-400"
+                    }`}>Staff Member (You)</span>
                     <span className="font-semibold text-slate-700">{user.name}</span>
                     <span className="ml-2 text-slate-400">{user.email}</span>
                   </div>
@@ -365,58 +484,78 @@ export function CreateTicketForm({ variant = "user" }) {
                   {/* Requester Name */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      Requester Name *
+                      {isSelfMode ? "Your Name" : "Requester Name *"}
                     </label>
                     <input
                       type="text"
                       value={form.requester_name}
-                      onChange={(e) => setField("requester_name", e.target.value)}
-                      placeholder="User's full name"
-                      className={`pro-input ${errors.requester_name ? "border-red-400 bg-red-50" : ""}`}
+                      onChange={(e) => !isSelfMode && setField("requester_name", e.target.value)}
+                      readOnly={isSelfMode}
+                      placeholder={isSelfMode ? "" : "User's full name"}
+                      className={`pro-input ${
+                        isSelfMode
+                          ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default"
+                          : errors.requester_name
+                          ? "border-red-400 bg-red-50"
+                          : ""
+                      }`}
                     />
-                    {errors.requester_name && <p className="mt-1 text-xs text-red-600">{errors.requester_name}</p>}
+                    {!isSelfMode && errors.requester_name && <p className="mt-1 text-xs text-red-600">{errors.requester_name}</p>}
                   </div>
 
                   {/* Requester Email */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      Requester Email *
+                      {isSelfMode ? "Your Email" : "Requester Email *"}
                     </label>
                     <input
                       type="email"
                       value={form.requester_email}
-                      onChange={(e) => setField("requester_email", e.target.value)}
-                      placeholder="user@viraj.com"
-                      className={`pro-input ${errors.requester_email ? "border-red-400 bg-red-50" : ""}`}
+                      onChange={(e) => !isSelfMode && setField("requester_email", e.target.value)}
+                      readOnly={isSelfMode}
+                      placeholder={isSelfMode ? "" : "user@viraj.com"}
+                      className={`pro-input ${
+                        isSelfMode
+                          ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default"
+                          : errors.requester_email
+                          ? "border-red-400 bg-red-50"
+                          : ""
+                      }`}
                     />
-                    {errors.requester_email && <p className="mt-1 text-xs text-red-600">{errors.requester_email}</p>}
+                    {!isSelfMode && errors.requester_email && <p className="mt-1 text-xs text-red-600">{errors.requester_email}</p>}
                   </div>
 
                   {/* Requester Phone */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      Requester Phone
+                      {isSelfMode ? "Your Phone" : "Requester Phone"}
                     </label>
                     <input
                       type="tel"
                       value={form.requester_phone}
-                      onChange={(e) => setField("requester_phone", e.target.value)}
-                      placeholder="+91 XXXXX XXXXX"
-                      className="pro-input"
+                      onChange={(e) => !isSelfMode && setField("requester_phone", e.target.value)}
+                      readOnly={isSelfMode}
+                      placeholder={isSelfMode ? "" : "+91 XXXXX XXXXX"}
+                      className={`pro-input ${
+                        isSelfMode ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default" : ""
+                      }`}
                     />
                   </div>
 
                   {/* Requester Cisco Number */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      Requester Cisco Number
+                      {isSelfMode ? "Your Cisco Number" : "Requester Cisco Number"}
                     </label>
                     <input
                       type="text"
                       value={form.requester_cisco_number}
-                      onChange={(e) => setField("requester_cisco_number", e.target.value)}
-                      placeholder="e.g. 1234"
-                      className="pro-input"
+                      onChange={(e) => !isSelfMode && setField("requester_cisco_number", e.target.value)}
+                      readOnly={isSelfMode}
+                      placeholder={isSelfMode ? "" : "e.g. 1234"}
+                      className={`pro-input ${
+                        isSelfMode ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default" : ""
+                      }`}
                     />
                   </div>
                 </>
@@ -482,7 +621,28 @@ export function CreateTicketForm({ variant = "user" }) {
             </div>
             <div className="p-5 space-y-4">
 
+              {/* Row 0: Service Type — staff portal only */}
+              {isStaff && (
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Service Type *
+                  </label>
+                  <select
+                    value={form.service}
+                    onChange={(e) => setField("service", e.target.value)}
+                    className={`pro-select ${errors.service ? "border-red-400 bg-red-50" : ""}`}
+                  >
+                    <option value="">Select service type</option>
+                    {serviceOptions.map((svc) => (
+                      <option key={svc} value={svc}>{svc}</option>
+                    ))}
+                  </select>
+                  {errors.service && <p className="mt-1 text-xs text-red-600">{errors.service}</p>}
+                </div>
+              )}
+
               {/* Row 1: Plant + Request Source (staff only) */}
+
               <div className={isStaff ? "grid gap-4 sm:grid-cols-2" : ""}>
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
@@ -503,8 +663,8 @@ export function CreateTicketForm({ variant = "user" }) {
                   {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
                 </div>
 
-                {/* Request Source — staff portal only */}
-                {isStaff && (
+                {/* Request Source — staff portal only (on_behalf mode) */}
+                {isStaff && !isSelfMode && (
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Request Source *

@@ -1632,6 +1632,8 @@ async function createPortalTicket(req, res, portal) {
     // Staff-on-behalf fields (only used when portal === "staff")
     requester_name, requester_email: bodyRequesterEmail, requester_phone, requester_cisco_number,
     request_source,
+    // Staff mode: 'on_behalf' (create for a user) | 'self' (staff's own issue)
+    staff_mode,
   } = req.body;
 
   if (!title || !category || !priority) {
@@ -1671,11 +1673,36 @@ async function createPortalTicket(req, res, portal) {
 
   // For staff portal: use the submitted requester info (not the staff's own info)
   const isStaffPortal = portal === "staff";
-  const customerName    = isStaffPortal ? (requester_name   || user.name)         : user.name;
-  const customerEmail   = isStaffPortal ? (bodyRequesterEmail || user.email)       : user.email;
-  const customerPhone   = isStaffPortal ? (requester_phone  || user.phone || null) : (user.phone || null);
-  const raisedByStaff   = isStaffPortal ? user.name : null;
-  const finalRequestSource = isStaffPortal ? (request_source || null) : null;
+  // 'self' = staff raising ticket for own issue; 'on_behalf' = staff raising for another user
+  const resolvedStaffMode = isStaffPortal ? (staff_mode || "on_behalf") : null;
+  const isSelfTicket = resolvedStaffMode === "self";
+
+  let customerName, customerEmail, customerPhone, raisedByStaff, finalRequestSource;
+
+  if (isStaffPortal) {
+    if (isSelfTicket) {
+      // Staff is raising a ticket for their own issue — use their own info as the requester
+      customerName = user.name;
+      customerEmail = user.email;
+      customerPhone = user.phone || null;
+      raisedByStaff = null; // Not "on behalf" — it's their own ticket
+      finalRequestSource = null;
+    } else {
+      // On behalf of another user — use submitted requester fields
+      customerName  = requester_name   || user.name;
+      customerEmail = bodyRequesterEmail || user.email;
+      customerPhone = requester_phone  || user.phone || null;
+      raisedByStaff = user.name; // The staff member who created this
+      finalRequestSource = request_source || null;
+    }
+  } else {
+    // Regular user portal
+    customerName  = user.name;
+    customerEmail = user.email;
+    customerPhone = user.phone || null;
+    raisedByStaff = null;
+    finalRequestSource = null;
+  }
 
   try {
     const ticketId = await generateTicketId(normalizedService);
@@ -1753,8 +1780,20 @@ async function createPortalTicket(req, res, portal) {
 
     if (finalAssignee) {
       try {
-        const rows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [finalAssignee]);
-        const assigneeEmail = rows[0]?.email;
+        // First try to find email from users table by name
+        let assigneeEmail = null;
+        const userRows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [finalAssignee]);
+        assigneeEmail = userRows[0]?.email || null;
+
+        // If not found in users table, try staff_assignment table
+        if (!assigneeEmail) {
+          const staffRows = await query(
+            "SELECT staff_email FROM staff_assignment WHERE staff_name = ? LIMIT 1",
+            [finalAssignee]
+          );
+          assigneeEmail = staffRows[0]?.staff_email || null;
+        }
+
         if (assigneeEmail) {
           emailJobs.push(
             sendTicketAssignedToAssignee(newTicket, assigneeEmail, raisedByStaff).then(() => {
@@ -1762,7 +1801,7 @@ async function createPortalTicket(req, res, portal) {
             })
           );
         } else {
-          console.warn(`⚠️ Could not find email for assigned user "${finalAssignee}"`);
+          console.warn(`⚠️ Could not find email for assigned user "${finalAssignee}" — checked users + staff_assignment tables`);
         }
       } catch (lookupErr) {
         console.error(`❌ User lookup error for assignment email:`, lookupErr.message);
