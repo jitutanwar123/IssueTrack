@@ -5,7 +5,6 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import cron from "node-cron";
 import { buildTicketPdf } from "./utils/pdf.js";
 import {
   CATEGORY_OPTIONS,
@@ -2533,16 +2532,18 @@ app.post("/api/staff/tickets/:id/comment", authenticateJWT, requireStaff, async 
   }
 });
 
-cron.schedule(
-  "*/30 * * * *",
-  () => {
-    autoCloseResolvedTickets().catch((err) => {
-      console.error("❌ Auto-close scheduler error:", err.message);
-    });
-  },
-  { timezone: "Asia/Kolkata" }
-);
-
 app.listen(process.env.PORT || 5000, () => {
   console.log("🚀 Server running on port 5000");
 });
+
+const AUTO_CLOSE_INTERVAL_MS = 30 * 60 * 1000;
+setTimeout(() => {
+  autoCloseResolvedTickets().catch((err) => {
+    console.error("❌ Auto-close scheduler error:", err.message);
+  });
+  setInterval(() => {
+    autoCloseResolvedTickets().catch((err) => {
+      console.error("❌ Auto-close scheduler error:", err.message);
+    });
+  }, AUTO_CLOSE_INTERVAL_MS);
+}, 5000);
