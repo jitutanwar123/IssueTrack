@@ -2,9 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../utils/api.js";
 import { PLANTS, plantLabel } from "../utils/plants.js";
-import {
-  VIRAJ_STAFF_DEFAULT_PASSWORD,
-} from "../utils/ticketTaxonomy.js";
 
 const STAFF_ROLE_OPTIONS = [
   "SAP Consultant",
@@ -37,7 +34,7 @@ function emptyForm(portal_role = "it_staff") {
     name: "",
     email: "",
     username: "",
-    password: portal_role === "it_staff" ? VIRAJ_STAFF_DEFAULT_PASSWORD : "",
+    password: "",
     role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : STAFF_ROLE_OPTIONS[0],
     staff_position: portal_role === "user" ? "" : STAFF_ROLE_OPTIONS[0],
     custom_position: "",
@@ -429,7 +426,7 @@ export default function Team() {
                             department: option.value === "user" ? "" : current.department || "IT",
                             plant: current.plant || "",
                             status: option.value === "user" ? "Active" : current.status || "Available",
-                            password: option.value === "it_staff" ? current.password || VIRAJ_STAFF_DEFAULT_PASSWORD : current.password,
+                            password: option.value === "it_staff" ? current.password || "" : current.password,
                           }));
                           setNewStaffOpen(option.value === "it_staff");
                         }}
@@ -471,7 +468,7 @@ export default function Team() {
                           department: "IT",
                           plant: current.plant || "",
                           status: "Available",
-                          password: current.password || VIRAJ_STAFF_DEFAULT_PASSWORD,
+                          password: current.password || "",
                         }));
                       }}
                       className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
@@ -501,7 +498,7 @@ export default function Team() {
                       type="password"
                       value={form.password}
                       onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                      placeholder={VIRAJ_STAFF_DEFAULT_PASSWORD}
+                      placeholder="Enter password"
                     />
                     <SelectField
                       label="Role / Position"
@@ -512,7 +509,7 @@ export default function Team() {
                           staff_position: value,
                           role: value === "New Position" ? "New Position" : value,
                           custom_position: value === "New Position" ? current.custom_position : "",
-                          password: current.password || VIRAJ_STAFF_DEFAULT_PASSWORD,
+                          password: current.password || "",
                         }))
                       }
                       options={STAFF_ROLE_OPTIONS}
@@ -582,7 +579,7 @@ export default function Team() {
                       type="password"
                       value={form.password}
                       onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                      placeholder={editingId ? "Leave blank to keep current" : VIRAJ_STAFF_DEFAULT_PASSWORD}
+                      placeholder={editingId ? "Leave blank to keep current" : "Enter password"}
                     />
                   </div>
 
@@ -602,7 +599,7 @@ export default function Team() {
                             department: "IT",
                             plant: current.plant || "",
                             status: "Available",
-                            password: current.password || VIRAJ_STAFF_DEFAULT_PASSWORD,
+                            password: current.password || "",
                           }));
                           return;
                         }
