@@ -493,12 +493,11 @@ export function CreateTicketForm({ variant = "user" }) {
                     <input
                       type="text"
                       value={form.requester_name}
-                      onChange={(e) => !isSelfMode && setField("requester_name", e.target.value)}
-                      readOnly={isSelfMode}
+                      onChange={(e) => setField("requester_name", e.target.value)}
                       placeholder={isSelfMode ? "" : "User's full name"}
                       className={`pro-input ${
                         isSelfMode
-                          ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default"
+                          ? "border-blue-200 bg-blue-50 text-slate-700"
                           : errors.requester_name
                           ? "border-red-400 bg-red-50"
                           : ""
@@ -515,12 +514,11 @@ export function CreateTicketForm({ variant = "user" }) {
                     <input
                       type="email"
                       value={form.requester_email}
-                      onChange={(e) => !isSelfMode && setField("requester_email", e.target.value)}
-                      readOnly={isSelfMode}
+                      onChange={(e) => setField("requester_email", e.target.value)}
                       placeholder={isSelfMode ? "" : "user@viraj.com"}
                       className={`pro-input ${
                         isSelfMode
-                          ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default"
+                          ? "border-blue-200 bg-blue-50 text-slate-700"
                           : errors.requester_email
                           ? "border-red-400 bg-red-50"
                           : ""
@@ -537,11 +535,10 @@ export function CreateTicketForm({ variant = "user" }) {
                     <input
                       type="tel"
                       value={form.requester_phone}
-                      onChange={(e) => !isSelfMode && setField("requester_phone", e.target.value)}
-                      readOnly={isSelfMode}
+                      onChange={(e) => setField("requester_phone", e.target.value)}
                       placeholder={isSelfMode ? "" : "+91 XXXXX XXXXX"}
                       className={`pro-input ${
-                        isSelfMode ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default" : ""
+                        isSelfMode ? "border-blue-200 bg-blue-50 text-slate-700" : ""
                       }`}
                     />
                   </div>
@@ -554,11 +551,10 @@ export function CreateTicketForm({ variant = "user" }) {
                     <input
                       type="text"
                       value={form.requester_cisco_number}
-                      onChange={(e) => !isSelfMode && setField("requester_cisco_number", e.target.value)}
-                      readOnly={isSelfMode}
+                      onChange={(e) => setField("requester_cisco_number", e.target.value)}
                       placeholder={isSelfMode ? "" : "e.g. 1234"}
                       className={`pro-input ${
-                        isSelfMode ? "bg-blue-50 border-blue-200 text-slate-600 cursor-default" : ""
+                        isSelfMode ? "border-blue-200 bg-blue-50 text-slate-700" : ""
                       }`}
                     />
                   </div>
