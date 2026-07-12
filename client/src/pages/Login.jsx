@@ -146,23 +146,19 @@ export default function Login() {
 
           {/* Portal links */}
           <div className="mt-4 border-t pt-4" style={{ borderTopColor: "rgba(255,255,255,0.08)" }}>
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(148,163,184,0.9)" }}>
-              Quick Actions
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="flex justify-center">
               <Link
                 to="/forgot-password?portal=admin"
-                className="group flex min-h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+                className="inline-flex min-h-11 items-center rounded-full border border-blue-400/30 bg-blue-400/10 px-5 text-sm font-semibold text-blue-200 transition-all duration-200 hover:-translate-y-px hover:border-blue-300/50 hover:bg-blue-400/15 hover:text-white"
               >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
-                  Forgot Password
-                </span>
-                <span className="mt-1 text-sm font-semibold text-white">Reset admin access</span>
+                Forgot password?
               </Link>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => navigate("/user-login", { replace: true })}
-                className="group flex min-h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+                className="group flex min-h-[66px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
               >
                 <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
                   User Portal
@@ -172,7 +168,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => navigate("/staff-login", { replace: true })}
-                className="group flex min-h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+                className="group flex min-h-[66px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
               >
                 <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
                   IT Staff
