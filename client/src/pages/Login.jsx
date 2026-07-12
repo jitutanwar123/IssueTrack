@@ -145,27 +145,40 @@ export default function Login() {
           </button>
 
           {/* Portal links */}
-          <div
-            className="mt-3 flex flex-col gap-2 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-            style={{ borderTopColor: "rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}
-          >
-            <div className="flex items-center gap-1 sm:min-h-11">
-              <span>Forgot password?</span>
-              <Link to="/forgot-password?portal=admin" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
-                Reset here →
-              </Link>
+          <div className="mt-4 border-t pt-4" style={{ borderTopColor: "rgba(255,255,255,0.08)" }}>
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(148,163,184,0.9)" }}>
+              Quick Actions
             </div>
-            <div className="flex items-center gap-1 sm:min-h-11">
-              <span>Not an admin?</span>
-              <Link to="/user-login" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
-                User Portal →
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Link
+                to="/forgot-password?portal=admin"
+                className="group flex min-h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
+                  Forgot Password
+                </span>
+                <span className="mt-1 text-sm font-semibold text-white">Reset admin access</span>
               </Link>
-            </div>
-            <div className="flex items-center gap-1 sm:min-h-11 sm:justify-end">
-              <span>IT Staff?</span>
-              <Link to="/staff-login" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
-                Staff Portal →
-              </Link>
+              <button
+                type="button"
+                onClick={() => navigate("/user-login", { replace: true })}
+                className="group flex min-h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
+                  User Portal
+                </span>
+                <span className="mt-1 text-sm font-semibold text-white">Go to user login</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/staff-login", { replace: true })}
+                className="group flex min-h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(148,163,184,0.9)" }}>
+                  IT Staff
+                </span>
+                <span className="mt-1 text-sm font-semibold text-white">Go to staff login</span>
+              </button>
             </div>
           </div>
         </form>
