@@ -26,9 +26,9 @@ export default function Login() {
         user?.role === "admin" ||
         user?.role === "Admin";
       if (isAdmin) {
-        navigate(location.state?.from || "/", { replace: true });
+        navigate(location.state?.from || "/");
       } else {
-        navigate("/user/dashboard", { replace: true });
+        navigate("/user/dashboard");
       }
     } catch (err) {
       setError(err.message);
@@ -157,14 +157,14 @@ export default function Login() {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => navigate("/user-login", { replace: true })}
+                onClick={() => navigate("/user-login")}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
               >
                 User Portal
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/staff-login", { replace: true })}
+                onClick={() => navigate("/staff-login")}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-px hover:border-blue-400/40 hover:bg-white/10"
               >
                 IT Staff

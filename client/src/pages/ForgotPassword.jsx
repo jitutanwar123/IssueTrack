@@ -89,7 +89,7 @@ export default function ForgotPassword() {
       const response = await api.confirmPasswordReset(resetToken, newPassword);
       setMessage(response?.message || "Password updated successfully.");
       setStep("done");
-      setTimeout(() => navigate(loginPath, { replace: true }), 1800);
+      setTimeout(() => navigate(loginPath), 1800);
     } catch (err) {
       setError(err.message || "Unable to update password.");
     } finally {
@@ -244,7 +244,6 @@ export default function ForgotPassword() {
             </div>
             <Link
               to={loginPath}
-              replace
               className="flex min-h-11 items-center justify-center rounded-xl py-3 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-px"
               style={{ background: "linear-gradient(135deg, #0891b2, #0e7490)", boxShadow: "0 4px 16px rgba(8,145,178,0.28)" }}
             >
@@ -266,7 +265,7 @@ export default function ForgotPassword() {
         )}
 
         <div className="mt-5 flex items-center justify-between gap-3 text-xs text-slate-300">
-          <Link to={loginPath} replace className="font-semibold text-cyan-300 transition-colors hover:text-cyan-200">
+          <Link to={loginPath} className="font-semibold text-cyan-300 transition-colors hover:text-cyan-200">
             Back to Login
           </Link>
           <span className="text-slate-500">{portal.toUpperCase()} portal</span>

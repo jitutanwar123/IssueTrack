@@ -20,7 +20,7 @@ export default function StaffLogin() {
     setError("");
     try {
       await login(email, password);
-      navigate(location.state?.from || "/staff/dashboard", { replace: true });
+      navigate(location.state?.from || "/staff/dashboard");
     } catch (err) {
       setError(err.message || "Invalid credentials");
     } finally {
@@ -37,7 +37,7 @@ export default function StaffLogin() {
         <div className="mb-6 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate("/login", { replace: true })}
+            onClick={() => navigate("/login")}
             className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 transition-all duration-200 hover:-translate-y-px hover:border-purple-400/40 hover:bg-white/10 hover:text-white"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
