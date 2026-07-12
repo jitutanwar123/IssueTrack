@@ -188,11 +188,13 @@ export function buildTicketPdf(ticket, comments = [], events = []) {
     sectionHeader(doc, "ACTIVITY LOG", margin, contentW);
 
     const normalizedEvents = events.map(e => ({
+      event_type: e.event_type || e.type || "",
       actor_name: e.actor_name  || e.changed_by  || "System",
-      action:     e.action      || "changed status",
-      field:      e.field       || "",
+      action:     e.action      || "",
+      field:      e.field       || e.field_name || "",
       from_value: e.from_value  || e.from_status || "",
       to_value:   e.to_value    || e.to_status   || "",
+      note:       e.note        || "",
       created_at: e.created_at,
     }));
 
@@ -205,13 +207,22 @@ export function buildTicketPdf(ticket, comments = [], events = []) {
         const from  = event.from_value ? ` from "${event.from_value}"` : "";
         const to    = event.to_value   ? ` to "${event.to_value}"`      : "";
         const field = event.field      ? ` [${event.field}]`           : "";
-        const line  = `${event.actor_name} ${event.action}${field}${from}${to}`;
+        const action = event.action || (
+          event.event_type === "created"
+            ? "created ticket"
+            : event.event_type === "assignment"
+              ? "updated assignment"
+              : event.event_type === "closure"
+                ? "closed ticket"
+                : "changed status"
+        );
+        const line  = `${event.actor_name} ${action}${field}${from}${to}`;
 
         doc.fontSize(7).font("Helvetica").fillColor(SLATE)
            .text(formatDateTime(event.created_at), margin + 5, rowY + 4,
                  { lineBreak: false, width: 100 });
         doc.fontSize(8).font("Helvetica").fillColor(NAVY)
-           .text(line, margin + 115, rowY + 4,
+           .text(event.note ? `${line} · ${event.note}` : line, margin + 115, rowY + 4,
                  { width: contentW - 120, lineBreak: false });
         doc.y = rowY + rowH + 2;
       });

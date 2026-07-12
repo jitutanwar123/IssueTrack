@@ -33,7 +33,7 @@ const DEFAULT_FORM = {
   plant: "",
   category: "",
   sub_category: "",
-  priority: "P3",
+  priority: "",
   assigned_to: "",
   name: "",
   email: "",
@@ -241,6 +241,10 @@ export function CreateTicketForm({ variant = "user" }) {
   }
 
   function handlePriorityClick(targetPriority) {
+    if (!form.priority) {
+      setField("priority", targetPriority);
+      return;
+    }
     if (targetPriority === form.priority) return;
     setPriorityModal({ targetPriority });
   }

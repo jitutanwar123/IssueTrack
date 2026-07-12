@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { api, getToken } from "../../utils/api.js";
 import { formatDateTime, formatMinutes, getStatusLabel } from "../../utils/helpers.js";
 import { plantLabel } from "../../utils/plants.js";
+import { formatTicketActivity } from "../../utils/ticketActivity.js";
 
 const STATUS_OPTIONS = [
   "Open",
@@ -132,6 +133,11 @@ export default function StaffTicketDetail() {
       ["Actual Closure", ticket.actual_closure_date || "—"],
     ];
   }, [ticket]);
+
+  const activityItems = useMemo(
+    () => timeline.map((entry) => formatTicketActivity(entry)),
+    [timeline]
+  );
 
   async function saveStatus() {
     if (!statusDraft) {
@@ -565,25 +571,19 @@ export default function StaffTicketDetail() {
             </form>
           </SectionCard>
 
-          {timeline.length > 0 && (
-            <SectionCard title="Status History" subtitle="Recent workflow changes">
+          {activityItems.length > 0 && (
+            <SectionCard title="Activity Log" subtitle="Recent workflow changes">
               <div className="space-y-3">
-                {timeline.map((entry) => (
+                {activityItems.map((entry) => (
                   <div key={`${entry.type}-${entry.id}`} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="text-xs font-semibold text-slate-700">
-                        {entry.type === "comment"
-                          ? "Comment"
-                          : `${entry.from_status ? `${getStatusLabel(entry.from_status)} -> ` : ""}${getStatusLabel(entry.to_status || entry.action || "Update")}`}
-                      </div>
+                      <div className="text-xs font-semibold text-slate-700">{entry.title}</div>
                       <div className="text-[10px] text-slate-400">{formatDateTime(entry.created_at)}</div>
                     </div>
                     <div className="mt-1 text-[11px] text-slate-500">
                       by {entry.actor_name || "System"}
                     </div>
-                    {entry.type === "comment" ? (
-                      <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">{entry.body}</p>
-                    ) : entry.note ? (
+                    {entry.note ? (
                       <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">{entry.note}</p>
                     ) : null}
                   </div>

@@ -83,9 +83,15 @@ const createStatements = [
   `CREATE TABLE IF NOT EXISTS ticket_status_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ticket_id INT NOT NULL,
+    event_type VARCHAR(50) DEFAULT 'status',
     changed_by VARCHAR(255) DEFAULT NULL,
+    actor_email VARCHAR(255) DEFAULT NULL,
+    actor_role VARCHAR(50) DEFAULT NULL,
+    field_name VARCHAR(100) DEFAULT NULL,
     from_status VARCHAR(100) DEFAULT NULL,
     to_status VARCHAR(100) NOT NULL,
+    from_value TEXT DEFAULT NULL,
+    to_value TEXT DEFAULT NULL,
     note TEXT DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE

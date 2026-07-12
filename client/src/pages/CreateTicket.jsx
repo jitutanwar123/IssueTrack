@@ -31,7 +31,7 @@ export default function CreateTicket() {
     description: "",
     category: "Incident",
     sub_category: "",
-    priority: "P3",
+    priority: "",
     status: "Open",
     customer_name: "",
     requester_email: "",
@@ -110,6 +110,9 @@ export default function CreateTicket() {
     setError("");
 
     try {
+      if (!form.priority) {
+        throw new Error("Priority is required");
+      }
       const payload = {
         ...form,
         requested_by_id: form.requested_by_id

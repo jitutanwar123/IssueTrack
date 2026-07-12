@@ -5,6 +5,7 @@ import { StatusBadge } from "../../components/StatusBadge.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { formatDateTime, getStatusLabel } from "../../utils/helpers.js";
 import { plantLabel } from "../../utils/plants.js";
+import { formatTicketActivity } from "../../utils/ticketActivity.js";
 
 const TRACKER_STEPS = [
   "Open",
@@ -90,11 +91,12 @@ export default function UserTicketDetail() {
 
   const allThreadItems = [
     ...comments.map((c) => ({ ...c, _type: "comment" })),
-    ...timeline.map((h) => ({ ...h, _type: "history" })),
+    ...timeline.map((h) => ({ ...formatTicketActivity(h), _type: "history" })),
   ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const isClosed = String(ticket.status || "").toLowerCase() === "closed";
   const currentStepIndex = getTrackerIndex(ticket.status);
-  const lastUpdate = timeline[timeline.length - 1] || null;
+  const activityItems = timeline.map(formatTicketActivity);
+  const lastUpdate = activityItems[activityItems.length - 1] || null;
   const currentStageLabel = normalizeTrackerStep(ticket.status);
 
   return (
@@ -294,12 +296,19 @@ export default function UserTicketDetail() {
                   // Status history
                   return (
                     <div key={`h-${item.id}-${i}`} className="flex items-center justify-center">
-                      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-500">
-                        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        Status changed {item.from_status ? `from ${getStatusLabel(item.from_status)} ` : ""}to{" "}
-                        <strong>{getStatusLabel(item.to_status)}</strong>
-                        {item.changed_by && ` by ${item.changed_by}`}
-                        <span className="opacity-60">· {formatDateTime(item.created_at)}</span>
+                      <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 font-semibold text-slate-700">
+                            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            {item.title}
+                          </div>
+                          <span className="opacity-60">{formatDateTime(item.created_at)}</span>
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          {item.subtitle}
+                          {item.actor_name ? ` · by ${item.actor_name}` : ""}
+                        </div>
+                        {item.note ? <div className="mt-2 text-[11px] text-slate-600">{item.note}</div> : null}
                       </div>
                     </div>
                   );
@@ -361,17 +370,27 @@ export default function UserTicketDetail() {
           </div>
 
           {/* Status timeline */}
-          {timeline.length > 0 && (
+          {activityItems.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">Status History</h3>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">Activity Log</h3>
               <div className="space-y-3">
-                {timeline.map((h, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-cyan-500" />
-                    <div>
-                      <div className="text-xs font-semibold text-slate-700">→ {getStatusLabel(h.to_status)}</div>
-                      <div className="text-xs text-slate-400">{formatDateTime(h.created_at)}</div>
+                {activityItems.map((item, i) => (
+                  <div key={item.id || i} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                        <div className="mt-0.5 text-xs text-slate-500">{item.subtitle || "Workflow event"}</div>
+                      </div>
+                      <div className="text-[10px] text-slate-400">{formatDateTime(item.created_at)}</div>
                     </div>
+                    <div className="mt-2 text-[11px] font-medium text-slate-500">
+                      by {item.actor_name || "System"}
+                    </div>
+                    {item.note ? (
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                        {item.note}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

@@ -116,6 +116,12 @@ db.connect((err) => {
     "ALTER TABLE tickets ADD INDEX idx_tickets_assigned_created (assigned_to, created_at)",
     "ALTER TABLE tickets ADD COLUMN request_source VARCHAR(50) DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN raised_by_staff VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE ticket_status_history ADD COLUMN event_type VARCHAR(50) DEFAULT 'status'",
+    "ALTER TABLE ticket_status_history ADD COLUMN actor_email VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE ticket_status_history ADD COLUMN actor_role VARCHAR(50) DEFAULT NULL",
+    "ALTER TABLE ticket_status_history ADD COLUMN field_name VARCHAR(100) DEFAULT NULL",
+    "ALTER TABLE ticket_status_history ADD COLUMN from_value TEXT DEFAULT NULL",
+    "ALTER TABLE ticket_status_history ADD COLUMN to_value TEXT DEFAULT NULL",
   ];
   migrationCols.forEach((sql) => {
     db.query(sql, (migErr) => {
@@ -598,6 +604,83 @@ function query(sql, params = []) {
   });
 }
 
+function asActivityValue(value) {
+  if (value === undefined || value === null || value === "") return null;
+  return String(value);
+}
+
+function inferActivityType(row = {}) {
+  const raw = String(row.event_type || row.type || "").toLowerCase();
+  if (raw) return raw;
+  if (row.field_name === "assigned_to") return "assignment";
+  if (row.field_name === "status" || row.from_status || row.to_status) return "status";
+  if (row.note && !row.to_status && !row.to_value) return "note";
+  return "update";
+}
+
+function mapTicketActivity(row = {}) {
+  const eventType = inferActivityType(row);
+  const fromValue = row.from_value ?? row.from_status ?? null;
+  const toValue = row.to_value ?? row.to_status ?? null;
+  return {
+    id: row.id,
+    type: eventType,
+    event_type: eventType,
+    actor_name: row.actor_name || row.changed_by || "System",
+    actor_email: row.actor_email || null,
+    actor_role: row.actor_role || null,
+    field_name: row.field_name || null,
+    from_value: fromValue,
+    to_value: toValue,
+    from_status: row.from_status || null,
+    to_status: row.to_status || null,
+    note: row.note || null,
+    created_at: row.created_at,
+  };
+}
+
+async function logTicketActivity(ticketId, payload = {}) {
+  const {
+    eventType = "status",
+    actorName = null,
+    actorEmail = null,
+    actorRole = null,
+    fieldName = null,
+    fromValue = null,
+    toValue = null,
+    fromStatus = null,
+    toStatus = null,
+    note = null,
+  } = payload;
+
+  return query(
+    `INSERT INTO ticket_status_history
+      (ticket_id, event_type, changed_by, actor_email, actor_role, field_name, from_status, to_status, from_value, to_value, note)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      ticketId,
+      eventType,
+      actorName,
+      actorEmail,
+      actorRole,
+      fieldName,
+      fromStatus,
+      toStatus,
+      fromValue,
+      toValue,
+      note,
+    ]
+  );
+}
+
+async function loadTicketActivity(ticketId) {
+  const rows = await query(
+    "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC, id ASC",
+    [ticketId]
+  ).catch(() => []);
+  return rows.map(mapTicketActivity);
+}
+
 const TICKET_SLIM_COLUMNS = `
   id, ticket_id, title, description, category, sub_category, priority, status,
   customer_name, requester_email, phone, department, user_email, requested_by,
@@ -925,20 +1008,7 @@ app.get("/api/tickets/:id", (req, res) => {
         author_role: c.author_role,
       }));
 
-      const historyRows = await query(
-        "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC",
-        [id]
-      ).catch(() => []);
-      timeline = historyRows.map((h) => ({
-        id: h.id,
-        type: "status_change",
-        actor_name: h.changed_by || "Admin",
-        action: "changed status",
-        from_value: h.from_status,
-        to_value: h.to_status,
-        body: h.note,
-        created_at: h.created_at,
-      }));
+      timeline = await loadTicketActivity(id);
     } catch (_) {}
 
     res.json({ data: ticket, comments, timeline });
@@ -956,6 +1026,9 @@ app.post("/api/tickets", async (req, res) => {
   } = req.body;
 
   try {
+    if (!priority) {
+      return res.status(400).json({ message: "Priority is required" });
+    }
     const ticketId = await generateTicketId(service || "Incident");
     const sql = `INSERT INTO tickets
       (ticket_id, title, description, category, sub_category, priority, status,
@@ -973,6 +1046,28 @@ app.post("/api/tickets", async (req, res) => {
       response_time || 0, resolution_time || 0,
       location || null, workstream || null, workgroup || null, service || null, plant || null,
     ]);
+
+    await logTicketActivity(result.insertId, {
+      eventType: "created",
+      actorName: requested_by || "Admin",
+      actorEmail: requester_email || null,
+      actorRole: "admin",
+      fieldName: "ticket",
+      toStatus: status || "Open",
+      note: "Ticket created from admin portal",
+    }).catch(() => {});
+
+    if (assigned_to) {
+      await logTicketActivity(result.insertId, {
+        eventType: "assignment",
+        actorName: requested_by || "Admin",
+        actorEmail: requester_email || null,
+        actorRole: "admin",
+        fieldName: "assigned_to",
+        toValue: assigned_to,
+        note: "Initial assignment",
+      }).catch(() => {});
+    }
 
     // Build ticket object for email notifications
     const newTicket = {
@@ -1067,10 +1162,15 @@ app.put("/api/tickets/:id", async (req, res) => {
     if (oldTicket && status && oldTicket.status !== status) {
       const updatedTicket = { ...oldTicket, ...req.body };
       sendStatusUpdateToUser(updatedTicket, status, null).catch(() => {});
-      query(
-        "INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status) VALUES (?,?,?,?)",
-        [id, "Admin", oldTicket.status, status]
-      ).catch(() => {});
+      logTicketActivity(id, {
+        eventType: status === "Resolved" ? "resolution" : status === "Closed" ? "closure" : "status",
+        actorName: "Admin",
+        actorEmail: null,
+        actorRole: "admin",
+        fieldName: "status",
+        fromStatus: oldTicket.status,
+        toStatus: status,
+      }).catch(() => {});
     }
 
     // If assigned_to changed, look up new assignee email and notify them
@@ -1442,10 +1542,7 @@ app.get("/api/tickets/:id/pdf", authenticateJWT, async (req, res) => {
       "SELECT * FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC",
       [req.params.id]
     ).catch(() => []);
-    const timeline = await query(
-      "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC",
-      [req.params.id]
-    ).catch(() => []);
+    const timeline = await loadTicketActivity(req.params.id);
 
     const pdf = await buildTicketPdf(ticket, comments, timeline);
 
@@ -1597,19 +1694,16 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
       [target.name, id]
     );
 
-    await query(
-      `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note)
-       VALUES (?,?,?,?,?)`,
-      [
-        currentTicket.ticket_id,
-        actorName,
-        `Assigned: ${currentTicket.assigned_to || "Unassigned"}`,
-        `Assigned: ${target.name}`,
-        note?.trim()
-          ? `Transferred by ${actorName}. Note: ${note.trim()}`
-          : `Transferred by ${actorName}`,
-      ]
-    ).catch(() => {});
+    await logTicketActivity(id, {
+      eventType: "assignment",
+      actorName,
+      actorEmail: req.user?.email || null,
+      actorRole: req.user?.portal_role || req.user?.role || null,
+      fieldName: "assigned_to",
+      fromValue: currentTicket.assigned_to || "Unassigned",
+      toValue: target.name,
+      note: note?.trim() ? note.trim() : `Transferred by ${actorName}`,
+    }).catch(() => {});
 
     const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]);
     const updatedTicket = updatedRows[0] || { ...currentTicket, assigned_to: target.name };
@@ -1740,6 +1834,28 @@ async function createPortalTicket(req, res, portal) {
       raisedByStaff,
     ]);
 
+    await logTicketActivity(result.insertId, {
+      eventType: "created",
+      actorName: user.name,
+      actorEmail: user.email || null,
+      actorRole: user.portal_role || user.role || null,
+      fieldName: "ticket",
+      toStatus: "Open",
+      note: `Ticket created via ${isStaffPortal ? "staff" : "user"} portal`,
+    }).catch(() => {});
+
+    if (finalAssignee) {
+      await logTicketActivity(result.insertId, {
+        eventType: "assignment",
+        actorName: user.name,
+        actorEmail: user.email || null,
+        actorRole: user.portal_role || user.role || null,
+        fieldName: "assigned_to",
+        toValue: finalAssignee,
+        note: isStaffPortal && !isSelfTicket ? "Initial assignment on behalf of a user" : "Initial assignment",
+      }).catch(() => {});
+    }
+
     const newTicket = {
       id: result.insertId,
       ticket_id: ticketId,
@@ -1763,11 +1879,6 @@ async function createPortalTicket(req, res, portal) {
       request_source: finalRequestSource,
       raised_by_staff: raisedByStaff,
     };
-
-    await query(
-      "INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status) VALUES (?,?,?,?)",
-      [result.insertId, user.name, null, "Open"]
-    ).catch(() => {});
 
     // For staff portal, send confirmation to the requester's email (not staff's)
     const confirmationRecipient = customerEmail;
@@ -1882,10 +1993,7 @@ app.get("/api/user/tickets/:id", authenticateJWT, requireUser, async (req, res) 
       "SELECT * FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC",
       [id]
     ).catch(() => []);
-    const history = await query(
-      "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC",
-      [id]
-    ).catch(() => []);
+    const history = await loadTicketActivity(id);
 
     res.json({ data: ticket, comments, timeline: history });
   } catch (err) {
@@ -1954,10 +2062,16 @@ app.patch("/api/admin/tickets/:id/status", authenticateJWT, requireAdmin, async 
     await query(nextSql, [status, id]);
 
     // Record history
-    await query(
-      "INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note) VALUES (?,?,?,?,?)",
-      [id, req.user?.name || "Admin", oldTicket.status, status, note || null]
-    ).catch(() => {});
+    await logTicketActivity(id, {
+      eventType: "status",
+      actorName: req.user?.name || "Admin",
+      actorEmail: req.user?.email || null,
+      actorRole: req.user?.portal_role || req.user?.role || "admin",
+      fieldName: "status",
+      fromStatus: oldTicket.status,
+      toStatus: status,
+      note: note || null,
+    }).catch(() => {});
 
     // Email user
     sendStatusUpdateToUser({ ...oldTicket, status }, status, note || null).catch(() => {});
@@ -2037,12 +2151,16 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
     );
 
     // Record status history
-    await query(
-      `INSERT INTO ticket_status_history
-         (ticket_id, changed_by, from_status, to_status, note)
-       VALUES (?, ?, ?, 'Resolved', ?)`,
-      [id, resolvedByName, oldTicket.status, resolutionNote.trim()]
-    ).catch(() => {});
+    await logTicketActivity(id, {
+      eventType: "resolution",
+      actorName: resolvedByName,
+      actorEmail: req.user?.email || null,
+      actorRole: req.user?.portal_role || req.user?.role || "admin",
+      fieldName: "status",
+      fromStatus: oldTicket.status,
+      toStatus: "Resolved",
+      note: resolutionNote.trim(),
+    }).catch(() => {});
 
     // Fetch updated ticket for email
     const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
@@ -2136,17 +2254,16 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
       );
     }
 
-    await query(
-      `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note)
-       VALUES (?,?,?,?,?)`,
-      [
-        current.ticket_id,
-        staffName,
-        current.status || "Unknown",
-        status,
-        cleanNote,
-      ]
-    ).catch(() => {});
+    await logTicketActivity(id, {
+      eventType: status === "Resolved" ? "resolution" : status === "Closed" ? "closure" : "status",
+      actorName: staffName,
+      actorEmail: req.user?.email || null,
+      actorRole: req.user?.portal_role || req.user?.role || null,
+      fieldName: "status",
+      fromStatus: current.status || "Unknown",
+      toStatus: status,
+      note: cleanNote || null,
+    }).catch(() => {});
 
     const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
     const updatedTicket = updatedRows[0] || { ...current, status };
@@ -2280,9 +2397,7 @@ app.get("/api/staff/tickets/:id", authenticateJWT, requireStaff, async (req, res
     const comments = await query(
       "SELECT * FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC", [id]
     ).catch(() => []);
-    const timeline = await query(
-      "SELECT * FROM ticket_status_history WHERE ticket_id = ? ORDER BY created_at ASC", [id]
-    ).catch(() => []);
+    const timeline = await loadTicketActivity(id);
     res.json({ data: ticket, comments, timeline });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2314,10 +2429,16 @@ app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (
       `UPDATE tickets SET status='Resolved', resolved_at=NOW(), resolution_note=?, resolved_by=?, updated_at=NOW() WHERE id=?`,
       [resolutionNote.trim(), staffName, id]
     );
-    await query(
-      `INSERT INTO ticket_status_history (ticket_id, changed_by, from_status, to_status, note) VALUES (?,?,?,'Resolved',?)`,
-      [id, staffName, oldTicket.status, resolutionNote.trim()]
-    ).catch(() => {});
+    await logTicketActivity(id, {
+      eventType: "resolution",
+      actorName: staffName,
+      actorEmail: req.user?.email || null,
+      actorRole: req.user?.portal_role || req.user?.role || null,
+      fieldName: "status",
+      fromStatus: oldTicket.status,
+      toStatus: "Resolved",
+      note: resolutionNote.trim(),
+    }).catch(() => {});
     const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [id]).catch(() => []);
     const updatedTicket = updatedRows[0] || { ...oldTicket, status: "Resolved" };
     // Email user: your ticket has been resolved
