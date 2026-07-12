@@ -8,7 +8,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +19,7 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const user = await login(username, password);
+      const user = await login(null, password, email);
       const isAdmin =
         user?.portal_role === "admin" ||
         user?.role === "Administrator" ||
@@ -57,18 +57,18 @@ export default function Login() {
         <h2 className="mb-5 text-xl font-bold text-white">Admin Sign In</h2>
 
         <form onSubmit={submit} autoComplete="off" className="space-y-4">
-          {/* Username */}
+          {/* Email */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: "rgba(226,232,240,0.9)" }}>
-              Username
+              Email Address
             </label>
             <input
-              id="admin-username"
-              type="text"
-              autoComplete="username"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="admin-email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none transition-all duration-200 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/40"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
