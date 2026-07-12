@@ -21,16 +21,12 @@ export default function UserLogin() {
     try {
       const user = await login(null, password, email);
       const fallback = location.state?.from || "/user/dashboard";
-      if (
+      const isAdmin =
         user?.portal_role === "admin" ||
         user?.role === "Administrator" ||
         user?.role === "admin" ||
-        user?.role === "Admin"
-      ) {
-        navigate(location.state?.from || "/", { replace: true });
-      } else {
-        navigate(fallback, { replace: true });
-      }
+        user?.role === "Admin";
+      navigate(isAdmin ? (location.state?.from || "/") : fallback, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -142,15 +138,32 @@ export default function UserLogin() {
             ) : "Sign In"}
           </button>
 
-          {/* Create account */}
-          <div className="pt-3 text-center text-sm" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}>
-            New here?{" "}
-            <Link to="/register" className="inline-flex min-h-11 items-center font-semibold text-cyan-300 hover:text-cyan-200 transition-colors">
-              Create an account →
-            </Link>
-          </div>
-        </form>
-      </div>
-    </main>
+        {/* Create account */}
+        <div className="pt-3 text-center text-sm" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}>
+          New here?{" "}
+          <Link to="/register" className="inline-flex min-h-11 items-center font-semibold text-cyan-300 hover:text-cyan-200 transition-colors">
+            Create an account →
+          </Link>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-300">
+          <button
+            type="button"
+            onClick={() => navigate("/login", { replace: true })}
+            className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 font-semibold transition-colors hover:bg-white/5 hover:text-white"
+          >
+            Admin Portal
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/staff-login", { replace: true })}
+            className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 font-semibold transition-colors hover:bg-white/5 hover:text-white"
+          >
+            Staff Portal
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
   );
 }

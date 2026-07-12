@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import virajLogo from "../../viraaj.webp";
 
@@ -135,6 +135,22 @@ export default function StaffLogin() {
             ) : "Sign In to Staff Portal"}
           </button>
         </form>
+
+        <div className="mt-4 flex items-center justify-between gap-2 text-xs text-slate-300">
+          <button
+            type="button"
+            onClick={() => navigate("/login", { replace: true })}
+            className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 font-semibold transition-colors hover:bg-white/5 hover:text-white"
+          >
+            Admin Portal
+          </button>
+          <Link
+            to="/user-login"
+            className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 font-semibold transition-colors hover:bg-white/5 hover:text-white"
+          >
+            User Portal
+          </Link>
+        </div>
       </div>
     </main>
   );
