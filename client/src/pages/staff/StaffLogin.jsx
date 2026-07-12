@@ -136,6 +136,12 @@ export default function StaffLogin() {
           </button>
         </form>
 
+        <div className="mt-3 text-center text-sm" style={{ color: "rgba(226,232,240,0.82)" }}>
+          <Link to="/forgot-password?portal=staff" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
+            Forgot password? Reset here →
+          </Link>
+        </div>
+
         <div className="mt-4 flex items-center justify-between gap-2 text-xs text-slate-300">
           <button
             type="button"

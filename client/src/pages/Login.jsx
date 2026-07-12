@@ -150,6 +150,12 @@ export default function Login() {
             style={{ borderTopColor: "rgba(255,255,255,0.08)", color: "rgba(226,232,240,0.82)" }}
           >
             <div className="flex items-center gap-1 sm:min-h-11">
+              <span>Forgot password?</span>
+              <Link to="/forgot-password?portal=admin" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
+                Reset here →
+              </Link>
+            </div>
+            <div className="flex items-center gap-1 sm:min-h-11">
               <span>Not an admin?</span>
               <Link to="/user-login" className="inline-flex min-h-11 items-center font-semibold text-blue-300 transition-colors hover:text-blue-200">
                 User Portal →

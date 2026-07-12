@@ -146,6 +146,12 @@ export default function UserLogin() {
           </Link>
         </div>
 
+        <div className="mt-3 text-center text-sm" style={{ color: "rgba(226,232,240,0.82)" }}>
+          <Link to="/forgot-password?portal=user" className="inline-flex min-h-11 items-center font-semibold text-cyan-300 hover:text-cyan-200 transition-colors">
+            Forgot password? Reset here →
+          </Link>
+        </div>
+
         <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-300">
           <button
             type="button"

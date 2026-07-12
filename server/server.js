@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import express from "express";
 import mysql from "mysql2";
 import cors from "cors";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
@@ -29,6 +30,26 @@ function toMySQLDateTime(value) {
   return value.replace("T", " ").slice(0, 19);
 }
 
+function normalizeEmail(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function generateResetOtp() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function makePasswordResetToken(user) {
+  return jwt.sign(
+    {
+      sub: String(user.id),
+      email: user.email,
+      purpose: "password_reset",
+    },
+    JWT_SECRET,
+    { expiresIn: "15m" }
+  );
+}
+
 import {
   sendNewTicketToAdmin,
   sendTicketConfirmationToUser,
@@ -40,6 +61,7 @@ import {
   sendTicketTransferredToAssignee,
   sendAdminCreatedTicketToAdmin,
   sendSubBranchResolutionToAdmin,
+  sendPasswordResetOtp,
 } from "./emailService.js";
 
 dotenv.config();
@@ -110,6 +132,9 @@ db.connect((err) => {
     "ALTER TABLE users ADD COLUMN department VARCHAR(100) DEFAULT NULL",
     "ALTER TABLE users ADD COLUMN plant VARCHAR(150) DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN plant VARCHAR(150) DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN reset_otp_hash VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN reset_otp_expires_at DATETIME DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN reset_otp_sent_at DATETIME DEFAULT NULL",
     // Expand portal_role to support it_staff
     "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
     // Speed up staff queue lookups
@@ -895,6 +920,137 @@ app.post("/api/auth/login", (req, res) => {
       });
     }
   );
+});
+
+app.post("/api/auth/password-reset/request", async (req, res) => {
+  const identifier = normalizeEmail(req.body?.email || req.body?.username);
+  if (!identifier) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    const users = await query(
+      "SELECT id, name, email, username, portal_role FROM users WHERE LOWER(email) = ? OR LOWER(username) = ? LIMIT 1",
+      [identifier, identifier]
+    );
+
+    if (users.length === 0) {
+      return res.json({ success: true, message: "If the account exists, an OTP has been sent to the registered email address." });
+    }
+
+    const user = users[0];
+    const otp = generateResetOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    await query(
+      `UPDATE users
+       SET reset_otp_hash = ?, reset_otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE), reset_otp_sent_at = NOW()
+       WHERE id = ?`,
+      [otpHash, user.id]
+    );
+
+    await sendPasswordResetOtp(user, otp);
+
+    res.json({ success: true, message: "If the account exists, an OTP has been sent to the registered email address." });
+  } catch (err) {
+    console.error("Password reset request failed:", err);
+    res.status(500).json({ message: "Unable to send reset OTP right now." });
+  }
+});
+
+app.post("/api/auth/password-reset/verify", async (req, res) => {
+  const identifier = normalizeEmail(req.body?.email || req.body?.username);
+  const otp = String(req.body?.otp || "").trim();
+  if (!identifier || !otp) {
+    return res.status(400).json({ message: "Email and OTP are required" });
+  }
+
+  try {
+    const users = await query(
+      "SELECT id, name, email, username, reset_otp_hash, reset_otp_expires_at FROM users WHERE LOWER(email) = ? OR LOWER(username) = ? LIMIT 1",
+      [identifier, identifier]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "No matching account found" });
+    }
+
+    const user = users[0];
+    if (!user.reset_otp_hash || !user.reset_otp_expires_at) {
+      return res.status(400).json({ message: "No active reset OTP found. Please request a new one." });
+    }
+
+    const expiresAt = new Date(user.reset_otp_expires_at);
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+
+    const otpMatch = await bcrypt.compare(otp, user.reset_otp_hash);
+    if (!otpMatch) {
+      return res.status(401).json({ message: "Invalid OTP" });
+    }
+
+    await query(
+      `UPDATE users
+       SET reset_otp_hash = NULL, reset_otp_expires_at = NULL, reset_otp_sent_at = NULL
+       WHERE id = ?`,
+      [user.id]
+    );
+
+    const resetToken = makePasswordResetToken(user);
+    res.json({
+      success: true,
+      resetToken,
+      email: user.email,
+      message: "OTP verified successfully. You can now update your password.",
+    });
+  } catch (err) {
+    console.error("Password reset verification failed:", err);
+    res.status(500).json({ message: "Unable to verify OTP right now." });
+  }
+});
+
+app.post("/api/auth/password-reset/confirm", async (req, res) => {
+  const { resetToken, newPassword } = req.body || {};
+  if (!resetToken || !newPassword) {
+    return res.status(400).json({ message: "Reset token and new password are required" });
+  }
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters long" });
+  }
+
+  try {
+    const payload = jwt.verify(resetToken, JWT_SECRET);
+    if (payload?.purpose !== "password_reset") {
+      return res.status(401).json({ message: "Invalid reset token" });
+    }
+
+    const userId = Number(payload.sub);
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid reset token" });
+    }
+
+    const userRows = await query("SELECT id, email, name FROM users WHERE id = ? LIMIT 1", [userId]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    const hashed = await bcrypt.hash(String(newPassword), 10);
+    await query(
+      `UPDATE users
+       SET hashed_password = ?, password = ?, reset_otp_hash = NULL, reset_otp_expires_at = NULL, reset_otp_sent_at = NULL
+       WHERE id = ?`,
+      [hashed, hashed, userId]
+    );
+
+    res.json({ success: true, message: "Password updated successfully. Please sign in again." });
+  } catch (err) {
+    console.error("Password reset confirm failed:", err);
+    const message = err?.name === "TokenExpiredError"
+      ? "Reset token has expired. Please request a new OTP."
+      : "Unable to update password right now.";
+    res.status(400).json({ message });
+  }
 });
 
 // REGISTER (new users)

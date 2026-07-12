@@ -323,3 +323,25 @@ export async function sendSubBranchResolutionToAdmin(ticket, resolvedBy, resolut
      ${ticketTable({ ...ticket, status: "Resolved" })}`);
   await sendEmail({ to: process.env.ADMIN_EMAIL, subject: `[SUB-BRANCH RESOLVED] ${ticket.ticket_id || ticket.id} — Resolved by ${resolvedBy}`, html });
 }
+
+// ─── 10. Password reset OTP ─────────────────────────────────────
+export async function sendPasswordResetOtp(user, otp) {
+  if (!user?.email) return;
+  const html = baseTemplate("Password Reset OTP",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">🔐 Password reset request</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">
+       Hi <strong>${user.name || "there"}</strong>, we received a password reset request for your account.
+     </p>
+     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:18px 20px;margin:16px 0;text-align:center;">
+       <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1d4ed8;letter-spacing:.08em;text-transform:uppercase;">One-time OTP</p>
+       <div style="font-size:30px;line-height:1;font-weight:800;letter-spacing:.28em;color:#0f172a;">${otp}</div>
+       <p style="margin:10px 0 0;font-size:13px;color:#64748b;">This OTP expires in 10 minutes.</p>
+     </div>
+     <p style="font-size:13px;color:#64748b;margin:0;">If you did not request this, you can safely ignore this email.</p>`);
+
+  await sendEmail({
+    to: user.email,
+    subject: `[PASSWORD RESET] OTP for ${user.email}`,
+    html,
+  });
+}

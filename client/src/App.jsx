@@ -16,6 +16,7 @@ const Reports          = lazy(() => import("./pages/Reports.jsx"));
 const Team             = lazy(() => import("./pages/Team.jsx"));
 const Login            = lazy(() => import("./pages/Login.jsx"));
 const UserLogin        = lazy(() => import("./pages/user/UserLogin.jsx"));
+const ForgotPassword   = lazy(() => import("./pages/ForgotPassword.jsx"));
 const Register         = lazy(() => import("./pages/Register.jsx"));
 const UserDashboard    = lazy(() => import("./pages/user/UserDashboard.jsx"));
 const MyTickets        = lazy(() => import("./pages/user/MyTickets.jsx"));
@@ -232,6 +233,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/user-login" element={<UserLogin />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/register" element={<Register />} />
           <Route path="/staff-login" element={<StaffLogin />} />
 

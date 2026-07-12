@@ -89,6 +89,24 @@ export const api = {
       body: JSON.stringify({ username: username || email, password, email }),
       token: "",
     }),
+  requestPasswordReset: (email) =>
+    request("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+      token: "",
+    }),
+  verifyPasswordResetOtp: (email, otp) =>
+    request("/auth/password-reset/verify", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+      token: "",
+    }),
+  confirmPasswordReset: (resetToken, newPassword) =>
+    request("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ resetToken, newPassword }),
+      token: "",
+    }),
   register: (payload) =>
     request("/auth/register", { method: "POST", body: JSON.stringify(payload), token: "" }),
   me: () => request("/auth/me"),
