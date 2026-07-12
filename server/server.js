@@ -5,6 +5,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
+import cron from "node-cron";
 import { buildTicketPdf } from "./utils/pdf.js";
 import {
   CATEGORY_OPTIONS,
@@ -679,6 +680,56 @@ async function loadTicketActivity(ticketId) {
     [ticketId]
   ).catch(() => []);
   return rows.map(mapTicketActivity);
+}
+
+async function autoCloseResolvedTickets() {
+  try {
+    const rows = await query(
+      `SELECT ${TICKET_SLIM_COLUMNS}
+       FROM tickets
+       WHERE status = 'Resolved'
+         AND resolved_at IS NOT NULL
+         AND resolved_at <= DATE_SUB(NOW(), INTERVAL 7 DAY)`
+    );
+
+    for (const ticket of rows) {
+      const closedBy = "System";
+      await query(
+        `UPDATE tickets
+           SET status = 'Closed',
+               actual_closure_date = NOW(),
+               updated_at = NOW()
+         WHERE id = ?`,
+        [ticket.id]
+      );
+
+      await logTicketActivity(ticket.id, {
+        eventType: "closure",
+        actorName: closedBy,
+        actorEmail: null,
+        actorRole: "system",
+        fieldName: "status",
+        fromStatus: "Resolved",
+        toStatus: "Closed",
+        note: "Automatically closed 7 days after resolution.",
+      }).catch(() => {});
+
+      const updatedRows = await query(`SELECT ${TICKET_SLIM_COLUMNS} FROM tickets WHERE id = ?`, [ticket.id]).catch(() => []);
+      const updatedTicket = updatedRows[0] || { ...ticket, status: "Closed" };
+
+      await sendStatusUpdateToUser(
+        updatedTicket,
+        "Closed",
+        "This ticket was automatically closed 7 days after resolution."
+      ).catch(() => {});
+    }
+
+    if (rows.length) {
+      console.log(`✅ Auto-closed ${rows.length} resolved ticket(s) after 7 days.`);
+    }
+  } catch (err) {
+    console.error("❌ Auto-close job failed:", err.message);
+  }
 }
 
 const TICKET_SLIM_COLUMNS = `
@@ -2481,6 +2532,16 @@ app.post("/api/staff/tickets/:id/comment", authenticateJWT, requireStaff, async 
     res.status(500).json({ message: err.message });
   }
 });
+
+cron.schedule(
+  "*/30 * * * *",
+  () => {
+    autoCloseResolvedTickets().catch((err) => {
+      console.error("❌ Auto-close scheduler error:", err.message);
+    });
+  },
+  { timezone: "Asia/Kolkata" }
+);
 
 app.listen(process.env.PORT || 5000, () => {
   console.log("🚀 Server running on port 5000");

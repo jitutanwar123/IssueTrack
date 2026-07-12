@@ -14,6 +14,18 @@ function prettyStatus(value) {
   return getStatusLabel(value);
 }
 
+function normalizeStatusLabel(value = "") {
+  const lower = String(value || "").toLowerCase();
+  if (lower.includes("reject")) return "Rejected";
+  if (lower.includes("closed")) return "Closed";
+  if (lower.includes("resolved")) return "Resolved";
+  if (lower.includes("progress")) return "Work In Progress";
+  if (lower.includes("assign")) return "Assigned";
+  if (lower.includes("open")) return "Open";
+  if (lower.includes("hold")) return "On Hold";
+  return getStatusLabel(value);
+}
+
 export function formatTicketActivity(entry = {}) {
   const type = normalizeType(entry);
   const actor = entry.actor_name || entry.changed_by || "System";
@@ -36,8 +48,20 @@ export function formatTicketActivity(entry = {}) {
     title = "Ticket closed";
     subtitle = `${fromValue ? `From ${prettyStatus(fromValue)} ` : ""}to ${prettyStatus(toValue || "Closed")}`;
   } else if (type === "status") {
-    title = "Status changed";
-    subtitle = `${fromValue ? `${prettyStatus(fromValue)} → ` : ""}${prettyStatus(toValue)}`;
+    const normalizedTo = normalizeStatusLabel(toValue);
+    title =
+      normalizedTo === "Rejected"
+        ? "Ticket rejected"
+        : normalizedTo === "Resolved"
+          ? "Ticket resolved"
+          : normalizedTo === "Closed"
+            ? "Ticket closed"
+            : normalizedTo === "Work In Progress"
+              ? "Work started"
+              : normalizedTo === "Assigned"
+                ? "Ticket assigned"
+                : "Status changed";
+    subtitle = `${fromValue ? `${normalizeStatusLabel(fromValue)} → ` : ""}${normalizedTo}`;
   } else if (entry.field_name) {
     title = `${entry.field_name.replace(/_/g, " ")} updated`;
     subtitle = `${fromValue ?? "—"} → ${toValue ?? "—"}`;

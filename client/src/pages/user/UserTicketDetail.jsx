@@ -98,6 +98,7 @@ export default function UserTicketDetail() {
   const activityItems = timeline.map(formatTicketActivity);
   const lastUpdate = activityItems[activityItems.length - 1] || null;
   const currentStageLabel = normalizeTrackerStep(ticket.status);
+  const milestoneMap = buildMilestones(activityItems);
 
   return (
     <div className="space-y-6">
@@ -219,7 +220,7 @@ export default function UserTicketDetail() {
               {lastUpdate?.created_at ? formatDateTime(lastUpdate.created_at) : formatDateTime(ticket.updated_at)}
             </div>
             <div className="mt-0.5 text-xs text-slate-500">
-              {lastUpdate?.changed_by ? `Updated by ${lastUpdate.changed_by}` : "No history yet"}
+              {lastUpdate?.actor_name ? `Updated by ${lastUpdate.actor_name}` : "No history yet"}
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
@@ -369,10 +370,34 @@ export default function UserTicketDetail() {
             </dl>
           </div>
 
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <h3 className="mb-4 text-sm font-semibold text-slate-900">Ticket Log Summary</h3>
+            <div className="space-y-3">
+              {[
+                ["Opened", milestoneMap.opened],
+                ["Assigned", milestoneMap.assigned],
+                ["Work In Progress", milestoneMap.inProgress],
+                ["Resolved", milestoneMap.resolved],
+                ["Rejected", milestoneMap.rejected],
+                ["Closed", milestoneMap.closed],
+              ].map(([label, entry]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    {entry?.time ? formatDateTime(entry.time) : "—"}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    {entry?.actor ? `By ${entry.actor}` : "No record yet"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Status timeline */}
           {activityItems.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">Activity Log</h3>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">Ticket Log</h3>
               <div className="space-y-3">
                 {activityItems.map((item, i) => (
                   <div key={item.id || i} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -400,4 +425,16 @@ export default function UserTicketDetail() {
       </div>
     </div>
   );
+}
+
+function buildMilestones(items = []) {
+  const pick = (predicate) => items.find(predicate) || null;
+  return {
+    opened: pick((item) => item.type === "created"),
+    assigned: pick((item) => item.type === "assignment"),
+    inProgress: pick((item) => item.title === "Work started" || item.subtitle === "Work In Progress"),
+    resolved: pick((item) => item.type === "resolution" || item.title === "Ticket resolved"),
+    rejected: pick((item) => item.title === "Ticket rejected"),
+    closed: pick((item) => item.type === "closure" || item.title === "Ticket closed"),
+  };
 }
