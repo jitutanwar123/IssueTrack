@@ -23,7 +23,7 @@ const PRIORITIES = [
 const REQUEST_SOURCES = [
   { value: "Phone", label: "📞 Phone" },
   { value: "WhatsApp", label: "💬 WhatsApp" },
-  { value: "Gmail", label: "📧 Gmail" },
+  { value: "Gmail", label: "📧 Email" },
 ];
 
 const DEFAULT_FORM = {
