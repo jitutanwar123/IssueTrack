@@ -5,84 +5,7 @@ import { AgeingChart, CategoryPieChart, ResolverChart } from "../components/Char
 import { StatsCard } from "../components/StatsCard.jsx";
 import { TicketCard } from "../components/TicketCard.jsx";
 import { PLANTS } from "../utils/plants.js";
-
-// ─── Static option lists ───────────────────────────────────────────────────────
-
-const INDIA_LOCATIONS = [
-  // States
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
-  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
-  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-  // Union Territories
-  "Andaman & Nicobar Islands", "Chandigarh", "Dadra & Nagar Haveli and Daman & Diu",
-  "Delhi (NCT)", "Jammu & Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
-  // Major Cities
-  "Ahmedabad", "Bangalore", "Bhopal", "Chennai", "Coimbatore", "Delhi",
-  "Faridabad", "Gandhinagar", "Gurgaon", "Hyderabad", "Indore", "Jaipur",
-  "Kochi", "Kolkata", "Lucknow", "Ludhiana", "Mumbai", "Nagpur", "Nashik",
-  "Noida", "Patna", "Pune", "Rajkot", "Surat", "Thane", "Vadodara",
-  "Varanasi", "Visakhapatnam",
-];
-
-const SERVICES = [
-  // IT Services
-  "Hardware Support",
-  "Software Installation & Licensing",
-  "Network & Connectivity",
-  "Email & Communication",
-  "Server & Infrastructure",
-  "Cybersecurity & Access Control",
-  "Database Administration",
-  "ERP / SAP Support",
-  "IT Helpdesk",
-  "Backup & Disaster Recovery",
-  "CCTV & Surveillance",
-  "Printer & Peripheral Support",
-  "VPN & Remote Access",
-  "Website & Application Support",
-  // HR & Admin Services
-  "Recruitment & Onboarding",
-  "Payroll & Compensation",
-  "Leave & Attendance Management",
-  "Employee Relations",
-  "Training & Development",
-  "Performance Management",
-  "Travel & Accommodation",
-  "Facilities & Housekeeping",
-  "Canteen & Pantry",
-  "Stationery & Office Supplies",
-  "Security & Access Cards",
-  "Compliance & Legal",
-  "Health & Safety",
-  "Vendor Management",
-];
-
-const WORKGROUPS = [
-  // IT Workgroups
-  "IT - Level 1 Support",
-  "IT - Level 2 Support",
-  "IT - Level 3 / Engineering",
-  "Network Operations",
-  "Server & Cloud Ops",
-  "Database Team",
-  "Security Operations Center (SOC)",
-  "ERP / SAP Team",
-  "Application Development",
-  "IT Infrastructure",
-  // HR & Admin Workgroups
-  "HR - Recruitment",
-  "HR - Payroll",
-  "HR - Employee Engagement",
-  "HR - Compliance & Legal",
-  "HR - Training & Development",
-  "Admin - Facilities",
-  "Admin - Travel Desk",
-  "Admin - Procurement",
-  "Admin - Security",
-  "Management / Leadership",
-];
+import { CATEGORY_OPTIONS, getServiceOptions, getSubCategoryOptions } from "../utils/ticketTaxonomy.js";
 
 // ─── FilterSelect component ────────────────────────────────────────────────────
 
@@ -137,15 +60,14 @@ export default function Dashboard() {
 
   // Dynamic dropdown options derived from already-loaded ticket data
   const dynamicOptions = useMemo(() => {
-    const unique = (field) =>
-      [...new Set(tickets.map((t) => t[field]).filter(Boolean))].sort();
+    const allSubCategories = [...new Set(CATEGORY_OPTIONS.flatMap((category) => getSubCategoryOptions(category)))].sort();
     return {
-      category:     unique("category"),
-      sub_category: unique("sub_category"),
-      customer:     unique("customer_name"),
-      plant:        unique("plant"),
+      category:     CATEGORY_OPTIONS,
+      sub_category: allSubCategories,
+      service:      getServiceOptions("staff"),
+      plant:        PLANTS,
     };
-  }, [tickets]);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -158,7 +80,7 @@ export default function Dashboard() {
             </div>
             <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Live Ticket Control Room</h2>
             <p className="mt-2 max-w-xl text-sm text-slate-500">
-              Monitor open work, SLA risk, and resolver load across incident and service request queues.
+              Monitor open work, SLA risk, and resolver load across the ticket types your project actually uses.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -208,17 +130,14 @@ export default function Dashboard() {
           </svg>
           <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Filters</h3>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
-          <FilterSelect label="Locations"      value={dashboardFilters.location}     onChange={(v) => setDashboardFilters({ location: v })}      options={INDIA_LOCATIONS} />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <FilterSelect label="Classifications" value={dashboardFilters.category}     onChange={(v) => setDashboardFilters({ category: v })}      options={dynamicOptions.category} />
           <FilterSelect label="Sub-Categories" value={dashboardFilters.sub_category} onChange={(v) => setDashboardFilters({ sub_category: v })} options={dynamicOptions.sub_category} />
-          <FilterSelect label="Services"        value={dashboardFilters.service}      onChange={(v) => setDashboardFilters({ service: v })}       options={SERVICES} />
+          <FilterSelect label="Services"        value={dashboardFilters.service}      onChange={(v) => setDashboardFilters({ service: v })}       options={dynamicOptions.service.length ? dynamicOptions.service : []} />
           <FilterSelect label="Plants"          value={dashboardFilters.plant}        onChange={(v) => setDashboardFilters({ plant: v })}         options={PLANTS} />
-          <FilterSelect label="Workgroups"      value={dashboardFilters.workgroup}    onChange={(v) => setDashboardFilters({ workgroup: v })}     options={WORKGROUPS} />
-          <FilterSelect label="Customers"       value={dashboardFilters.customer}     onChange={(v) => setDashboardFilters({ customer: v })}      options={dynamicOptions.customer} />
           <div className="flex items-end">
             <button
-              onClick={() => setDashboardFilters({ location:"", category:"", sub_category:"", service:"", plant:"", workgroup:"", customer:"" })}
+              onClick={() => setDashboardFilters({ category:"", sub_category:"", service:"", plant:"" })}
               className="btn-secondary w-full text-xs"
             >
               Reset Filters

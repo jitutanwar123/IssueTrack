@@ -16,12 +16,9 @@ const defaultFilters = {
 };
 
 const defaultDashboardFilters = {
-  location: "",
   category: "",
   sub_category: "",
   service: "",
-  workgroup: "",
-  customer: "",
   plant: "",
 };
 

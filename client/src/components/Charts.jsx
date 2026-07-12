@@ -61,7 +61,7 @@ export function AgeingChart({ data }) {
 
 export function CategoryPieChart({ data }) {
   return (
-    <Panel title="Active Tickets by Category" subtitle="Incident, service request, change and problem split">
+    <Panel title="Active Tickets by Category" subtitle="Project categories currently in use">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={105} paddingAngle={4} label>
@@ -79,7 +79,7 @@ export function CategoryPieChart({ data }) {
 
 export function ResolverChart({ data }) {
   return (
-    <Panel title="Tickets by Resolver / Workstream" subtitle="Current load by resolver">
+    <Panel title="Tickets by Assignee" subtitle="Current load by assigned staff member">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />

@@ -3,6 +3,7 @@ import { StatusBadge } from "./StatusBadge.jsx";
 import { formatDateTime } from "../utils/helpers.js";
 
 export function TicketCard({ ticket }) {
+  const owner = ticket.assigned_to_name || ticket.assigned_to || "Unassigned";
   return (
     <Link
       to={`/tickets/${ticket.id}`}
@@ -30,15 +31,28 @@ export function TicketCard({ ticket }) {
         {ticket.description || "No description available"}
       </p>
 
-      <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-slate-400">
+      <div className="mt-3 grid gap-2 text-[11px] text-slate-400 sm:grid-cols-2">
         <span className="flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-          {ticket.assigned_to_name || "Unassigned"}
+          {owner}
         </span>
-        <span>{formatDateTime(ticket.created_at)}</span>
+        <span className="flex items-center gap-1.5 sm:justify-end">
+          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" strokeLinecap="round" />
+          </svg>
+          Raised {formatDateTime(ticket.created_at)}
+        </span>
+        <span className="flex items-center gap-1.5 sm:col-span-2">
+          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 8v4l3 3" strokeLinecap="round" />
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+          Updated {formatDateTime(ticket.updated_at || ticket.created_at)}
+        </span>
       </div>
     </Link>
   );
