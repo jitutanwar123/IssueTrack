@@ -53,6 +53,11 @@ function DataRow({ label, value }) {
   );
 }
 
+function isStaffWorkStage(status = "") {
+  const value = String(status || "").toLowerCase();
+  return value === "work in progress" || value.startsWith("on hold");
+}
+
 export default function StaffTicketDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -148,6 +153,14 @@ export default function StaffTicketDetail() {
       setStatusError("Closed tickets are read-only.");
       return;
     }
+    if ((statusDraft === "Resolved" || statusDraft === "Reject") && !canFinalize) {
+      setStatusError("Assign the ticket first, then move it to Work In Progress or On Hold before resolving or rejecting it.");
+      return;
+    }
+    if (statusDraft === "Closed" && ticket?.status !== "Resolved") {
+      setStatusError("Close the ticket only after it has been resolved.");
+      return;
+    }
     setSavingStatus(true);
     setStatusError("");
     try {
@@ -240,7 +253,8 @@ export default function StaffTicketDetail() {
 
   const isResolved = ticket?.status === "Resolved";
   const isClosed = ticket?.status === "Closed";
-  const isOutcomeAction = showResolve && (statusDraft === "Resolved" || statusDraft === "Reject");
+  const canFinalize = isStaffWorkStage(ticket?.status);
+  const isOutcomeAction = showResolve && canFinalize && (statusDraft === "Resolved" || statusDraft === "Reject");
   const outcomeTitle = statusDraft === "Reject" ? "Rejection" : "Resolution";
   const outcomeSubtitle =
     statusDraft === "Reject"
@@ -319,26 +333,36 @@ export default function StaffTicketDetail() {
             </button>
             {!isResolved && !isClosed && (
               <button
+                disabled={!canFinalize}
                 onClick={() => {
+                  if (!canFinalize) {
+                    setResolveError("Assign the ticket first, then move it to Work In Progress or On Hold before resolving it.");
+                    return;
+                  }
                   setStatusDraft("Resolved");
                   setResolutionNote("");
                   setResolveError("");
                   setShowResolve(true);
                 }}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Resolve
               </button>
             )}
             {!isResolved && !isClosed && (
               <button
+                disabled={!canFinalize}
                 onClick={() => {
+                  if (!canFinalize) {
+                    setResolveError("Assign the ticket first, then move it to Work In Progress or On Hold before rejecting it.");
+                    return;
+                  }
                   setStatusDraft("Reject");
                   setResolutionNote("");
                   setResolveError("");
                   setShowResolve(true);
                 }}
-                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500"
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Reject
               </button>
@@ -351,17 +375,42 @@ export default function StaffTicketDetail() {
             <button
               key={status}
               type="button"
-              disabled={ticket?.status === "Closed"}
-              onClick={() => setStatusDraft(status)}
+              disabled={
+                ticket?.status === "Closed" ||
+                (status === "Closed" && ticket?.status !== "Resolved") ||
+                ((status === "Resolved" || status === "Reject") && !canFinalize)
+              }
+              onClick={() => {
+                if ((status === "Resolved" || status === "Reject") && !canFinalize) {
+                  setStatusError("Move the ticket to Work In Progress or On Hold before resolving or rejecting it.");
+                  return;
+                }
+                if (status === "Closed" && ticket?.status !== "Resolved") {
+                  setStatusError("Close the ticket only after it has been resolved.");
+                  return;
+                }
+                setStatusDraft(status);
+              }}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusDraft === status
                   ? "bg-slate-900 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               }`}
             >
               {status}
             </button>
           ))}
+        </div>
+
+        <div className="mt-2 text-xs text-slate-500">
+          {!canFinalize ? (
+            <span>Assign the ticket, then move it to Work In Progress or On Hold before resolving or rejecting it.</span>
+          ) : (
+            <span>You can now resolve or reject this ticket after the active work stage.</span>
+          )}
+          {ticket?.status !== "Resolved" ? null : (
+            <span className="ml-2">Close is available only after resolution.</span>
+          )}
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_260px_auto] lg:items-end">

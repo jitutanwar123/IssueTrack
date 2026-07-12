@@ -412,6 +412,23 @@ function isClosedStatus(status) {
   return String(status || "").toLowerCase() === "closed";
 }
 
+function normalizeStatus(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isStaffWorkStage(status = "") {
+  const value = normalizeStatus(status);
+  return value === "work in progress" || value.startsWith("on hold");
+}
+
+function canMoveToFinalStaffStatus(currentStatus = "", nextStatus = "") {
+  const current = normalizeStatus(currentStatus);
+  const next = normalizeStatus(nextStatus);
+  if (next === "closed") return current === "resolved";
+  if (next === "resolved" || next === "reject") return isStaffWorkStage(currentStatus);
+  return true;
+}
+
 function normalizeService(service, portal = "user") {
   const allowed = getServiceOptions(portal);
   if (allowed.includes(service)) return service;
@@ -2278,6 +2295,17 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
     if ((current.status || "") === status) {
       return res.status(409).json({ message: "Ticket already has that status" });
     }
+    if (!current.assigned_to && status !== "Open") {
+      return res.status(409).json({ message: "Assign the ticket first before changing it to an active workflow status." });
+    }
+    if (!canMoveToFinalStaffStatus(current.status, status)) {
+      return res.status(409).json({
+        message:
+          status === "Closed"
+            ? "You can close this ticket only after it has been resolved."
+            : "Move the ticket to Work In Progress or On Hold before resolving or rejecting it.",
+      });
+    }
 
     const cleanNote = (resolutionNote || note || "").trim();
 
@@ -2474,6 +2502,11 @@ app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (
     }
     if (oldTicket.status === "Resolved") {
       return res.status(409).json({ message: "Ticket is already resolved" });
+    }
+    if (!isStaffWorkStage(oldTicket.status)) {
+      return res.status(409).json({
+        message: "Please move the ticket to Work In Progress or On Hold before resolving it.",
+      });
     }
     await query(
       `UPDATE tickets SET status='Resolved', resolved_at=NOW(), resolution_note=?, resolved_by=?, updated_at=NOW() WHERE id=?`,
