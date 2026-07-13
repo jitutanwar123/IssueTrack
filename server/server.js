@@ -124,6 +124,7 @@ db.connect((err) => {
     "ALTER TABLE tickets ADD COLUMN resolved_at DATETIME DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN resolution_note TEXT DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN resolved_by VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE tickets ADD COLUMN closed_at DATETIME DEFAULT NULL",
     // Attachment support
     "ALTER TABLE tickets ADD COLUMN attachment_name VARCHAR(255) DEFAULT NULL",
     "ALTER TABLE tickets ADD COLUMN attachment_mime VARCHAR(100) DEFAULT NULL",
@@ -160,7 +161,7 @@ db.connect((err) => {
       }
     });
   });
-  console.log("✅ Migration queued (resolved_at, resolution_note, resolved_by, attachment columns, it_staff role)");
+      console.log("✅ Migration queued (resolved_at, closed_at, resolution_note, resolved_by, attachment columns, it_staff role)");
 
   (async () => {
     try {
@@ -732,7 +733,7 @@ async function autoCloseResolvedTickets() {
       await query(
         `UPDATE tickets
            SET status = 'Closed',
-               actual_closure_date = NOW(),
+               closed_at = NOW(),
                updated_at = NOW()
          WHERE id = ?`,
         [ticket.id]
@@ -2273,9 +2274,9 @@ app.patch("/api/admin/tickets/:id/status", authenticateJWT, requireAdmin, async 
     }
     const nextSql =
       status === "Resolved"
-        ? "UPDATE tickets SET status = ?, resolved_at = NOW(), actual_closure_date = NOW(), updated_at = NOW() WHERE id = ?"
+        ? "UPDATE tickets SET status = ?, resolved_at = NOW(), actual_closure_date = NOW(), closed_at = NULL, updated_at = NOW() WHERE id = ?"
         : status === "Closed"
-          ? "UPDATE tickets SET status = ?, actual_closure_date = NOW(), updated_at = NOW() WHERE id = ?"
+          ? "UPDATE tickets SET status = ?, closed_at = NOW(), updated_at = NOW() WHERE id = ?"
           : "UPDATE tickets SET status = ?, updated_at = NOW() WHERE id = ?";
     await query(nextSql, [status, id]);
 
@@ -2463,14 +2464,14 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
     if (status === "Resolved") {
       await query(
         `UPDATE tickets
-           SET status = ?, resolved_at = NOW(), actual_closure_date = NOW(), resolved_by = ?, resolution_note = ?, updated_at = NOW()
+           SET status = ?, resolved_at = NOW(), actual_closure_date = NOW(), closed_at = NULL, resolved_by = ?, resolution_note = ?, updated_at = NOW()
          WHERE id = ?`,
         [status, staffName, cleanNote || current.resolution_note || "", id]
       );
     } else if (status === "Closed") {
       await query(
         `UPDATE tickets
-           SET status = ?, actual_closure_date = NOW(), updated_at = NOW()
+           SET status = ?, closed_at = NOW(), updated_at = NOW()
          WHERE id = ?`,
         [status, id]
       );
@@ -2519,17 +2520,17 @@ app.get("/api/staff/resolved-history", authenticateJWT, requireStaff, async (req
   try {
     const staffName = req.user.name;
     const rows = await query(
-      `SELECT id, ticket_id, title, category, priority, status, resolved_at, actual_closure_date, closed_at, resolution_note, customer_name
+      `SELECT id, ticket_id, title, category, priority, status, resolved_at, actual_closure_date, closed_at, updated_at, resolution_note, customer_name
        FROM tickets
        WHERE resolved_by = ? AND status IN ('Resolved', 'Closed')
-       ORDER BY COALESCE(resolved_at, actual_closure_date, closed_at) DESC`,
+       ORDER BY COALESCE(resolved_at, closed_at, actual_closure_date, updated_at) DESC`,
       [staffName]
     );
     res.json({
       data: rows.map((row) => ({
         ...row,
-        resolved_at: row.resolved_at || row.actual_closure_date || row.closed_at || null,
-        closed_at: row.closed_at || row.actual_closure_date || row.resolved_at || null,
+        resolved_at: row.resolved_at || row.actual_closure_date || null,
+        closed_at: row.closed_at || (row.status === "Closed" ? row.updated_at : null) || row.actual_closure_date || null,
       })),
       count: rows.length,
     });
@@ -2569,10 +2570,10 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
     rows.forEach(t => { const p = t.priority || "Unknown"; priorityMap[p] = (priorityMap[p] || 0) + 1; });
 
     // ── Resolved per month (last 6 months) ─────────────────────────
-    const resolvedRows = rows.filter(t => ["Resolved", "Closed"].includes(t.status) && (t.resolved_at || t.actual_closure_date || t.closed_at));
+    const resolvedRows = rows.filter(t => ["Resolved", "Closed"].includes(t.status) && (t.resolved_at || t.actual_closure_date || t.closed_at || t.updated_at));
     const monthMap = {};
     resolvedRows.forEach(t => {
-      const d = new Date(t.resolved_at || t.actual_closure_date || t.closed_at);
+      const d = new Date(t.resolved_at || t.actual_closure_date || t.closed_at || t.updated_at);
       const key = d.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "Asia/Kolkata" });
       monthMap[key] = (monthMap[key] || 0) + 1;
     });
@@ -2580,7 +2581,7 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
     // ── Avg resolution time ─────────────────────────────────────────
     let totalMinutes = 0, countMinutes = 0;
     resolvedRows.forEach(t => {
-      const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at;
+      const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at || t.updated_at;
       const mins = Number(t.resolution_time || 0) ||
         (finishAt ? Math.max(1, Math.round((new Date(finishAt) - new Date(t.created_at)) / 60000)) : 0);
       totalMinutes += mins;
@@ -2610,10 +2611,10 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
           created_at: t.created_at,
           actual_closure_date: t.actual_closure_date,
           resolved_at: t.resolved_at || t.actual_closure_date || null,
-          closed_at: t.closed_at || t.actual_closure_date || t.resolved_at || null,
+          closed_at: t.closed_at || (t.status === "Closed" ? t.updated_at : null) || t.actual_closure_date || null,
           updated_at: t.updated_at,
           duration_minutes: (() => {
-            const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at;
+            const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at || t.updated_at;
             if (!finishAt || !t.created_at) return null;
             return Math.max(0, Math.round((new Date(finishAt) - new Date(t.created_at)) / 60000));
           })(),
