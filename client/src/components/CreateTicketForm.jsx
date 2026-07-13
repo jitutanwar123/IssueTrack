@@ -273,6 +273,7 @@ export function CreateTicketForm({ variant = "user" }) {
     if (variant === "staff" && staffMode === "on_behalf") {
       if (!form.requester_name.trim()) nextErrors.requester_name = "Requester name is required";
       if (!form.requester_email.trim()) nextErrors.requester_email = "Requester email is required";
+      if (!form.request_source) nextErrors.request_source = "Request source is required";
     }
     if (form.category === "SAP Application" && form.sub_category === "CTM" && !assignedStaffOption?.name) {
       nextErrors.assigned_to = "No CTM assignee is mapped for the selected plant.";
@@ -647,10 +648,10 @@ export function CreateTicketForm({ variant = "user" }) {
                 </div>
               )}
 
-              {/* Row 1: Plant + Request Source (self mode only) */}
+              {/* Row 1: Plant + Request Source (on-behalf only) */}
 
               <div className={isStaff ? "grid gap-4 sm:grid-cols-2" : ""}>
-                <div>
+                <div className={isStaff && isSelfMode ? "sm:col-span-2" : ""}>
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                     Plant / Branch *
                   </label>
@@ -669,8 +670,8 @@ export function CreateTicketForm({ variant = "user" }) {
                   {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
                 </div>
 
-                {/* Request Source — self mode only */}
-                {isSelfMode && (
+                {/* Request Source — on behalf mode only */}
+                {isStaff && !isSelfMode && (
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Request Source *
