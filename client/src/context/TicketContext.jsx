@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api } from "../utils/api.js";
 
@@ -91,11 +91,12 @@ export function TicketProvider({ children }) {
       setLoadingSummary(false);
     }
   }
-  async function loadReports(params = {}) {
-  console.log("LOAD REPORTS CALLED", params);
-
-  return api.reportDetail(params);
-}
+  const loadReports = useCallback(async (params = {}) => {
+    console.log("LOAD REPORTS CALLED", params);
+    const response = await api.reportDetail(params);
+    setReportData(response.data || null);
+    return response;
+  }, []);
 
   async function createTicket(payload) {
   console.log("Creating ticket:", payload);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTickets } from "../context/TicketContext.jsx";
 import { AgeingChart, CategoryPieChart, ResolverChart } from "../components/Charts.jsx";
@@ -41,18 +41,62 @@ export default function Dashboard() {
   const {
     tickets,
     summary,
+    reportData,
     dashboardFilters,
     setDashboardFilters,
+    loadReports,
     refreshSummary,
     refreshTickets,
   } = useTickets();
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [activeFocus, setActiveFocus] = useState("all");
+
+  const quickFilters = useMemo(() => ({
+    all: {
+      label: "Total (24h)",
+      test: () => true,
+      accentIndex: 0,
+    },
+    unassigned: {
+      label: "Unassigned",
+      test: (ticket) =>
+        !ticket.assigned_to &&
+        !ticket.assigned_to_id &&
+        !ticket.assigned_to_name &&
+        !(ticket.assigned_to || "").trim(),
+      accentIndex: 3,
+    },
+    incidents: {
+      label: "Incidents",
+      test: (ticket) => ticket.category === "Incident",
+      accentIndex: 0,
+    },
+    service_requests: {
+      label: "Service Requests",
+      test: (ticket) => ticket.category === "Service Request",
+      accentIndex: 1,
+    },
+    p1_incidents: {
+      label: "P1 Incidents",
+      test: (ticket) => ticket.category === "Incident" && ticket.priority === "P1",
+      accentIndex: 3,
+    },
+    pending_breach: {
+      label: "Pending / Breach",
+      test: (ticket) => !["Closed", "Cancelled", "Reject"].includes(ticket.status),
+      accentIndex: 2,
+    },
+  }), []);
+
+  useEffect(() => {
+    loadReports(dashboardFilters).catch(() => {});
+  }, [dashboardFilters, loadReports]);
 
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await Promise.all([refreshSummary(), refreshTickets()]);
+      await Promise.all([refreshSummary(), refreshTickets(), loadReports(dashboardFilters)]);
       setLastRefreshed(new Date());
     } catch (_) {}
     finally { setRefreshing(false); }
@@ -68,6 +112,66 @@ export default function Dashboard() {
       plant:        PLANTS,
     };
   }, []);
+
+  const reportTickets = reportData?.tickets?.length ? reportData.tickets : tickets;
+  const focusedTickets = useMemo(() => {
+    const filter = quickFilters[activeFocus] || quickFilters.all;
+    return reportTickets.filter((ticket) => filter.test(ticket));
+  }, [activeFocus, quickFilters, reportTickets]);
+
+  const visibleCards = [
+    { key: "all", title: "Total (24h)", value: summary?.totalTicketsLast24Hours ?? 0, accentIndex: 0 },
+    { key: "unassigned", title: "Unassigned", value: summary?.unassignedTickets ?? 0, accentIndex: 3 },
+    { key: "incidents", title: "Incidents", value: summary?.incidentTickets ?? 0, accentIndex: 0 },
+    { key: "service_requests", title: "Service Requests", value: summary?.serviceRequestTickets ?? 0, accentIndex: 1 },
+    { key: "p1_incidents", title: "P1 Incidents", value: summary?.p1Incidents ?? 0, accentIndex: 3 },
+    { key: "pending_breach", title: "Pending / Breach", value: summary?.pendingBreachTickets ?? 0, accentIndex: 2 },
+  ];
+
+  const activeLabel = quickFilters[activeFocus]?.label || "Total (24h)";
+
+  const chartData = useMemo(() => {
+    const bucketMap = { "0-7 Days": 0, "8-30 Days": 0, "31-60 Days": 0, "60+ Days": 0 };
+    const categoryMap = new Map();
+    const resolverMap = new Map();
+
+    focusedTickets.forEach((ticket) => {
+      const created = new Date(ticket.created_at);
+      if (!Number.isNaN(created.getTime())) {
+        const age = Math.floor((Date.now() - created.getTime()) / 86400000);
+        const bucket =
+          age <= 7 ? "0-7 Days" :
+          age <= 30 ? "8-30 Days" :
+          age <= 60 ? "31-60 Days" :
+          "60+ Days";
+        bucketMap[bucket] += 1;
+      }
+
+      const category = ticket.category || "Uncategorised";
+      categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+
+      const assignee = ticket.assigned_to_name || ticket.assigned_to || "Unassigned";
+      resolverMap.set(assignee, (resolverMap.get(assignee) || 0) + 1);
+    });
+
+    const activeAgeing = ["0-7 Days", "8-30 Days", "31-60 Days", "60+ Days"].map((bucket) => ({
+      bucket,
+      count: bucketMap[bucket],
+    }));
+    const activeByCategory = [...categoryMap.entries()].map(([name, value]) => ({ name, value }));
+    const resolverBreakdown = [...resolverMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, value]) => ({ name, value }));
+
+    return { activeAgeing, activeByCategory, resolverBreakdown };
+  }, [focusedTickets]);
+
+  const recentTickets = useMemo(() => focusedTickets.slice(0, 5), [focusedTickets]);
+
+  function selectFocus(key) {
+    setActiveFocus((current) => (current === key ? "all" : key));
+  }
 
   return (
     <div className="space-y-6">
@@ -110,13 +214,20 @@ export default function Dashboard() {
       </section>
 
       {/* ── Stats Cards ── */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatsCard title="Total (24h)"       value={summary?.totalTicketsLast24Hours ?? 0} accentIndex={0} />
-        <StatsCard title="Unassigned"         value={summary?.unassignedTickets ?? 0}       accentIndex={3} />
-        <StatsCard title="Incidents"          value={summary?.incidentTickets ?? 0}          accentIndex={0} />
-        <StatsCard title="Service Requests"   value={summary?.serviceRequestTickets ?? 0}   accentIndex={1} />
-        <StatsCard title="P1 Incidents"       value={summary?.p1Incidents ?? 0}              accentIndex={3} />
-        <StatsCard title="Pending / Breach"   value={summary?.pendingBreachTickets ?? 0}     accentIndex={2} />
+      <section className="grid gap-3 grid-cols-2 md:grid-cols-3 2xl:grid-cols-6">
+        {visibleCards.map((card) => (
+          <button
+            key={card.key}
+            type="button"
+            onClick={() => selectFocus(card.key)}
+            aria-pressed={activeFocus === card.key}
+            className={`block text-left transition-transform duration-150 ${activeFocus === card.key ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
+          >
+            <div className={activeFocus === card.key ? "ring-2 ring-slate-900/10 rounded-2xl" : ""}>
+              <StatsCard title={card.title} value={card.value} accentIndex={card.accentIndex} />
+            </div>
+          </button>
+        ))}
       </section>
 
       {/* ── Filters ── */}
@@ -147,13 +258,26 @@ export default function Dashboard() {
       </section>
 
       {/* ── Charts ── */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-soft">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Current focus</div>
+          <div className="text-sm font-semibold text-slate-900">{activeLabel}</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveFocus("all")}
+          className="btn-secondary text-xs"
+        >
+          Show all
+        </button>
+      </div>
       <section className="grid gap-6 xl:grid-cols-2">
-        <AgeingChart data={summary?.activeAgeing || []} />
-        <CategoryPieChart data={summary?.activeByCategory || []} />
+        <AgeingChart data={chartData.activeAgeing} />
+        <CategoryPieChart data={chartData.activeByCategory} />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <ResolverChart data={summary?.resolverBreakdown || []} />
+        <ResolverChart data={chartData.resolverBreakdown} />
         <div
           className="rounded-2xl bg-white overflow-hidden"
           style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
@@ -165,7 +289,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="p-4 space-y-2">
-            {tickets.slice(0, 5).map((ticket, index) => (
+            {recentTickets.map((ticket, index) => (
               <TicketCard key={ticket.id || ticket.ticket_id || index} ticket={ticket} />
             ))}
           </div>
