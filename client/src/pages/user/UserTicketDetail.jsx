@@ -343,6 +343,35 @@ export default function UserTicketDetail() {
                 </button>
               </form>
             </div>
+
+            <div className="border-t border-slate-200 px-5 py-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900">Ticket Log Summary</h4>
+                  <p className="mt-0.5 text-xs text-slate-500">A compact status trail for the ticket lifecycle.</p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                {[
+                  ["Opened", milestoneMap.opened],
+                  ["Assigned", milestoneMap.assigned],
+                  ["Work In Progress", milestoneMap.inProgress],
+                  ["Resolved", milestoneMap.resolved],
+                  ["Rejected", milestoneMap.rejected],
+                  ["Closed", milestoneMap.closed],
+                ].map(([label, entry]) => (
+                  <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-900">
+                      {entry?.time ? formatDateTime(entry.time) : "—"}
+                    </div>
+                    <div className="mt-0.5 text-xs text-slate-500">
+                      {entry?.actor ? `By ${entry.actor}` : "No record yet"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -368,30 +397,6 @@ export default function UserTicketDetail() {
                 </div>
               ))}
             </dl>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h3 className="mb-4 text-sm font-semibold text-slate-900">Ticket Log Summary</h3>
-            <div className="space-y-3">
-              {[
-                ["Opened", milestoneMap.opened],
-                ["Assigned", milestoneMap.assigned],
-                ["Work In Progress", milestoneMap.inProgress],
-                ["Resolved", milestoneMap.resolved],
-                ["Rejected", milestoneMap.rejected],
-                ["Closed", milestoneMap.closed],
-              ].map(([label, entry]) => (
-                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    {entry?.time ? formatDateTime(entry.time) : "—"}
-                  </div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    {entry?.actor ? `By ${entry.actor}` : "No record yet"}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Status timeline */}

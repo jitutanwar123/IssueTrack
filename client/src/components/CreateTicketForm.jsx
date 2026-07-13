@@ -71,7 +71,7 @@ export function CreateTicketForm({ variant = "user" }) {
   const [metadata, setMetadata] = useState(null);
   const [form, setForm] = useState(() => ({
     ...DEFAULT_FORM,
-    service: variant === "user" ? "Incident" : "",
+    service: "Incident",
   }));
   const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -112,6 +112,7 @@ export function CreateTicketForm({ variant = "user" }) {
       // Reset requester fields when switching back to on_behalf
       setForm((prev) => ({
         ...prev,
+        service: "Incident",
         requester_name: "",
         requester_email: "",
         requester_phone: "",
@@ -265,11 +266,13 @@ export function CreateTicketForm({ variant = "user" }) {
     if (!form.category) nextErrors.category = "Category is required";
     if (!form.sub_category) nextErrors.sub_category = "Sub-category is required";
     if (!form.priority) nextErrors.priority = "Priority is required";
+    if (variant === "staff" && staffMode === "self" && !form.service) {
+      nextErrors.service = "Service is required";
+    }
     // Staff variant: requester fields validation only for on_behalf mode
     if (variant === "staff" && staffMode === "on_behalf") {
       if (!form.requester_name.trim()) nextErrors.requester_name = "Requester name is required";
       if (!form.requester_email.trim()) nextErrors.requester_email = "Requester email is required";
-      if (!form.request_source) nextErrors.request_source = "Request source is required";
     }
     if (form.category === "SAP Application" && form.sub_category === "CTM" && !assignedStaffOption?.name) {
       nextErrors.assigned_to = "No CTM assignee is mapped for the selected plant.";
@@ -317,6 +320,9 @@ export function CreateTicketForm({ variant = "user" }) {
       // Pass staffMode so the server knows how to handle requester info
       if (variant === "staff") {
         formData.set("staff_mode", staffMode);
+        if (staffMode === "on_behalf" && !form.service) {
+          formData.set("service", "Incident");
+        }
         await api.createStaffTicket(formData);
       } else {
         await api.createUserTicket(formData);
@@ -442,7 +448,7 @@ export function CreateTicketForm({ variant = "user" }) {
                 <h3 className="text-sm font-semibold text-slate-900">
                   {isStaff ? "Requester Information" : "Requester Information"}
                 </h3>
-                {isStaff && (
+                {isSelfMode && (
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                     isSelfMode
                       ? "bg-blue-100 text-blue-700"
@@ -455,7 +461,7 @@ export function CreateTicketForm({ variant = "user" }) {
                   </span>
                 )}
               </div>
-              {isStaff && (
+              {isSelfMode && (
                 <p className="mt-1 text-xs text-slate-500">
                   {isSelfMode
                     ? "Your information has been prefilled. You can update it if needed."
@@ -464,8 +470,8 @@ export function CreateTicketForm({ variant = "user" }) {
               )}
             </div>
 
-            {/* Staff: show their own info as read-only context strip */}
-            {isStaff && user && (
+            {/* Staff self mode only: show their own info as read-only context strip */}
+            {isSelfMode && user && (
               <div className="px-5 pt-4 pb-2">
                 <div className={`rounded-xl border px-4 py-3 flex flex-wrap gap-4 ${
                   isSelfMode ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"
@@ -481,20 +487,20 @@ export function CreateTicketForm({ variant = "user" }) {
               </div>
             )}
 
-            {/* User's 4 editable requester fields (staff variant) OR the normal user fields */}
+            {/* User-like fields for on-behalf tickets, staff requester fields for self mode */}
             <div className="p-5 grid gap-3 sm:grid-cols-2">
               {isStaff ? (
                 <>
                   {/* Requester Name */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      {isSelfMode ? "Your Name" : "Requester Name *"}
+                      {isSelfMode ? "Your Name" : "Your Name"}
                     </label>
                     <input
                       type="text"
                       value={form.requester_name}
                       onChange={(e) => setField("requester_name", e.target.value)}
-                      placeholder={isSelfMode ? "" : "User's full name"}
+                      placeholder={isSelfMode ? "" : "Your full name"}
                       className={`pro-input ${
                         isSelfMode
                           ? "border-blue-200 bg-blue-50 text-slate-700"
@@ -509,13 +515,13 @@ export function CreateTicketForm({ variant = "user" }) {
                   {/* Requester Email */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      {isSelfMode ? "Your Email" : "Requester Email *"}
+                      {isSelfMode ? "Your Email" : "Email Address"}
                     </label>
                     <input
                       type="email"
                       value={form.requester_email}
                       onChange={(e) => setField("requester_email", e.target.value)}
-                      placeholder={isSelfMode ? "" : "user@viraj.com"}
+                      placeholder={isSelfMode ? "" : "your@email.com"}
                       className={`pro-input ${
                         isSelfMode
                           ? "border-blue-200 bg-blue-50 text-slate-700"
@@ -530,7 +536,7 @@ export function CreateTicketForm({ variant = "user" }) {
                   {/* Requester Phone */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      {isSelfMode ? "Your Phone" : "Requester Phone"}
+                      {isSelfMode ? "Your Phone" : "Phone"}
                     </label>
                     <input
                       type="tel"
@@ -546,7 +552,7 @@ export function CreateTicketForm({ variant = "user" }) {
                   {/* Requester Cisco Number */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      {isSelfMode ? "Your Cisco Number" : "Requester Cisco Number"}
+                      {isSelfMode ? "Your Cisco Number" : "Cisco Number"}
                     </label>
                     <input
                       type="text"
@@ -621,8 +627,8 @@ export function CreateTicketForm({ variant = "user" }) {
             </div>
             <div className="p-5 space-y-4">
 
-              {/* Row 0: Service Type — staff portal only */}
-              {isStaff && (
+              {/* Row 0: Service Type — self mode only */}
+              {isSelfMode && (
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                     Service Type *
@@ -641,7 +647,7 @@ export function CreateTicketForm({ variant = "user" }) {
                 </div>
               )}
 
-              {/* Row 1: Plant + Request Source (staff only) */}
+              {/* Row 1: Plant + Request Source (self mode only) */}
 
               <div className={isStaff ? "grid gap-4 sm:grid-cols-2" : ""}>
                 <div>
@@ -663,8 +669,8 @@ export function CreateTicketForm({ variant = "user" }) {
                   {errors.plant && <p className="mt-1 text-xs text-red-600">{errors.plant}</p>}
                 </div>
 
-                {/* Request Source — staff portal only (on_behalf mode) */}
-                {isStaff && !isSelfMode && (
+                {/* Request Source — self mode only */}
+                {isSelfMode && (
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Request Source *
