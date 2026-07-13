@@ -2599,6 +2599,7 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
           ticket_id: t.ticket_id,
           title: t.title,
           category: t.category,
+          plant: t.plant,
           priority: t.priority,
           status: t.status,
           customer_name: t.customer_name,
