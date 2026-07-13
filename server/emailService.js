@@ -6,11 +6,16 @@ const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
 const FROM_NAME = "Viraj IT Support";
 
+// Base URL of the deployed app — used to build links inside emails (e.g. staff portal login button)
+const APP_URL = (process.env.APP_URL || "https://issuetrackend.onrender.com").replace(/\/$/, "");
+const STAFF_LOGIN_URL = `${APP_URL}/staff/login`;
+
 // ─── Startup diagnostic ──────────────────────────────────────────
 console.log("📧 Email config check (Brevo only):");
 console.log("  BREVO_API_KEY   :", BREVO_API_KEY ? "✅ set" : "❌ NOT SET");
 console.log("  BREVO_FROM_EMAIL:", BREVO_FROM_EMAIL ? `✅ ${BREVO_FROM_EMAIL}` : "❌ NOT SET");
 console.log("  ADMIN_EMAIL     :", process.env.ADMIN_EMAIL ? `✅ ${process.env.ADMIN_EMAIL}` : "❌ NOT SET");
+console.log("  APP_URL         :", APP_URL);
 
 // ─── Priority / status color maps ────────────────────────────────
 const priorityColors = {
@@ -51,6 +56,7 @@ function baseTemplate(title, bodyHtml) {
     .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:24px 0 8px}
     .comment-box{background:#f8fafc;border-left:4px solid #f97316;border-radius:8px;padding:14px 18px;margin:16px 0;font-size:14px;color:#374151;white-space:pre-wrap}
     .footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 32px;text-align:center;font-size:12px;color:#94a3b8}
+    .cta-btn{display:inline-block;background:#1d4ed8;color:#ffffff !important;padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.01em}
   </style>
 </head>
 <body>
@@ -88,6 +94,17 @@ function ticketTable(t) {
     .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
     .join("");
   return `<table class="info-table"><tbody>${rows}</tbody></table>`;
+}
+
+// ─── Staff portal CTA button (staff-facing emails only) ─────────
+function staffPortalButton(label = "View Ticket in Staff Portal") {
+  return `
+    <div style="text-align:center;margin:26px 0 6px;">
+      <a href="${STAFF_LOGIN_URL}" class="cta-btn">${label}</a>
+    </div>
+    <p style="text-align:center;font-size:12px;color:#94a3b8;margin:8px 0 0;">
+      You'll need to log in to your staff account to view this ticket.
+    </p>`;
 }
 
 // ─── Core send via Brevo REST API ───────────────────────────────
@@ -254,7 +271,8 @@ export async function sendTicketAssignedToAssignee(ticket, assigneeEmail, raised
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">&#x1F4CC; A new ticket has been assigned to you</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A support ticket has been assigned to you. Please log in to your staff portal to view and resolve it.</p>
      ${onBehalfBanner}
-     ${ticketTable(ticket)}`);
+     ${ticketTable(ticket)}
+     ${staffPortalButton("View Ticket in Staff Portal")}`);
   await sendEmail({ to: assigneeEmail, subject: `[TICKET ASSIGNED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`, html });
 }
 
@@ -267,7 +285,8 @@ export async function sendTicketTransferredToAssignee(ticket, assigneeEmail, tra
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">
        <strong>${transferredBy || "Another staff member"}</strong> has handed this ticket over to you. Please review it in your staff portal.
      </p>
-     ${ticketTable(ticket)}`);
+     ${ticketTable(ticket)}
+     ${staffPortalButton("View Ticket in Staff Portal")}`);
   await sendEmail({
     to: assigneeEmail,
     subject: `[TICKET TRANSFERRED] ${ticket.ticket_id || ticket.id} — ${ticket.title} | Priority: ${pc.label}`,
