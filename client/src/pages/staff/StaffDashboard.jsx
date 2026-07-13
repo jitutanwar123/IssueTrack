@@ -110,7 +110,7 @@ export default function StaffDashboard() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Link to={ticketStatusLink("Open")} className="block">
           <StatCard label="Open" value={open} color="#1d4ed8" bg="#eff6ff" border="#bfdbfe" />
         </Link>
