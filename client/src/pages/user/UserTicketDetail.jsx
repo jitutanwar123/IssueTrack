@@ -399,33 +399,6 @@ export default function UserTicketDetail() {
             </dl>
           </div>
 
-          {/* Status timeline */}
-          {activityItems.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">Ticket Log</h3>
-              <div className="space-y-3">
-                {activityItems.map((item, i) => (
-                  <div key={item.id || i} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                        <div className="mt-0.5 text-xs text-slate-500">{item.subtitle || "Workflow event"}</div>
-                      </div>
-                      <div className="text-[10px] text-slate-400">{formatDateTime(item.created_at)}</div>
-                    </div>
-                    <div className="mt-2 text-[11px] font-medium text-slate-500">
-                      by {item.actor_name || "System"}
-                    </div>
-                    {item.note ? (
-                      <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                        {item.note}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -433,13 +406,16 @@ export default function UserTicketDetail() {
 }
 
 function buildMilestones(items = []) {
-  const pick = (predicate) => items.find(predicate) || null;
+  const pick = (predicate) => [...items].find(predicate) || null;
+  const textOf = (item) => `${item?.title || ""} ${item?.subtitle || ""} ${item?.note || ""}`.toLowerCase();
+  const findByText = (patterns) =>
+    pick((item) => patterns.some((pattern) => textOf(item).includes(pattern)));
   return {
-    opened: pick((item) => item.type === "created"),
-    assigned: pick((item) => item.type === "assignment"),
-    inProgress: pick((item) => item.title === "Work started" || item.subtitle === "Work In Progress"),
-    resolved: pick((item) => item.type === "resolution" || item.title === "Ticket resolved"),
-    rejected: pick((item) => item.title === "Ticket rejected"),
-    closed: pick((item) => item.type === "closure" || item.title === "Ticket closed"),
+    opened: findByText(["ticket created", "created with open status", "opened"]),
+    assigned: findByText(["ticket assigned", "assignment updated", "assigned"]),
+    inProgress: findByText(["work started", "work in progress"]),
+    resolved: findByText(["ticket resolved", "resolved"]),
+    rejected: findByText(["ticket rejected", "rejected"]),
+    closed: findByText(["ticket closed", "closed"]),
   };
 }
