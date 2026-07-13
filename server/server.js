@@ -2519,13 +2519,20 @@ app.get("/api/staff/resolved-history", authenticateJWT, requireStaff, async (req
   try {
     const staffName = req.user.name;
     const rows = await query(
-      `SELECT id, ticket_id, title, category, priority, resolved_at, resolution_note, customer_name
+      `SELECT id, ticket_id, title, category, priority, status, resolved_at, actual_closure_date, closed_at, resolution_note, customer_name
        FROM tickets
-       WHERE resolved_by = ? AND status = 'Resolved'
-       ORDER BY resolved_at DESC`,
+       WHERE resolved_by = ? AND status IN ('Resolved', 'Closed')
+       ORDER BY COALESCE(resolved_at, actual_closure_date, closed_at) DESC`,
       [staffName]
     );
-    res.json({ data: rows, count: rows.length });
+    res.json({
+      data: rows.map((row) => ({
+        ...row,
+        resolved_at: row.resolved_at || row.actual_closure_date || row.closed_at || null,
+        closed_at: row.closed_at || row.actual_closure_date || row.resolved_at || null,
+      })),
+      count: rows.length,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -2602,8 +2609,8 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
           customer_name: t.customer_name,
           created_at: t.created_at,
           actual_closure_date: t.actual_closure_date,
-          resolved_at: t.resolved_at,
-          closed_at: t.closed_at,
+          resolved_at: t.resolved_at || t.actual_closure_date || null,
+          closed_at: t.closed_at || t.actual_closure_date || t.resolved_at || null,
           updated_at: t.updated_at,
           duration_minutes: (() => {
             const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at;

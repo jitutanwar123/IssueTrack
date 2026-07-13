@@ -24,7 +24,7 @@ export default function StaffResolvedHistory() {
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Resolved History</h2>
         <p className="mt-1 text-sm text-slate-500">
-          All tickets resolved by you, {user?.name}.
+          All tickets resolved or closed by you, {user?.name}.
         </p>
       </div>
 
@@ -37,7 +37,7 @@ export default function StaffResolvedHistory() {
         </div>
         <div>
           <div className="text-3xl font-bold text-green-700">{history.length}</div>
-          <div className="text-sm font-medium text-green-600">Total Tickets Resolved</div>
+          <div className="text-sm font-medium text-green-600">Total Tickets Handled</div>
         </div>
       </div>
 
@@ -53,7 +53,7 @@ export default function StaffResolvedHistory() {
           <div className="py-10 text-center text-sm text-red-500">{error}</div>
         ) : history.length === 0 ? (
           <div className="py-16 text-center text-sm text-slate-400">
-            You haven't resolved any tickets yet.
+            You haven't resolved or closed any tickets yet.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -65,7 +65,9 @@ export default function StaffResolvedHistory() {
                   <th className="px-5 py-4">Priority</th>
                   <th className="px-5 py-4">Category</th>
                   <th className="px-5 py-4">Raised By</th>
+                  <th className="px-5 py-4">Status</th>
                   <th className="px-5 py-4">Resolved At</th>
+                  <th className="px-5 py-4">Closed At</th>
                   <th className="px-5 py-4">Resolution Note</th>
                   <th className="px-5 py-4">View</th>
                 </tr>
@@ -84,8 +86,14 @@ export default function StaffResolvedHistory() {
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">{t.category || "—"}</td>
                     <td className="px-5 py-4 text-sm text-slate-600">{t.customer_name || "—"}</td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={t.status} />
+                    </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {t.resolved_at ? formatDateTime(t.resolved_at) : "—"}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {t.closed_at ? formatDateTime(t.closed_at) : "—"}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600 max-w-[220px]">
                       <span className="line-clamp-2">{t.resolution_note || "—"}</span>
