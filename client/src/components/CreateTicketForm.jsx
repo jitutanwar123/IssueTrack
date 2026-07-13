@@ -83,6 +83,9 @@ export function CreateTicketForm({ variant = "user" }) {
   // Staff mode: 'on_behalf' = create ticket for another user, 'self' = staff's own issue
   const [staffMode, setStaffMode] = useState("on_behalf");
 
+  const isStaff = variant === "staff";
+  const isSelfMode = isStaff && staffMode === "self";
+
   // Pre-fill requester info from logged-in user
   useEffect(() => {
     if (user) {
@@ -213,6 +216,11 @@ export function CreateTicketForm({ variant = "user" }) {
   }, [variant]);
 
   function setField(field, value) {
+    // Cisco Number: numeric only, max 4 digits
+    if (field === "cisco_number" || field === "requester_cisco_number") {
+      value = value.replace(/\D/g, "").slice(0, 4);
+    }
+
     setForm((prev) => {
       const next = { ...prev, [field]: value };
 
@@ -239,6 +247,14 @@ export function CreateTicketForm({ variant = "user" }) {
     });
 
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+
+    // Clear the paired phone/cisco error as soon as either field gets a value
+    if (["phone", "cisco_number"].includes(field) && value.trim()) {
+      setErrors((prev) => ({ ...prev, phone: "", cisco_number: "" }));
+    }
+    if (["requester_phone", "requester_cisco_number"].includes(field) && value.trim()) {
+      setErrors((prev) => ({ ...prev, requester_phone: "", requester_cisco_number: "" }));
+    }
   }
 
   function handlePriorityClick(targetPriority) {
@@ -275,6 +291,21 @@ export function CreateTicketForm({ variant = "user" }) {
       if (!form.requester_email.trim()) nextErrors.requester_email = "Requester email is required";
       if (!form.request_source) nextErrors.request_source = "Request source is required";
     }
+
+    // Require at least one of Phone / Cisco Number
+    if (variant === "staff") {
+      // Covers both on_behalf and self mode, since self mode also writes into requester_* fields
+      if (!form.requester_phone.trim() && !form.requester_cisco_number.trim()) {
+        nextErrors.requester_phone = "Provide either Phone or Cisco Number";
+        nextErrors.requester_cisco_number = "Provide either Phone or Cisco Number";
+      }
+    } else {
+      if (!form.phone.trim() && !form.cisco_number.trim()) {
+        nextErrors.phone = "Provide either Phone or Cisco Number";
+        nextErrors.cisco_number = "Provide either Phone or Cisco Number";
+      }
+    }
+
     if (form.category === "SAP Application" && form.sub_category === "CTM" && !assignedStaffOption?.name) {
       nextErrors.assigned_to = "No CTM assignee is mapped for the selected plant.";
     }
@@ -341,9 +372,6 @@ export function CreateTicketForm({ variant = "user" }) {
   const currentAssignees = assignableStaff.map(normalizeAssignment).filter(Boolean);
   const isCtm = form.category === "SAP Application" && form.sub_category === "CTM";
   const assignToDisabled = !form.category || !form.sub_category || (isCtm && !currentAssignees.length);
-
-  const isStaff = variant === "staff";
-  const isSelfMode = isStaff && staffMode === "self";
 
   return (
     <div className="space-y-5">
@@ -545,9 +573,14 @@ export function CreateTicketForm({ variant = "user" }) {
                       onChange={(e) => setField("requester_phone", e.target.value)}
                       placeholder={isSelfMode ? "" : "+91 XXXXX XXXXX"}
                       className={`pro-input ${
-                        isSelfMode ? "border-blue-200 bg-blue-50 text-slate-700" : ""
+                        isSelfMode
+                          ? "border-blue-200 bg-blue-50 text-slate-700"
+                          : errors.requester_phone
+                          ? "border-red-400 bg-red-50"
+                          : ""
                       }`}
                     />
+                    {!isSelfMode && errors.requester_phone && <p className="mt-1 text-xs text-red-600">{errors.requester_phone}</p>}
                   </div>
 
                   {/* Requester Cisco Number */}
@@ -557,13 +590,22 @@ export function CreateTicketForm({ variant = "user" }) {
                     </label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       value={form.requester_cisco_number}
                       onChange={(e) => setField("requester_cisco_number", e.target.value)}
                       placeholder={isSelfMode ? "" : "e.g. 1234"}
                       className={`pro-input ${
-                        isSelfMode ? "border-blue-200 bg-blue-50 text-slate-700" : ""
+                        isSelfMode
+                          ? "border-blue-200 bg-blue-50 text-slate-700"
+                          : errors.requester_cisco_number
+                          ? "border-red-400 bg-red-50"
+                          : ""
                       }`}
                     />
+                    {!isSelfMode && errors.requester_cisco_number && (
+                      <p className="mt-1 text-xs text-red-600">{errors.requester_cisco_number}</p>
+                    )}
                   </div>
                 </>
               ) : (
@@ -601,8 +643,9 @@ export function CreateTicketForm({ variant = "user" }) {
                       value={form.phone}
                       onChange={(e) => setField("phone", e.target.value)}
                       placeholder="+91 XXXXX XXXXX"
-                      className="pro-input"
+                      className={`pro-input ${errors.phone ? "border-red-400 bg-red-50" : ""}`}
                     />
+                    {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
@@ -610,15 +653,27 @@ export function CreateTicketForm({ variant = "user" }) {
                     </label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       value={form.cisco_number}
                       onChange={(e) => setField("cisco_number", e.target.value)}
                       placeholder="e.g. 1234"
-                      className="pro-input"
+                      className={`pro-input ${errors.cisco_number ? "border-red-400 bg-red-50" : ""}`}
                     />
+                    {errors.cisco_number && <p className="mt-1 text-xs text-red-600">{errors.cisco_number}</p>}
                   </div>
                 </>
               )}
             </div>
+            {!isSelfMode &&
+              ((isStaff && (errors.requester_phone || errors.requester_cisco_number)) ||
+                (!isStaff && (errors.phone || errors.cisco_number))) && (
+                <div className="px-5 pb-4">
+                  <p className="text-xs font-medium text-red-600">
+                    Please provide either a Phone Number or a Cisco Number to raise the ticket.
+                  </p>
+                </div>
+              )}
           </div>
 
           {/* ── TICKET DETAILS ────────────────────────────────────── */}
