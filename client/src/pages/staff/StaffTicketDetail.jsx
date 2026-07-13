@@ -12,11 +12,8 @@ const STATUS_OPTIONS = [
   "Open",
   "Assigned",
   "Work In Progress",
-  "On Hold - Change",
-  "On Hold - Customer",
-  "On Hold - Infra",
+  "On Hold",
   "Closed",
-  "Reject",
 ];
 
 function SectionCard({ title, subtitle, children, className = "" }) {
@@ -563,8 +560,24 @@ export default function StaffTicketDetail() {
               <MetaItem label="Created By" value={ticket.created_by || ticket.requested_by || "—"} time={ticket.created_at} />
               <MetaItem label="Assigned To" value={ticket.assigned_to || "—"} time={ticket.updated_at} />
               <MetaItem label="Last Modified By" value={ticket.last_modified_by || "—"} time={ticket.updated_at} />
-              <MetaItem label="Response Time" value={formatMinutes(ticket.response_time)} />
-              <MetaItem label="Resolution Time" value={formatMinutes(ticket.resolution_time)} />
+              <MetaItem label="Created At" value={formatDateTime(ticket.created_at)} />
+              <MetaItem label="Resolved At" value={formatDateTime(ticket.resolved_at || ticket.actual_closure_date)} />
+              <MetaItem label="Closed At" value={formatDateTime(ticket.closed_at || ticket.actual_closure_date)} />
+              <MetaItem
+                label="Duration"
+                value={
+                  ticket.created_at && (ticket.resolved_at || ticket.actual_closure_date || ticket.closed_at)
+                    ? formatMinutes(
+                        Math.max(
+                          0,
+                          Math.round(
+                            (new Date(ticket.resolved_at || ticket.actual_closure_date || ticket.closed_at) - new Date(ticket.created_at)) / 60000
+                          )
+                        )
+                      )
+                    : "—"
+                }
+              />
             </div>
           </SectionCard>
 

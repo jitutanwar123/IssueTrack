@@ -536,41 +536,35 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
   }));
 }
 
-async function generateTicketId(service = "Incident") {
+async function peekNextTicketSequence(service = "Incident") {
   const normalizedService = normalizeService(service, "staff") || "Incident";
   const prefix = SERVICE_PREFIXES[normalizedService] || SERVICE_PREFIXES.Incident;
-
-  const currentRows = await query(
-    `SELECT prefix, last_sequence
-     FROM ticket_sequences
-     WHERE service = ?
-     LIMIT 1`,
-    [normalizedService]
+  const pattern = `^${prefix}[0-9]{6}$`;
+  const rows = await query(
+    `SELECT COALESCE(MAX(CAST(RIGHT(ticket_id, 6) AS UNSIGNED)), 0) AS max_sequence
+     FROM tickets
+     WHERE ticket_id REGEXP ?`,
+    [pattern]
   );
+  return {
+    normalizedService,
+    prefix,
+    nextSequence: Number(rows[0]?.max_sequence || 0) + 1,
+  };
+}
 
-  if (currentRows.length === 0) {
-    await query(
-      `INSERT INTO ticket_sequences (service, prefix, last_sequence, sequence_year)
-       VALUES (?, ?, ?, ?)`,
-      [normalizedService, prefix, 0, ""]
-    );
-  } else if (String(currentRows[0].prefix || "") !== prefix) {
-    // Prefix changed (e.g. INC → SR) — update prefix but keep counter
-    await query(
-      `UPDATE ticket_sequences SET prefix = ? WHERE service = ?`,
-      [prefix, normalizedService]
-    );
-  }
-
+async function generateTicketId(service = "Incident") {
+  const { normalizedService, prefix, nextSequence } = await peekNextTicketSequence(service);
   await query(
-    `UPDATE ticket_sequences
-       SET last_sequence = LAST_INSERT_ID(last_sequence + 1)
-     WHERE service = ?`,
-    [normalizedService]
+    `INSERT INTO ticket_sequences (service, prefix, last_sequence, sequence_year)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       prefix = VALUES(prefix),
+       last_sequence = VALUES(last_sequence),
+       sequence_year = VALUES(sequence_year)`,
+    [normalizedService, prefix, nextSequence, ""]
   );
-  const rows = await query("SELECT LAST_INSERT_ID() AS seq");
-  const seq = rows[0]?.seq || 1;
-  return `${prefix}${String(seq).padStart(6, "0")}`;
+  return `${prefix}${String(nextSequence).padStart(6, "0")}`;
 }
 
 function validateTicketInputs({ service, category, sub_category, plant, portal = "user" }) {
@@ -1199,7 +1193,8 @@ app.get("/api/admin/fix-ticket-ids", authenticateJWT, requireAdmin, async (req, 
 app.get("/api/tickets/next-id", async (req, res) => {
   try {
     const requestedService = req.query.service || "Incident";
-    const id = await generateTicketId(requestedService);
+    const { prefix, nextSequence } = await peekNextTicketSequence(requestedService);
+    const id = `${prefix}${String(nextSequence).padStart(6, "0")}`;
     res.json({ ticket_id: id });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2553,8 +2548,9 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
     // ── Summary counts ──────────────────────────────────────────────
     const total      = rows.length;
     const open       = rows.filter(t => t.status === "Open").length;
-    const inProgress = rows.filter(t => t.status === "Work In Progress" || t.status === "In Progress" || t.status === "Assigned").length;
-    const resolved   = rows.filter(t => t.status === "Resolved").length;
+    const assigned   = rows.filter(t => t.status === "Assigned").length;
+    const inProgress = rows.filter(t => t.status === "Work In Progress").length;
+    const onHold     = rows.filter(t => String(t.status || "").startsWith("On Hold")).length;
     const closed     = rows.filter(t => t.status === "Closed").length;
 
     // ── By Status chart ─────────────────────────────────────────────
@@ -2566,10 +2562,10 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
     rows.forEach(t => { const p = t.priority || "Unknown"; priorityMap[p] = (priorityMap[p] || 0) + 1; });
 
     // ── Resolved per month (last 6 months) ─────────────────────────
-    const resolvedRows = rows.filter(t => ["Resolved", "Closed"].includes(t.status) && t.actual_closure_date);
+    const resolvedRows = rows.filter(t => ["Resolved", "Closed"].includes(t.status) && (t.resolved_at || t.actual_closure_date || t.closed_at));
     const monthMap = {};
     resolvedRows.forEach(t => {
-      const d = new Date(t.actual_closure_date);
+      const d = new Date(t.resolved_at || t.actual_closure_date || t.closed_at);
       const key = d.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "Asia/Kolkata" });
       monthMap[key] = (monthMap[key] || 0) + 1;
     });
@@ -2577,8 +2573,9 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
     // ── Avg resolution time ─────────────────────────────────────────
     let totalMinutes = 0, countMinutes = 0;
     resolvedRows.forEach(t => {
+      const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at;
       const mins = Number(t.resolution_time || 0) ||
-        Math.max(1, Math.round((new Date(t.actual_closure_date) - new Date(t.created_at)) / 60000));
+        (finishAt ? Math.max(1, Math.round((new Date(finishAt) - new Date(t.created_at)) / 60000)) : 0);
       totalMinutes += mins;
       countMinutes++;
     });
@@ -2590,7 +2587,7 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
 
     res.json({
       data: {
-        summary: { total, open, inProgress, resolved, closed, avgResolutionMinutes },
+        summary: { total, open, assigned, inProgress, onHold, closed, avgResolutionMinutes },
         byStatus:      Object.entries(statusMap).map(([name, value]) => ({ name, value })),
         byPriority:    Object.entries(priorityMap).map(([name, value]) => ({ name, value })),
         byCategory:    Object.entries(categoryMap).map(([name, value]) => ({ name, value })),
@@ -2608,7 +2605,11 @@ app.get("/api/staff/reports", authenticateJWT, requireStaff, async (req, res) =>
           resolved_at: t.resolved_at,
           closed_at: t.closed_at,
           updated_at: t.updated_at,
-          resolution_time: t.resolution_time,
+          duration_minutes: (() => {
+            const finishAt = t.resolved_at || t.actual_closure_date || t.closed_at;
+            if (!finishAt || !t.created_at) return null;
+            return Math.max(0, Math.round((new Date(finishAt) - new Date(t.created_at)) / 60000));
+          })(),
         })),
       },
     });

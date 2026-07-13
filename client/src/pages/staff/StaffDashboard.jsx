@@ -7,9 +7,10 @@ import { formatDateTime } from "../../utils/helpers.js";
 
 const STAT_META = [
   { label: "Open",        color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe" },
-  { label: "In Progress", color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  { label: "Assigned",    color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+  { label: "Work In Progress", color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
   { label: "On Hold",     color: "#475569", bg: "#f8fafc", border: "#e2e8f0" },
-  { label: "Resolved",    color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
+  { label: "Closed",      color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
 ];
 
 function StatCard({ label, value, color, bg, border }) {
@@ -69,17 +70,18 @@ export default function StaffDashboard() {
 
   // Computed stats
   const open       = tickets.filter((t) => t.status === "Open").length;
-  const inProgress = tickets.filter((t) => t.status === "Work In Progress" || t.status === "Assigned").length;
+  const assigned   = tickets.filter((t) => t.status === "Assigned").length;
+  const inProgress = tickets.filter((t) => t.status === "Work In Progress").length;
   const onHold     = tickets.filter((t) => t.status?.startsWith("On Hold")).length;
-  const resolved   = tickets.filter((t) => t.status === "Resolved").length;
+  const closed     = tickets.filter((t) => t.status === "Closed").length;
+  const normalizedStatusFilter =
+    statusFilter === "In Progress" ? "Work In Progress" : statusFilter?.startsWith("On Hold") ? "On Hold" : statusFilter;
   const filteredTickets = tickets.filter((ticket) => {
     const matchesStatus =
-      !statusFilter ||
-      (statusFilter === "In Progress"
-        ? ["Assigned", "Work In Progress", "In Progress"].includes(ticket.status)
-        : statusFilter === "On Hold"
-          ? ticket.status?.startsWith("On Hold")
-          : ticket.status === statusFilter);
+      !normalizedStatusFilter ||
+      (normalizedStatusFilter === "On Hold"
+        ? ticket.status?.startsWith("On Hold")
+        : ticket.status === normalizedStatusFilter);
     const term = activeSearch.toLowerCase();
     const matchesSearch =
       !term ||
@@ -89,8 +91,7 @@ export default function StaffDashboard() {
   });
 
   function ticketStatusLink(status) {
-    const next = status === "In Progress" ? "Work In Progress" : status;
-    return `/staff/dashboard?status=${encodeURIComponent(next)}`;
+    return `/staff/dashboard?status=${encodeURIComponent(status)}`;
   }
 
   const firstName = user?.name?.split(" ")[0] || "Staff";
@@ -113,14 +114,17 @@ export default function StaffDashboard() {
         <Link to={ticketStatusLink("Open")} className="block">
           <StatCard label="Open" value={open} color="#1d4ed8" bg="#eff6ff" border="#bfdbfe" />
         </Link>
-        <Link to={ticketStatusLink("In Progress")} className="block">
-          <StatCard label="In Progress" value={inProgress} color="#b45309" bg="#fffbeb" border="#fde68a" />
+        <Link to={ticketStatusLink("Assigned")} className="block">
+          <StatCard label="Assigned" value={assigned} color="#7c3aed" bg="#f5f3ff" border="#ddd6fe" />
+        </Link>
+        <Link to={ticketStatusLink("Work In Progress")} className="block">
+          <StatCard label="Work In Progress" value={inProgress} color="#b45309" bg="#fffbeb" border="#fde68a" />
         </Link>
         <Link to={ticketStatusLink("On Hold")} className="block">
           <StatCard label="On Hold" value={onHold} color="#475569" bg="#f8fafc" border="#e2e8f0" />
         </Link>
-        <Link to={ticketStatusLink("Resolved")} className="block">
-          <StatCard label="Resolved" value={resolved} color="#0f766e" bg="#f0fdfa" border="#99f6e4" />
+        <Link to={ticketStatusLink("Closed")} className="block">
+          <StatCard label="Closed" value={closed} color="#0f766e" bg="#f0fdfa" border="#99f6e4" />
         </Link>
       </div>
 
@@ -141,10 +145,8 @@ export default function StaffDashboard() {
           <option>Open</option>
           <option>Assigned</option>
           <option>Work In Progress</option>
-          <option>On Hold - Change</option>
-          <option>On Hold - Customer</option>
-          <option>On Hold - Infra</option>
-          <option>Resolved</option>
+          <option>On Hold</option>
+          <option>Closed</option>
         </select>
         <button type="submit" className="btn-primary">
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

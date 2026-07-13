@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { api } from "./api.js";
+import { formatMinutes } from "./helpers.js";
 import { plantLabel } from "./plants.js";
 
 // ── Column definitions ────────────────────────────────────────────────────────
@@ -28,23 +29,32 @@ const ADMIN_COLUMNS = [
 ];
 
 const STAFF_COLUMNS = [
-  { key: "ticket_id",           header: "Ticket ID",             width: 12 },
-  { key: "title",               header: "Title",                 width: 36 },
-  { key: "category",            header: "Category",              width: 20 },
-  { key: "plant",               header: "Plant",                 width: 28 },
-  { key: "priority",            header: "Priority",              width: 10 },
-  { key: "status",              header: "Status",                width: 20 },
-  { key: "customer_name",       header: "Requester Name",        width: 24 },
-  { key: "resolution_time",     header: "Resolution Time (min)", width: 22 },
-  { key: "created_at",          header: "Created At",            width: 20 },
-  { key: "actual_closure_date", header: "Closed At",             width: 20 },
+  { key: "ticket_id",          header: "Ticket ID",     width: 12 },
+  { key: "title",              header: "Title",         width: 36 },
+  { key: "category",           header: "Category",      width: 20 },
+  { key: "plant",              header: "Plant",         width: 28 },
+  { key: "priority",           header: "Priority",      width: 10 },
+  { key: "status",             header: "Status",        width: 20 },
+  { key: "customer_name",      header: "Requester Name",width: 24 },
+  { key: "created_at",         header: "Created At",    width: 20 },
+  { key: "resolved_at",        header: "Resolved At",   width: 20 },
+  { key: "closed_at",          header: "Closed At",     width: 20 },
+  { key: "duration_minutes",   header: "Duration",      width: 14 },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtDate(val) {
   if (!val) return "";
-  const d = new Date(val);
-  if (isNaN(d)) return String(val);
+  if (typeof val === "string") {
+    const match = val.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (match) {
+      const [, year, month, day, hour, minute] = match;
+      if (!hour || !minute) return `${day}/${month}/${year}`;
+      return `${day}/${month}/${year}, ${hour}:${minute}`;
+    }
+  }
+  const d = val instanceof Date ? val : new Date(val);
+  if (Number.isNaN(d.getTime())) return String(val);
   return d.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     day: "2-digit", month: "short", year: "numeric",
@@ -94,8 +104,8 @@ function buildTicketSheet(wb, tickets, columns, sheetName = "Tickets") {
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
 
   // Data rows
-  const DATE_KEYS = ["expected_closure_date", "actual_closure_date", "created_at", "updated_at"];
-  const NUM_KEYS  = ["response_time", "resolution_time"];
+  const DATE_KEYS = ["expected_closure_date", "actual_closure_date", "created_at", "updated_at", "resolved_at", "closed_at"];
+  const NUM_KEYS  = ["response_time", "resolution_time", "duration_minutes"];
 
   tickets.forEach((ticket, idx) => {
     const dr = ws.getRow(idx + 2);
@@ -107,7 +117,8 @@ function buildTicketSheet(wb, tickets, columns, sheetName = "Tickets") {
       let value  = ticket[col.key] ?? "";
 
       if (DATE_KEYS.includes(col.key)) value = fmtDate(value);
-      if (NUM_KEYS.includes(col.key))  value = value !== "" ? Number(value) || "" : "";
+      if (col.key === "duration_minutes") value = value !== "" ? formatMinutes(value) : "";
+      else if (NUM_KEYS.includes(col.key)) value = value !== "" ? Number(value) || "" : "";
       if (col.key === "plant") value = plantLabel(value);
 
       cell.value     = value;

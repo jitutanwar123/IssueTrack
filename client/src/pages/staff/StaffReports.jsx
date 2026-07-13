@@ -12,9 +12,12 @@ import { formatDateTime, formatMinutes } from "../../utils/helpers.js";
 // ── Colour palette ──────────────────────────────────────────────────────────
 const COLORS = ["#2563eb", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2", "#64748b"];
 const STATUS_COLOR = {
-  Open: "#2563eb", Assigned: "#7c3aed",
-  "Work In Progress": "#d97706", "In Progress": "#d97706",
-  Resolved: "#059669", Closed: "#64748b", Reject: "#dc2626",
+  Open: "#2563eb",
+  Assigned: "#7c3aed",
+  "Work In Progress": "#d97706",
+  "On Hold": "#64748b",
+  Closed: "#64748b",
+  Resolved: "#059669",
 };
 
 // ── Stat card ────────────────────────────────────────────────────────────────
@@ -186,12 +189,13 @@ export default function StaffReports() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="Total Assigned"  value={s.total      ?? "—"} color="#7c3aed" icon="📋" />
-        <StatCard label="Open"            value={s.open       ?? "—"} color="#2563eb" icon="🔵" />
-        <StatCard label="In Progress"     value={s.inProgress ?? "—"} color="#d97706" icon="⚙️" />
-        <StatCard label="Resolved"        value={s.resolved   ?? "—"} color="#059669" icon="✅" />
-        <StatCard label="Avg Resolution"  value={s.avgResolutionMinutes ? formatMinutes(s.avgResolutionMinutes) : "—"} color="#0891b2" icon="⏱️" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatCard label="Total Tickets"    value={s.total      ?? "—"} color="#0f172a" icon="📋" />
+        <StatCard label="Open"             value={s.open       ?? "—"} color="#2563eb" icon="🔵" />
+        <StatCard label="Assigned"         value={s.assigned   ?? "—"} color="#7c3aed" icon="👤" />
+        <StatCard label="Work In Progress" value={s.inProgress ?? "—"} color="#d97706" icon="⚙️" />
+        <StatCard label="On Hold"          value={s.onHold     ?? "—"} color="#64748b" icon="⏸️" />
+        <StatCard label="Closed"           value={s.closed     ?? "—"} color="#059669" icon="✅" />
       </div>
 
       {/* Charts row 1 */}
@@ -274,10 +278,10 @@ export default function StaffReports() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                  {["Ticket ID", "Title", "Category", "Priority", "Status", "Requester", "Created", "Closed"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">{h}</th>
-                  ))}
-                </tr>
+                {["Ticket ID", "Title", "Category", "Priority", "Status", "Requester", "Created At", "Resolved At", "Closed At", "Duration"].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">{h}</th>
+                ))}
+              </tr>
               </thead>
               <tbody>
                 {data.tickets.map((t, i) => (
@@ -289,10 +293,16 @@ export default function StaffReports() {
                     <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                     <td className="px-4 py-3 text-slate-500">{t.customer_name || "—"}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
-                      {t.created_at ? new Date(t.created_at).toLocaleDateString("en-IN") : "—"}
+                      {formatDateTime(t.created_at)}
                     </td>
                     <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
-                      {formatDateTime(t.actual_closure_date || t.resolved_at || t.closed_at || t.updated_at)}
+                      {formatDateTime(t.resolved_at || t.actual_closure_date || t.updated_at)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                      {formatDateTime(t.closed_at || t.actual_closure_date || t.updated_at)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap font-medium">
+                      {formatMinutes(t.duration_minutes)}
                     </td>
                   </tr>
                 ))}

@@ -8,8 +8,18 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Kolkata",
 });
 
+function formatMysqlDateTime(value) {
+  const match = String(value || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  if (!hour || !minute) return `${day}/${month}/${year}`;
+  return `${day}/${month}/${year}, ${hour}:${minute}`;
+}
+
 export function formatDateTime(value) {
   if (!value) return "-";
+  const mysqlValue = typeof value === "string" ? formatMysqlDateTime(value) : null;
+  if (mysqlValue) return mysqlValue;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return dateFormatter.format(date);
@@ -17,6 +27,13 @@ export function formatDateTime(value) {
 
 export function toInputDateTime(value) {
   if (!value) return "";
+  if (typeof value === "string") {
+    const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if (match) {
+      const [, year, month, day, hour = "00", minute = "00"] = match;
+      return `${year}-${month}-${day}T${hour}:${minute}`;
+    }
+  }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   const offset = date.getTimezoneOffset();
