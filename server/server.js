@@ -816,7 +816,6 @@ function validateTicketInputs({ service, category, sub_category, plant, portal =
 
 async function syncVirajStaffAccounts() {
   const passwordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, 10);
-  const allowedEmails = new Set(VIRAJ_STAFF_ROSTER.map((person) => person.email.toLowerCase()));
 
   for (const staff of VIRAJ_STAFF_ROSTER) {
     await query(
@@ -844,15 +843,6 @@ async function syncVirajStaffAccounts() {
       ]
     );
   }
-
-  await query(
-    `DELETE FROM users
-     WHERE portal_role = 'it_staff'
-       AND LOWER(email) NOT IN (${Array.from(allowedEmails).map(() => "?").join(", ") || "''"})`,
-    Array.from(allowedEmails)
-  ).catch((err) => {
-    console.warn("⚠️ Staff cleanup warning:", err.message);
-  });
 }
 
 // ─── Helper: query as promise ────────────────────────────────────
