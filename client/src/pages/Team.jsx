@@ -276,6 +276,10 @@ export default function Team() {
 
     const isStaffMode = form.portal_role === "it_staff";
     const resolvedCategory = isStaffMode ? form.role : form.portal_role === "admin" ? "Administrator" : "User";
+    if (isStaffMode && resolvedCategory === "SAP Application" && form.team === "CTM" && !form.plant) {
+      setError("Plant is required for CTM staff members.");
+      return;
+    }
     const payload = {
       ...form,
       role: resolvedCategory,

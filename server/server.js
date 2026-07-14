@@ -15,7 +15,7 @@ import {
   SUB_CATEGORIES_BY_CATEGORY,
   getServiceOptions,
 } from "../client/src/utils/ticketTaxonomy.js";
-import { PLANTS } from "./utils/plants.js";
+import { PLANTS, plantLabel } from "./utils/plants.js";
 
 // Ticket ID prefixes — defined here to avoid cross-package import caching issues
 // Incident → SR, Service Request → SR, Change Request → CR
@@ -369,30 +369,43 @@ db.connect((err) => {
 const JWT_SECRET = process.env.JWT_SECRET || "viraj_jwt_secret_change_me";
 const STAFF_DEFAULT_PASSWORD = "Viraj@123";
 const CURRENT_TICKET_BASE = 0;
+// Each unique email gets ONE user-account row (primary role/team used for login).
+// Staff members who cover multiple sub-categories (Helpdesk team) are seeded
+// individually here; syncStaffAssignmentForUser will fan-out their assignments
+// across all matching STAFF_ASSIGNMENTS entries automatically.
 const VIRAJ_STAFF_ROSTER = [
-  { name: "Subodh Kumar", email: "Subodh.Kumar@viraj.com", role: "SAP Application", team: "FI", department: "IT" },
-  { name: "Saurabh Kulkarni", email: "Saurabh.Kulkarni@viraj.com", role: "SAP Application", team: "CO", department: "IT" },
-  { name: "Rupesh Pawade", email: "rupesh.pawade@viraj.com", role: "SAP Application", team: "SD", department: "IT" },
-  { name: "Sharad Desai", email: "sharad.desai@viraj.com", role: "SAP Application", team: "MM", department: "IT" },
-  { name: "Jayesh Meher", email: "Jayesh.Meher@viraj.com", role: "SAP Application", team: "PP", department: "IT" },
-  { name: "Sanjay Garhpandey", email: "Sanjay.Garhpandey@viraj.com", role: "SAP Application", team: "ABAP", department: "IT" },
-  { name: "Sanjay Dash", email: "Sanjay.Dash@viraj.com", role: "SAP Application", team: "ABAP", department: "IT" },
-  { name: "Harshad Bari", email: "Harshad.Bari@viraj.com", role: "SAP Application", team: "BASIS", department: "IT" },
-  { name: "Komal Kalgamwala", email: "sap.mm@viraj.com", role: "SAP Application", team: "MDM", department: "IT" },
-  { name: "Helpdesk Team", email: "Helpdesk@viraj.com", role: "Hardware", team: "Desktop", department: "IT" },
-  { name: "Amol Chaudhari", email: "a.chaudhari@viraj.com", role: "Hardware", team: "Laptop", department: "IT" },
-  { name: "Vikas Tandel", email: "Vikas.Tandel@viraj.com", role: "Network", team: "Internet", department: "IT" },
-  { name: "Yogesh Ule", email: "helpdesk@vaishnoyard.com", role: "Hardware", team: "Printer", department: "IT" },
-  { name: "Kapil Sankhe", email: "kapil.sankhe@viraj.com", role: "Hardware", team: "Desktop", department: "IT" },
-  { name: "Roshan Cerejo", email: "Roshan.Cerejo@viraj.com", role: "Hardware", team: "Laptop", department: "IT" },
-  { name: "Amol Chaugule", email: "Amol.Chaugule@viraj.com", role: "Hardware", team: "Printer", department: "IT" },
-  { name: "Akhilesh Shukla", email: "Akhilesh.Sukla@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
-  { name: "Abhijeet Nalawade", email: "Sap.Pp@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
-  { name: "Yogesh Gaikwad", email: "Yogesh.Gaikwad@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
-  { name: "Mohan Patel", email: "Mohan.Patel@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
-  { name: "Yogendrasingh Rathore", email: "Yogendrasingh.Rathore@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
-  { name: "Sachin Bansode", email: "sachin.bansode@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
-  { name: "Krishna Kasvekar", email: "Krishna.Kasvekar@viraj.com", role: "SAP Application", team: "CTM", department: "IT" },
+  // ── SAP Application ──────────────────────────────────────────────────────
+  { name: "Subodh Kumar",          email: "Subodh.Kumar@viraj.com",           role: "SAP Application", team: "FI",    department: "IT" },
+  { name: "Saurabh Kulkarni",      email: "Saurabh.Kulkarni@viraj.com",       role: "SAP Application", team: "FI",    department: "IT" },
+  { name: "Rupesh Pawade",         email: "rupesh.pawade@viraj.com",          role: "SAP Application", team: "SD",    department: "IT" },
+  { name: "Sharad Desai",          email: "sharad.desai@viraj.com",           role: "SAP Application", team: "MM",    department: "IT" },
+  { name: "Jayesh Meher",          email: "Jayesh.Meher@viraj.com",           role: "SAP Application", team: "PP",    department: "IT" },
+  { name: "Sanjay Garhpandey",     email: "Sanjay.Garhpandey@viraj.com",     role: "SAP Application", team: "ABAP",  department: "IT" },
+  { name: "Sanjay Dash",           email: "Sanjay.Dash@viraj.com",           role: "SAP Application", team: "ABAP",  department: "IT" },
+  { name: "Harshad Bari",          email: "Harshad.Bari@viraj.com",           role: "SAP Application", team: "BASIS", department: "IT" },
+  { name: "Komal Kalgamwala",      email: "sap.mm@viraj.com",                 role: "SAP Application", team: "MDM",   department: "IT" },
+  // ── SAP CTM (per-plant) ───────────────────────────────────────────────────
+  { name: "Akhilesh Shukla",       email: "Akhilesh.Sukla@viraj.com",         role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Abhijeet Nalawade",     email: "Sap.Pp@viraj.com",                 role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Yogesh Gaikwad",        email: "Yogesh.Gaikwad@viraj.com",         role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Mohan Patel",           email: "Mohan.Patel@viraj.com",            role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Yogendrasingh Rathore", email: "Yogendrasingh.Rathore@viraj.com",  role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Sachin Bansode",        email: "sachin.bansode@viraj.com",         role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Krishna Kasvekar",      email: "Krishna.Kasvekar@viraj.com",       role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Abhijit Yashwantrao",   email: "Abhijit.Yashwantrao@viraj.com",    role: "SAP Application", team: "CTM",   department: "IT" },
+  { name: "Santosh Dhawade",       email: "Santosh.Dhawade@viraj.com",        role: "SAP Application", team: "CTM",   department: "IT" },
+  // ── Hardware / Network Helpdesk team (covers Desktop, Laptop, Printer, Internet, SAP Not Working) ──
+  { name: "Bipin Jadhav",          email: "Bipin.Jadhav@viraj.com",       role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Jay Bari",              email: "jay.bari@viraj.com",           role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Ajay Dhodi",            email: "ajay.dhodi@viraj.com",         role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Mahesh Rahubansi",      email: "mahesh.rahubansi@viraj.com",   role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Aaquib Raje",           email: "aaquib.raje@viraj.com",        role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Amol Chaudhari",        email: "a.chaudhari@viraj.com",        role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Vikas Tandel",          email: "Vikas.Tandel@viraj.com",       role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Yogesh Ule",            email: "y.ule@vaishnoyard.com",        role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Kapil Sankhe",          email: "kapil.sankhe@viraj.com",       role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Roshan Cerejo",         email: "Roshan.Cerejo@viraj.com",      role: "Hardware", team: "Desktop", department: "IT" },
+  { name: "Amol Chaugule",         email: "Amol.Chaugule@viraj.com",      role: "Hardware", team: "Desktop", department: "IT" },
 ];
 
 // ─── JWT Middleware ──────────────────────────────────────────────
@@ -550,43 +563,127 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
   }));
 }
 
+// Build a lookup: email (lowercase) → array of { category, sub_category, name }
+// sourced from the canonical STAFF_ASSIGNMENTS taxonomy in ticketTaxonomy.js.
+// This lets us fan-out a single user account into multiple sub-category rows.
+const STAFF_ASSIGNMENT_BY_EMAIL = (() => {
+  const map = new Map();
+  for (const entry of STAFF_ASSIGNMENTS) {
+    const key = entry.email.toLowerCase();
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push({ category: entry.category, sub_category: entry.sub_category, name: entry.name });
+  }
+  return map;
+})();
+
 async function syncStaffAssignmentForUser({ name, email, portalRole, role, team }) {
   const normalizedEmail = normalizeEmail(email);
   const staffCategory = normalizeText(role);
   const staffSubCategory = normalizeText(team);
 
+  // Always wipe existing assignment rows for this email first
   await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
+  await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
 
   if (portalRole !== "it_staff" || !staffCategory || !staffSubCategory) {
     return;
   }
 
-  const existingRows = await query(
-    `SELECT COALESCE(MAX(display_order), -1) AS max_order
-     FROM staff_assignment
-     WHERE category = ? AND sub_category = ?`,
-    [staffCategory, staffSubCategory]
-  );
-  const nextDisplayOrder = Number(existingRows[0]?.max_order || -1) + 1;
+  // CTM is handled separately via syncCtmAssignmentForUser
+  if (staffCategory === "SAP Application" && staffSubCategory === "CTM") {
+    return;
+  }
 
+  // Check if this email has entries in the canonical STAFF_ASSIGNMENTS taxonomy.
+  // If yes, insert ALL matching sub-category rows (e.g. Helpdesk member covers
+  // Desktop, Laptop, Printer, Internet, SAP Not Working).
+  const canonicalEntries = STAFF_ASSIGNMENT_BY_EMAIL.get(normalizedEmail) || [];
+
+  if (canonicalEntries.length > 0) {
+    // Fan-out: insert one row per canonical entry
+    for (let i = 0; i < canonicalEntries.length; i++) {
+      const entry = canonicalEntries[i];
+      const maxOrderRows = await query(
+        `SELECT COALESCE(MAX(display_order), -1) AS max_order FROM staff_assignment WHERE category = ? AND sub_category = ?`,
+        [entry.category, entry.sub_category]
+      );
+      const nextDisplayOrder = Number(maxOrderRows[0]?.max_order || -1) + 1;
+      await query(
+        `INSERT INTO staff_assignment (category, sub_category, staff_name, staff_email, display_order)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           staff_name = VALUES(staff_name),
+           display_order = VALUES(display_order)`,
+        [entry.category, entry.sub_category, normalizeText(entry.name || name), normalizedEmail, nextDisplayOrder]
+      );
+    }
+  } else {
+    // No canonical entry found — insert the single assignment from the user record
+    const existingRows = await query(
+      `SELECT COALESCE(MAX(display_order), -1) AS max_order FROM staff_assignment WHERE category = ? AND sub_category = ?`,
+      [staffCategory, staffSubCategory]
+    );
+    const nextDisplayOrder = Number(existingRows[0]?.max_order || -1) + 1;
+    await query(
+      `INSERT INTO staff_assignment (category, sub_category, staff_name, staff_email, display_order)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         staff_name = VALUES(staff_name),
+         display_order = VALUES(display_order)`,
+      [staffCategory, staffSubCategory, normalizeText(name), normalizedEmail, nextDisplayOrder]
+    );
+  }
+}
+
+async function syncCtmAssignmentForUser({ name, email, plant }) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPlant = normalizeText(plant);
+  await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
+  if (!normalizedPlant) return;
+
+  const plantRow = PLANTS.find((item) => String(item.value || "") === normalizedPlant) || null;
   await query(
-    `INSERT INTO staff_assignment (category, sub_category, staff_name, staff_email, display_order)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO ctm_plant_assignment (plant_code, plant_name, staff_name, staff_email, display_order)
+     VALUES (?, ?, ?, ?, 0)
      ON DUPLICATE KEY UPDATE
+       plant_name = VALUES(plant_name),
        staff_name = VALUES(staff_name),
-       display_order = VALUES(display_order)`,
-    [staffCategory, staffSubCategory, normalizeText(name), normalizedEmail, nextDisplayOrder]
+       staff_email = VALUES(staff_email)`,
+    [
+      normalizedPlant,
+      plantRow ? plantLabel(normalizedPlant) : normalizedPlant,
+      normalizeText(name),
+      normalizedEmail,
+    ]
   );
+}
+
+function validateStaffAllocation({ portalRole, role, team, plant }) {
+  if (portalRole !== "it_staff") return null;
+  if (!CATEGORY_OPTIONS.includes(role)) {
+    return `Category must be one of: ${CATEGORY_OPTIONS.join(", ")}`;
+  }
+  const allowedSubCategories = SUB_CATEGORIES_BY_CATEGORY[role] || [];
+  if (!allowedSubCategories.includes(team)) {
+    return `Sub-category must match the selected category`;
+  }
+  if (role === "SAP Application" && team === "CTM" && !normalizeText(plant)) {
+    return "Plant is required for CTM staff members";
+  }
+  return null;
 }
 
 async function syncAllItStaffAssignmentsFromUsers() {
   const rows = await query(
-    "SELECT name, email, portal_role, role, team FROM users WHERE portal_role = 'it_staff'",
+    "SELECT name, email, portal_role, role, team, plant FROM users WHERE portal_role = 'it_staff'",
     []
   );
 
   for (const row of rows) {
     await syncStaffAssignmentForUser(row);
+    if (normalizeText(row.role) === "SAP Application" && normalizeText(row.team) === "CTM") {
+      await syncCtmAssignmentForUser(row);
+    }
   }
 }
 
@@ -1745,6 +1842,10 @@ app.post("/api/users", async (req, res) => {
         });
       }
     }
+    const allocationError = validateStaffAllocation({ portalRole: resolvedPortalRole, role, team, plant });
+    if (allocationError) {
+      return res.status(400).json({ message: allocationError });
+    }
     const hashed = await bcrypt.hash(password, 10);
     const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
     const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
@@ -1755,6 +1856,9 @@ app.post("/api/users", async (req, res) => {
       role,
       team,
     });
+    if (resolvedPortalRole === "it_staff" && normalizeText(role) === "SAP Application" && normalizeText(team) === "CTM") {
+      await syncCtmAssignmentForUser({ name, email, plant });
+    }
     res.json({ success: true, id: result.insertId });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "A user with this email or username already exists" });
@@ -1773,6 +1877,10 @@ app.put("/api/users/:id", async (req, res) => {
       return res.status(404).json({ message: "User not found. No rows updated." });
     }
     const previousEmail = currentRows[0]?.email || "";
+    const allocationError = validateStaffAllocation({ portalRole: resolvedPortalRole, role, team, plant });
+    if (allocationError) {
+      return res.status(400).json({ message: allocationError });
+    }
 
     let result;
     if (password && password.trim()) {
@@ -1791,6 +1899,7 @@ app.put("/api/users/:id", async (req, res) => {
     }
     if (previousEmail && normalizeEmail(previousEmail) !== normalizeEmail(email)) {
       await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [previousEmail]);
+      await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [previousEmail]);
     }
     await syncStaffAssignmentForUser({
       name,
@@ -1799,6 +1908,9 @@ app.put("/api/users/:id", async (req, res) => {
       role,
       team,
     });
+    if (resolvedPortalRole === "it_staff" && normalizeText(role) === "SAP Application" && normalizeText(team) === "CTM") {
+      await syncCtmAssignmentForUser({ name, email, plant });
+    }
     console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
     res.json({ success: true });
   } catch (err) {
@@ -1817,6 +1929,7 @@ app.delete("/api/users/:id", (req, res) => {
     try {
       if (email) {
         await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [email]);
+        await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [email]);
       }
       db.query("DELETE FROM users WHERE id = ?", [id], (deleteErr, result) => {
         if (deleteErr) return res.status(500).json(deleteErr);
