@@ -301,6 +301,7 @@ export default function Team() {
     try {
       await api.createUser(payload);
       setSuccess(form.portal_role === "it_staff" ? "Staff member created successfully." : "Member created successfully.");
+      window.dispatchEvent(new Event("ticket-metadata-updated"));
       resetForm(form.portal_role);
       await load();
     } catch (err) {
@@ -318,6 +319,7 @@ export default function Team() {
     try {
       await api.updateUser(updateConfirm.id, updateConfirm.payload);
       setSuccess("Member updated successfully.");
+      window.dispatchEvent(new Event("ticket-metadata-updated"));
       resetForm(form.portal_role);
       await load();
     } catch (err) {
@@ -331,6 +333,7 @@ export default function Team() {
     if (!window.confirm("Remove this team member?")) return;
     try {
       await api.deleteUser(id);
+      window.dispatchEvent(new Event("ticket-metadata-updated"));
       await load();
     } catch (err) {
       setError(err.message || "Failed to delete member.");

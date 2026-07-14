@@ -42,6 +42,10 @@ function phoneDigitsSql(column = "phone") {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(${column}, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', ''), ',', '')`;
 }
 
+function normalizeText(value = "") {
+  return String(value || "").trim();
+}
+
 function generateResetOtp() {
   return String(crypto.randomInt(100000, 1000000));
 }
@@ -293,6 +297,7 @@ db.connect((err) => {
       }
 
       await syncVirajStaffAccounts();
+      await syncAllItStaffAssignmentsFromUsers();
 
       // ── One-time migration: rename legacy INC*/SR26*/CR26* ticket IDs ────
       try {
@@ -543,6 +548,46 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
     name: row.staff_name,
     email: row.staff_email,
   }));
+}
+
+async function syncStaffAssignmentForUser({ name, email, portalRole, role, team }) {
+  const normalizedEmail = normalizeEmail(email);
+  const staffCategory = normalizeText(role);
+  const staffSubCategory = normalizeText(team);
+
+  await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
+
+  if (portalRole !== "it_staff" || !staffCategory || !staffSubCategory) {
+    return;
+  }
+
+  const existingRows = await query(
+    `SELECT COALESCE(MAX(display_order), -1) AS max_order
+     FROM staff_assignment
+     WHERE category = ? AND sub_category = ?`,
+    [staffCategory, staffSubCategory]
+  );
+  const nextDisplayOrder = Number(existingRows[0]?.max_order || -1) + 1;
+
+  await query(
+    `INSERT INTO staff_assignment (category, sub_category, staff_name, staff_email, display_order)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       staff_name = VALUES(staff_name),
+       display_order = VALUES(display_order)`,
+    [staffCategory, staffSubCategory, normalizeText(name), normalizedEmail, nextDisplayOrder]
+  );
+}
+
+async function syncAllItStaffAssignmentsFromUsers() {
+  const rows = await query(
+    "SELECT name, email, portal_role, role, team FROM users WHERE portal_role = 'it_staff'",
+    []
+  );
+
+  for (const row of rows) {
+    await syncStaffAssignmentForUser(row);
+  }
 }
 
 async function peekNextTicketSequence(service = "Incident") {
@@ -1703,6 +1748,13 @@ app.post("/api/users", async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
     const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
+    await syncStaffAssignmentForUser({
+      name,
+      email,
+      portalRole: resolvedPortalRole,
+      role,
+      team,
+    });
     res.json({ success: true, id: result.insertId });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "A user with this email or username already exists" });
@@ -1716,6 +1768,12 @@ app.put("/api/users/:id", async (req, res) => {
   console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, portal_role, department, plant, hasPassword: !!(password && password.trim()) });
   const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
   try {
+    const currentRows = await query("SELECT email, portal_role FROM users WHERE id = ? LIMIT 1", [id]);
+    if (currentRows.length === 0) {
+      return res.status(404).json({ message: "User not found. No rows updated." });
+    }
+    const previousEmail = currentRows[0]?.email || "";
+
     let result;
     if (password && password.trim()) {
       // Update including new hashed password
@@ -1731,10 +1789,17 @@ app.put("/api/users/:id", async (req, res) => {
         [name, email, username, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, id]
       );
     }
-    console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "User not found. No rows updated." });
+    if (previousEmail && normalizeEmail(previousEmail) !== normalizeEmail(email)) {
+      await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [previousEmail]);
     }
+    await syncStaffAssignmentForUser({
+      name,
+      email,
+      portalRole: resolvedPortalRole,
+      role,
+      team,
+    });
+    console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
     res.json({ success: true });
   } catch (err) {
     console.error("[PUT /api/users/:id] error:", err.message);
@@ -1744,10 +1809,23 @@ app.put("/api/users/:id", async (req, res) => {
 
 app.delete("/api/users/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    if (result.affectedRows === 0) return res.status(404).json({ message: "User not found" });
-    res.json({ success: true, message: "User deleted successfully" });
+  db.query("SELECT email FROM users WHERE id = ? LIMIT 1", [id], async (selectErr, rows) => {
+    if (selectErr) return res.status(500).json(selectErr);
+    if (!rows || rows.length === 0) return res.status(404).json({ message: "User not found" });
+    const email = rows[0]?.email;
+
+    try {
+      if (email) {
+        await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [email]);
+      }
+      db.query("DELETE FROM users WHERE id = ?", [id], (deleteErr, result) => {
+        if (deleteErr) return res.status(500).json(deleteErr);
+        if (result.affectedRows === 0) return res.status(404).json({ message: "User not found" });
+        res.json({ success: true, message: "User deleted successfully" });
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
   });
 });
 

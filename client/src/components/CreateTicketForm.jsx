@@ -148,6 +148,19 @@ export function CreateTicketForm({ variant = "user" }) {
     };
   }, []);
 
+  useEffect(() => {
+    function refreshMetadata() {
+      setLoadingMetadata(true);
+      api.ticketMetadata()
+        .then((response) => setMetadata(response?.data || response || null))
+        .catch(() => {})
+        .finally(() => setLoadingMetadata(false));
+    }
+
+    window.addEventListener("ticket-metadata-updated", refreshMetadata);
+    return () => window.removeEventListener("ticket-metadata-updated", refreshMetadata);
+  }, []);
+
   const serviceOptions = useMemo(() => {
     return metadata?.servicesByPortal?.[variant] || getServiceOptions(variant);
   }, [metadata, variant]);
