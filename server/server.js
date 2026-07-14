@@ -34,6 +34,14 @@ function normalizeEmail(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizePhone(value = "") {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function phoneDigitsSql(column = "phone") {
+  return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(${column}, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', ''), ',', '')`;
+}
+
 function generateResetOtp() {
   return String(crypto.randomInt(100000, 1000000));
 }
@@ -1055,9 +1063,13 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(400).json({ message: "Name, email, and password are required" });
   }
   try {
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = normalizePhone(phone);
+    const displayPhone = String(phone || "").trim() || null;
+
     // ── Block staff-reserved emails ──────────────────────────────────────────
     const staffEmails = new Set(VIRAJ_STAFF_ROSTER.map((p) => p.email.toLowerCase()));
-    if (staffEmails.has(email.toLowerCase())) {
+    if (staffEmails.has(normalizedEmail)) {
       return res.status(403).json({
         message: "This email address is reserved for IT staff and cannot be used to create a user account.",
       });
@@ -1065,7 +1077,7 @@ app.post("/api/auth/register", async (req, res) => {
     // Also block if the email is already registered as an IT staff account in the DB
     const staffInDb = await query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND portal_role = 'it_staff'",
-      [email]
+      [normalizedEmail]
     );
     if (staffInDb.length > 0) {
       return res.status(403).json({
@@ -1073,15 +1085,24 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
     // ── Duplicate check ──────────────────────────────────────────────────────
-    const existing = await query("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", [email]);
+    const existing = await query("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", [normalizedEmail]);
     if (existing.length > 0) {
       return res.status(409).json({ message: "An account with this email already exists" });
+    }
+    if (normalizedPhone) {
+      const phoneConflict = await query(
+        `SELECT id FROM users WHERE ${phoneDigitsSql("phone")} = ? LIMIT 1`,
+        [normalizedPhone]
+      );
+      if (phoneConflict.length > 0) {
+        return res.status(409).json({ message: "An account with this phone number already exists" });
+      }
     }
     const hashed = await bcrypt.hash(password, 10);
     await query(
       `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4')`,
-      [name, email, email, hashed, phone || null, department || null, plant || null]
+      [name, normalizedEmail, normalizedEmail, hashed, displayPhone, department || null, plant || null]
     );
     res.json({ success: true, message: "Account created successfully. Please log in." });
   } catch (err) {
