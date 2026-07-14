@@ -2204,8 +2204,23 @@ async function createPortalTicket(req, res, portal) {
   const manualAssignee = String(assigned_to || "").trim();
   let finalAssignee = manualAssignee || "";
 
-  if (manualAssignee && !allowedNames.includes(manualAssignee)) {
-    return res.status(400).json({ message: "Selected assignee is not valid for the chosen sub-category" });
+  if (manualAssignee) {
+    const normalizedManualAssignee = manualAssignee.toLowerCase();
+    const matchedAssignee = allowedAssignments.find((item) => {
+      const candidateName = String(item.name || item.staff_name || "").trim().toLowerCase();
+      const candidateEmail = String(item.email || item.staff_email || "").trim().toLowerCase();
+      return candidateName === normalizedManualAssignee || candidateEmail === normalizedManualAssignee;
+    });
+
+    if (matchedAssignee?.name || matchedAssignee?.staff_name) {
+      finalAssignee = matchedAssignee.name || matchedAssignee.staff_name;
+    } else if (!allowedNames.includes(manualAssignee)) {
+      console.warn(
+        `⚠️ Invalid assignee "${manualAssignee}" for ${category} / ${sub_category} ` +
+        `(plant: ${selectedPlant || "none"}). Continuing without assignee.`
+      );
+      finalAssignee = allowedNames.length === 1 ? allowedNames[0] : "";
+    }
   }
 
   if (!finalAssignee && allowedNames.length === 1) {
