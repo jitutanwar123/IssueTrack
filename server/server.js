@@ -754,8 +754,8 @@ async function syncVirajStaffAccounts() {
 
   for (const staff of VIRAJ_STAFF_ROSTER) {
     await query(
-      `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
-       VALUES (?, ?, ?, ?, NULL, ?, NULL, 'it_staff', ?, 'Available', ?)
+      `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, team, status, avatar_color)
+       VALUES (?, ?, ?, ?, NULL, ?, NULL, 'it_staff', ?, ?, 'Available', ?)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          username = VALUES(username),
@@ -763,6 +763,7 @@ async function syncVirajStaffAccounts() {
          department = VALUES(department),
          portal_role = VALUES(portal_role),
          role = VALUES(role),
+         team = VALUES(team),
          status = VALUES(status),
          avatar_color = VALUES(avatar_color)`,
       [
@@ -772,6 +773,7 @@ async function syncVirajStaffAccounts() {
         passwordHash,
         staff.department || "IT",
         staff.role || "Help Desk Engineer",
+        staff.team || "",
         staff.avatar_color || "#0f172a",
       ]
     );
