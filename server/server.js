@@ -594,10 +594,47 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
      ORDER BY display_order ASC, staff_name ASC`,
     [category, subCategory]
   );
-  return rows.map((row) => ({
-    name: row.staff_name,
-    email: row.staff_email,
-  }));
+  const merged = new Map();
+
+  for (const row of rows) {
+    const key = `${normalizeText(row.staff_name).toLowerCase()}|${normalizeEmail(row.staff_email)}`;
+    merged.set(key, {
+      name: row.staff_name,
+      email: row.staff_email,
+    });
+  }
+
+  for (const item of STAFF_ASSIGNMENTS) {
+    if (item.category !== category || item.sub_category !== subCategory) continue;
+    const key = `${normalizeText(item.name).toLowerCase()}|${normalizeEmail(item.email)}`;
+    if (!merged.has(key)) {
+      merged.set(key, {
+        name: item.name,
+        email: item.email,
+      });
+    }
+  }
+
+  return Array.from(merged.values());
+}
+
+async function lookupAssigneeEmailByName(name) {
+  const normalizedName = normalizeText(name);
+  if (!normalizedName) return null;
+
+  const userRows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [normalizedName]).catch(() => []);
+  if (userRows[0]?.email) return userRows[0].email;
+
+  const staffRows = await query(
+    "SELECT staff_email FROM staff_assignment WHERE staff_name = ? LIMIT 1",
+    [normalizedName]
+  ).catch(() => []);
+  if (staffRows[0]?.staff_email) return staffRows[0].staff_email;
+
+  const canonical = STAFF_ASSIGNMENTS.find(
+    (item) => normalizeText(item.name).toLowerCase() === normalizedName.toLowerCase()
+  );
+  return canonical?.email || null;
 }
 
 // Build a lookup: email (lowercase) → array of { category, sub_category, name }
@@ -1596,9 +1633,8 @@ app.put("/api/tickets/:id", async (req, res) => {
     const oldAssigned = oldTicket?.assigned_to || "";
     const newAssigned = assigned_to || "";
     if (newAssigned && newAssigned !== oldAssigned) {
-      query("SELECT email FROM users WHERE name = ? LIMIT 1", [newAssigned])
-        .then((rows) => {
-          const assigneeEmail = rows[0]?.email;
+      lookupAssigneeEmailByName(newAssigned)
+        .then((assigneeEmail) => {
           if (assigneeEmail) {
             const updatedTicket = { ...oldTicket, ...req.body, assigned_to: newAssigned };
             return sendTicketAssignedToAssignee(updatedTicket, assigneeEmail)
@@ -2391,19 +2427,7 @@ async function createPortalTicket(req, res, portal) {
 
     if (finalAssignee) {
       try {
-        // First try to find email from users table by name
-        let assigneeEmail = null;
-        const userRows = await query("SELECT email FROM users WHERE name = ? LIMIT 1", [finalAssignee]);
-        assigneeEmail = userRows[0]?.email || null;
-
-        // If not found in users table, try staff_assignment table
-        if (!assigneeEmail) {
-          const staffRows = await query(
-            "SELECT staff_email FROM staff_assignment WHERE staff_name = ? LIMIT 1",
-            [finalAssignee]
-          );
-          assigneeEmail = staffRows[0]?.staff_email || null;
-        }
+        const assigneeEmail = await lookupAssigneeEmailByName(finalAssignee);
 
         if (assigneeEmail) {
           emailJobs.push(
