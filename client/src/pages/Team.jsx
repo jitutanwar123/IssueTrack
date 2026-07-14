@@ -2,22 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../utils/api.js";
 import { PLANTS, plantLabel } from "../utils/plants.js";
+import { CATEGORY_OPTIONS, SUB_CATEGORIES_BY_CATEGORY } from "../utils/ticketTaxonomy.js";
 
-const STAFF_ROLE_OPTIONS = [
-  "SAP Consultant",
-  "SAP Technical Consultant",
-  "SAP Basis Analyst",
-  "SAP MDM Analyst",
-  "Help Desk Engineer",
-  "Network Administrator",
-  "Plant IT Coordinator",
-  "New Position",
-];
+const STAFF_CATEGORY_OPTIONS = CATEGORY_OPTIONS;
 
 const ROLE_OPTIONS = {
   user: ["User"],
-  it_staff: STAFF_ROLE_OPTIONS,
-  admin: ["Administrator", "System Administrator", "IT Manager"],
+  it_staff: STAFF_CATEGORY_OPTIONS,
+  admin: ["Administrator"],
 };
 
 const portalRoles = [
@@ -26,24 +18,24 @@ const portalRoles = [
   { value: "admin", label: "Admin" },
 ];
 
-const departments = ["IT", "HR", "Finance", "Operations", "Sales", "Marketing", "Administration"];
-const statuses = ["Available", "Busy", "Away", "Offline"];
+function getSubCategories(category) {
+  return SUB_CATEGORIES_BY_CATEGORY[category] || [];
+}
 
 function emptyForm(portal_role = "it_staff") {
+  const defaultCategory = STAFF_CATEGORY_OPTIONS[0] || "";
+  const defaultSubCategory = getSubCategories(defaultCategory)[0] || "";
   return {
     name: "",
     email: "",
     username: "",
     password: "",
-    role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : STAFF_ROLE_OPTIONS[0],
-    staff_position: portal_role === "user" ? "" : STAFF_ROLE_OPTIONS[0],
-    custom_position: "",
-    team: "",
-    status: portal_role === "user" ? "Active" : "Available",
-    avatar_color: "#0f172a",
+    role: portal_role === "admin" ? "Administrator" : portal_role === "user" ? "User" : defaultCategory,
+    team: portal_role === "it_staff" ? defaultSubCategory : "",
     portal_role,
-    department: portal_role === "user" ? "" : "IT",
+    department: portal_role === "it_staff" ? "IT" : "",
     plant: "",
+    sub_category: portal_role === "it_staff" ? defaultSubCategory : "",
   };
 }
 
@@ -136,7 +128,6 @@ export default function Team() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [plantFilter, setPlantFilter] = useState("");
-  const [newStaffOpen, setNewStaffOpen] = useState(false);
   const [splitPercent, setSplitPercent] = useState(38);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -251,31 +242,27 @@ export default function Team() {
   function resetForm(nextPortalRole = "it_staff") {
     setEditingId(null);
     setForm(emptyForm(nextPortalRole));
-    setNewStaffOpen(false);
   }
 
   function startEdit(user) {
-    setNewStaffOpen(false);
     setEditingId(user.id);
-    const staffRole = user.portal_role === "it_staff" ? user.role || STAFF_ROLE_OPTIONS[0] : "";
-    const isCustomStaffRole = user.portal_role === "it_staff" && staffRole && !STAFF_ROLE_OPTIONS.includes(staffRole);
+    const staffCategory = user.portal_role === "it_staff"
+      ? (CATEGORY_OPTIONS.includes(user.role) ? user.role : STAFF_CATEGORY_OPTIONS[0])
+      : "";
+    const staffSubCategory = user.portal_role === "it_staff"
+      ? (getSubCategories(staffCategory).includes(user.team) ? user.team : getSubCategories(staffCategory)[0] || "")
+      : "";
     setForm({
       name: user.name || "",
       email: user.email || "",
       username: user.username || "",
       password: "",
-      role:
-        user.portal_role === "it_staff" && isCustomStaffRole
-          ? "New Position"
-          : user.role || (user.portal_role === "user" ? "User" : STAFF_ROLE_OPTIONS[0]),
-      staff_position: user.portal_role === "it_staff" ? (isCustomStaffRole ? "New Position" : staffRole || STAFF_ROLE_OPTIONS[0]) : "",
-      custom_position: user.portal_role === "it_staff" && isCustomStaffRole ? staffRole : "",
-      team: user.team || "",
-      status: user.status || (user.portal_role === "user" ? "Active" : "Available"),
-      avatar_color: user.avatar_color || "#0f172a",
+      role: user.portal_role === "it_staff" ? staffCategory : (user.portal_role === "admin" ? "Administrator" : "User"),
+      team: staffSubCategory,
       portal_role: user.portal_role || "user",
-      department: user.portal_role === "user" ? "" : user.department || "IT",
+      department: user.portal_role === "it_staff" ? "IT" : "",
       plant: user.plant || "",
+      sub_category: staffSubCategory,
     });
     window.requestAnimationFrame(() => {
       editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -287,17 +274,20 @@ export default function Team() {
     setError("");
     setSuccess("");
 
+    const isStaffMode = form.portal_role === "it_staff";
+    const resolvedCategory = isStaffMode ? form.role : form.portal_role === "admin" ? "Administrator" : "User";
     const payload = {
       ...form,
-      role:
-        form.portal_role === "user"
-          ? "User"
-          : form.staff_position === "New Position"
-            ? form.custom_position || "Custom Position"
-            : form.staff_position || form.role,
-      department: form.portal_role === "user" ? "" : form.department,
+      role: resolvedCategory,
+      team: isStaffMode ? form.team : "",
+      department: isStaffMode ? "IT" : "",
       plant: form.plant,
+      sub_category: isStaffMode ? form.team : "",
     };
+    delete payload.status;
+    delete payload.avatar_color;
+    delete payload.custom_position;
+    delete payload.staff_position;
 
     // Show confirmation modal when updating an existing member
     if (editingId) {
@@ -350,8 +340,8 @@ export default function Team() {
   const currentPortalLabel =
     form.portal_role === "it_staff" ? "IT Staff" : form.portal_role === "admin" ? "Admin" : "User";
   const isStaffMode = form.portal_role === "it_staff";
-  const isNewStaffMode = newStaffOpen && isStaffMode;
-  const roleOptions = isStaffMode ? STAFF_ROLE_OPTIONS : ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.it_staff;
+  const roleOptions = isStaffMode ? STAFF_CATEGORY_OPTIONS : ROLE_OPTIONS[form.portal_role] || ROLE_OPTIONS.user;
+  const subCategoryOptions = isStaffMode ? getSubCategories(form.role) : [];
 
   return (
     <div className="space-y-6">
@@ -410,25 +400,26 @@ export default function Team() {
                         key={option.value}
                         type="button"
                         onClick={() => {
-                          const nextRole =
-                            option.value === "it_staff"
-                              ? "New Position"
-                              : option.value === "admin"
-                                ? "Administrator"
-                                : "User";
                           setForm((current) => ({
                             ...current,
                             portal_role: option.value,
-                            role: nextRole,
-                            staff_position:
-                              option.value === "it_staff" ? current.staff_position || STAFF_ROLE_OPTIONS[0] : "",
-                            custom_position: "",
-                            department: option.value === "user" ? "" : current.department || "IT",
+                            role:
+                              option.value === "it_staff"
+                                ? STAFF_CATEGORY_OPTIONS[0] || ""
+                                : option.value === "admin"
+                                  ? "Administrator"
+                                  : "User",
+                            team:
+                              option.value === "it_staff"
+                                ? getSubCategories(STAFF_CATEGORY_OPTIONS[0] || "")[0] || ""
+                                : "",
+                            department: option.value === "it_staff" ? "IT" : "",
                             plant: current.plant || "",
-                            status: option.value === "user" ? "Active" : current.status || "Available",
-                            password: option.value === "it_staff" ? current.password || "" : current.password,
+                            sub_category:
+                              option.value === "it_staff"
+                                ? getSubCategories(STAFF_CATEGORY_OPTIONS[0] || "")[0] || ""
+                                : "",
                           }));
-                          setNewStaffOpen(option.value === "it_staff");
                         }}
                         className={`rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
                           active
@@ -446,215 +437,83 @@ export default function Team() {
                 </p>
               </div>
 
-              {isNewStaffMode ? (
-                <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">New Staff Member</h4>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Fill this dedicated staff panel to create a fresh IT staff login.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewStaffOpen(false);
-                        setForm((current) => ({
-                          ...current,
-                          role: current.staff_position || STAFF_ROLE_OPTIONS[0],
-                          portal_role: "it_staff",
-                          staff_position: current.staff_position || STAFF_ROLE_OPTIONS[0],
-                          custom_position: "",
-                          department: "IT",
-                          plant: current.plant || "",
-                          status: "Available",
-                          password: current.password || "",
-                        }));
-                      }}
-                      className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
-                    >
-                      Back to Positions
-                    </button>
-                  </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField
+                  label={isStaffMode ? "Staff Name" : "Full Name"}
+                  value={form.name}
+                  onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                />
+                <TextField
+                  label={isStaffMode ? "Staff Email" : "Email"}
+                  value={form.email}
+                  onChange={(value) => setForm((current) => ({ ...current, email: value }))}
+                />
+                <TextField
+                  label="Username"
+                  value={form.username}
+                  onChange={(value) => setForm((current) => ({ ...current, username: value }))}
+                />
+                <TextField
+                  label={editingId ? "New Password" : "Password"}
+                  type="password"
+                  value={form.password}
+                  onChange={(value) => setForm((current) => ({ ...current, password: value }))}
+                  placeholder={editingId ? "Leave blank to keep current" : "Enter password"}
+                />
+              </div>
 
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <TextField
-                      label="Staff Name"
-                      value={form.name}
-                      onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-                    />
-                    <TextField
-                      label="Staff Email"
-                      value={form.email}
-                      onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-                    />
-                    <TextField
-                      label="Username"
-                      value={form.username}
-                      onChange={(value) => setForm((current) => ({ ...current, username: value }))}
-                    />
-                    <TextField
-                      label="Password"
-                      type="password"
-                      value={form.password}
-                      onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                      placeholder="Enter password"
-                    />
-                    <SelectField
-                      label="Role / Position"
-                      value={form.staff_position}
-                      onChange={(value) =>
-                        setForm((current) => ({
-                          ...current,
-                          staff_position: value,
-                          role: value === "New Position" ? "New Position" : value,
-                          custom_position: value === "New Position" ? current.custom_position : "",
-                          password: current.password || "",
-                        }))
-                      }
-                      options={STAFF_ROLE_OPTIONS}
-                    />
-                    {form.staff_position === "New Position" ? (
-                      <TextField
-                        label="Custom Role / Position"
-                        value={form.custom_position}
-                        onChange={(value) => setForm((current) => ({ ...current, custom_position: value }))}
-                        placeholder="Enter a new role for this staff member"
-                      />
-                    ) : null}
-                    <SelectField
-                      label="Department"
-                      value={form.department}
-                      onChange={(value) => setForm((current) => ({ ...current, department: value }))}
-                      options={departments}
-                    />
-                    <SelectField
-                      label="Plant / Branch"
-                      value={form.plant}
-                      onChange={(value) => setForm((current) => ({ ...current, plant: value }))}
-                      options={PLANTS.map((plant) => ({ value: plant.value, label: plantLabel(plant.value) }))}
-                    />
-                    <SelectField
-                      label="Status"
-                      value={form.status}
-                      onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-                      options={statuses}
-                    />
-                    <div>
-                      <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
-                      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                        <input
-                          type="color"
-                          value={form.avatar_color}
-                          onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
-                          className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
-                        />
-                        <div className="text-xs text-slate-500">Used in avatar badges.</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {!isNewStaffMode ? (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField
-                      label="Full Name"
-                      value={form.name}
-                      onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-                    />
-                    <TextField
-                      label="Email"
-                      value={form.email}
-                      onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-                    />
-                    <TextField
-                      label="Username"
-                      value={form.username}
-                      onChange={(value) => setForm((current) => ({ ...current, username: value }))}
-                    />
-                    <TextField
-                      label={editingId ? "New Password" : "Password"}
-                      type="password"
-                      value={form.password}
-                      onChange={(value) => setForm((current) => ({ ...current, password: value }))}
-                      placeholder={editingId ? "Leave blank to keep current" : "Enter password"}
-                    />
-                  </div>
-
+              {isStaffMode ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <SelectField
-                      label="Role / Position"
+                      label="Category"
                       value={form.role}
                       onChange={(value) => {
-                        if (value === "New Position") {
-                          setNewStaffOpen(true);
-                          setForm((current) => ({
-                            ...current,
-                            portal_role: "it_staff",
-                            role: "New Position",
-                            staff_position: current.staff_position || STAFF_ROLE_OPTIONS[0],
-                            custom_position: "",
-                            department: "IT",
-                            plant: current.plant || "",
-                            status: "Available",
-                            password: current.password || "",
-                          }));
-                          return;
-                        }
-                        setNewStaffOpen(false);
-                        setForm((current) => ({ ...current, role: value, staff_position: "", custom_position: "" }));
+                        const nextSubCategories = getSubCategories(value);
+                        setForm((current) => ({
+                          ...current,
+                          role: value,
+                          team: nextSubCategories[0] || "",
+                          sub_category: nextSubCategories[0] || "",
+                          department: "IT",
+                        }));
                       }}
                       options={roleOptions}
                     />
-                    {form.portal_role !== "user" ? (
-                      <SelectField
-                        label="Department"
-                        value={form.department}
-                        onChange={(value) => setForm((current) => ({ ...current, department: value }))}
-                        options={departments}
-                      />
-                    ) : null}
+                    <SelectField
+                      label="Sub-Category"
+                      value={form.team}
+                      onChange={(value) => setForm((current) => ({ ...current, team: value, sub_category: value }))}
+                      options={subCategoryOptions}
+                    />
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Department</div>
+                      <div className="mt-2 text-sm font-semibold text-slate-900">IT</div>
+                    </div>
                     <SelectField
                       label="Plant / Branch"
                       value={form.plant}
                       onChange={(value) => setForm((current) => ({ ...current, plant: value }))}
                       options={PLANTS.map((plant) => ({ value: plant.value, label: plantLabel(plant.value) }))}
                     />
-                    <TextField
-                      label="Team"
-                      value={form.team}
-                      onChange={(value) => setForm((current) => ({ ...current, team: value }))}
-                      placeholder="Optional team name"
-                    />
-                    <SelectField
-                      label="Status"
-                      value={form.status}
-                      onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-                      options={form.portal_role === "user" ? ["Active", "Inactive"] : statuses}
-                    />
                   </div>
-
-                  <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
-                    <div>
-                      <span className="mb-2 block text-sm font-medium text-slate-700">Avatar Color</span>
-                      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <input
-                          type="color"
-                          value={form.avatar_color}
-                          onChange={(event) => setForm((current) => ({ ...current, avatar_color: event.target.value }))}
-                          className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
-                        />
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{form.avatar_color}</div>
-                          <div className="text-xs text-slate-400">Used in portal badges and cards</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : null}
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SelectField
+                    label="Role / Position"
+                    value={form.role}
+                    onChange={(value) => setForm((current) => ({ ...current, role: value }))}
+                    options={roleOptions}
+                  />
+                  <SelectField
+                    label="Plant / Branch"
+                    value={form.plant}
+                    onChange={(value) => setForm((current) => ({ ...current, plant: value }))}
+                    options={PLANTS.map((plant) => ({ value: plant.value, label: plantLabel(plant.value) }))}
+                  />
+                </div>
+              )}
 
                 {error ? (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
