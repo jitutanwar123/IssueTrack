@@ -7,7 +7,7 @@ const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL;
 const FROM_NAME = "Viraj IT Support";
 
 // Base URL of the deployed app — used to build links inside emails (e.g. staff portal login button)
-const APP_URL = (process.env.APP_URL || "https://issuetrackend.onrender.com").replace(/\/$/, "");
+const APP_URL = (process.env.APP_URL || "https://issuetrack-frontend.onrender.com/staff-login").replace(/\/$/, "");
 const STAFF_LOGIN_URL = `${APP_URL}/staff/login`;
 
 // ─── Startup diagnostic ──────────────────────────────────────────
