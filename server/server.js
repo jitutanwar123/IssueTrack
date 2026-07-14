@@ -513,6 +513,27 @@ async function loadTicketLookups() {
     staff: serviceRows.map((row) => row.service).filter((service) => SERVICE_OPTIONS_BY_PORTAL.staff.includes(service)),
   };
 
+  const ctmByPlant = new Map();
+  for (const assignment of CTM_PLANT_ASSIGNMENTS) {
+    ctmByPlant.set(String(assignment.plant_code || ""), {
+      plant_code: String(assignment.plant_code || ""),
+      plant_name: assignment.plant_name,
+      name: assignment.staff_name,
+      email: assignment.staff_email,
+      display_order: Number(assignment.display_order || 0),
+    });
+  }
+  for (const row of ctmRows) {
+    const key = String(row.plant_code || "");
+    ctmByPlant.set(key, {
+      plant_code: key,
+      plant_name: row.plant_name,
+      name: row.staff_name,
+      email: row.staff_email,
+      display_order: Number(row.display_order || 0),
+    });
+  }
+
   return {
     servicesByPortal,
     categories: categoryRows.map((row) => row.category),
@@ -527,12 +548,12 @@ async function loadTicketLookups() {
       name: row.staff_name,
       email: row.staff_email,
     })),
-    ctmPlantAssignments: ctmRows.map((row) => ({
-      plant_code: row.plant_code,
-      plant_name: row.plant_name,
-      name: row.staff_name,
-      email: row.staff_email,
-    })),
+    ctmPlantAssignments: Array.from(ctmByPlant.values()).sort((a, b) => {
+      const aCode = String(a.plant_code || "");
+      const bCode = String(b.plant_code || "");
+      if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+      return aCode.localeCompare(bCode);
+    }),
     plants: PLANTS,
   };
 }
@@ -548,11 +569,21 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
        LIMIT 1`,
       [String(plant || "")]
     );
-    return rows.map((row) => ({
-      name: row.staff_name,
-      email: row.staff_email,
-      plant_code: row.plant_code,
-      plant_name: row.plant_name,
+    if (rows.length > 0) {
+      return rows.map((row) => ({
+        name: row.staff_name,
+        email: row.staff_email,
+        plant_code: row.plant_code,
+        plant_name: row.plant_name,
+      }));
+    }
+
+    const fallback = CTM_PLANT_ASSIGNMENTS.filter((item) => String(item.plant_code || "") === String(plant || "") && item.staff_name);
+    return fallback.map((item) => ({
+      name: item.staff_name,
+      email: item.staff_email,
+      plant_code: item.plant_code,
+      plant_name: item.plant_name,
     }));
   }
 
@@ -589,7 +620,6 @@ async function syncStaffAssignmentForUser({ name, email, portalRole, role, team 
 
   // Always wipe existing assignment rows for this email first
   await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
-  await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
 
   if (portalRole !== "it_staff" || !staffCategory || !staffSubCategory) {
     return;
@@ -644,7 +674,6 @@ async function syncStaffAssignmentForUser({ name, email, portalRole, role, team 
 async function syncCtmAssignmentForUser({ name, email, plant }) {
   const normalizedEmail = normalizeEmail(email);
   const normalizedPlant = normalizeText(plant);
-  await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [normalizedEmail]);
   if (!normalizedPlant) return;
 
   const plantRow = PLANTS.find((item) => String(item.value || "") === normalizedPlant) || null;
@@ -1907,7 +1936,6 @@ app.put("/api/users/:id", async (req, res) => {
     }
     if (previousEmail && normalizeEmail(previousEmail) !== normalizeEmail(email)) {
       await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [previousEmail]);
-      await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [previousEmail]);
     }
     await syncStaffAssignmentForUser({
       name,
@@ -1937,7 +1965,6 @@ app.delete("/api/users/:id", (req, res) => {
     try {
       if (email) {
         await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [email]);
-        await query("DELETE FROM ctm_plant_assignment WHERE LOWER(staff_email) = LOWER(?)", [email]);
       }
       db.query("DELETE FROM users WHERE id = ?", [id], (deleteErr, result) => {
         if (deleteErr) return res.status(500).json(deleteErr);
