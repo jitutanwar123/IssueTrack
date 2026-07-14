@@ -499,14 +499,56 @@ async function loadTicketLookups() {
     categoryRows,
     subCategoryRows,
     staffRows,
+    userRows,
     ctmRows,
   ] = await Promise.all([
     query("SELECT service, display_order FROM ticket_services ORDER BY display_order ASC, service ASC"),
     query("SELECT category, display_order FROM ticket_categories ORDER BY display_order ASC, category ASC"),
     query("SELECT category, sub_category, display_order FROM ticket_sub_categories ORDER BY category ASC, display_order ASC, sub_category ASC"),
     query("SELECT category, sub_category, staff_name, staff_email, display_order FROM staff_assignment ORDER BY category ASC, sub_category ASC, display_order ASC, staff_name ASC"),
+    query("SELECT name, email, role, team, plant, portal_role FROM users WHERE portal_role = 'it_staff' ORDER BY name ASC"),
     query("SELECT plant_code, plant_name, staff_name, staff_email, display_order FROM ctm_plant_assignment ORDER BY display_order ASC, plant_code ASC"),
   ]);
+
+  const staffByKey = new Map();
+  for (const row of staffRows) {
+    const key = `${normalizeText(row.category).toLowerCase()}|${normalizeText(row.sub_category).toLowerCase()}|${normalizeText(row.staff_name).toLowerCase()}|${normalizeEmail(row.staff_email)}`;
+    staffByKey.set(key, {
+      category: row.category,
+      sub_category: row.sub_category,
+      name: row.staff_name,
+      email: row.staff_email,
+    });
+  }
+
+  for (const item of STAFF_ASSIGNMENTS) {
+    const key = `${normalizeText(item.category).toLowerCase()}|${normalizeText(item.sub_category).toLowerCase()}|${normalizeText(item.name).toLowerCase()}|${normalizeEmail(item.email)}`;
+    if (!staffByKey.has(key)) {
+      staffByKey.set(key, {
+        category: item.category,
+        sub_category: item.sub_category,
+        name: item.name,
+        email: item.email,
+      });
+    }
+  }
+
+  for (const user of userRows) {
+    const key = `${normalizeText(user.role).toLowerCase()}|${normalizeText(user.team).toLowerCase()}|${normalizeText(user.name).toLowerCase()}|${normalizeEmail(user.email)}`;
+    if (!key) continue;
+    const userRole = normalizeText(user.role);
+    const userTeam = normalizeText(user.team);
+    if (!CATEGORY_OPTIONS.includes(userRole)) continue;
+    if (!(SUB_CATEGORIES_BY_CATEGORY[userRole] || []).includes(userTeam)) continue;
+    if (!staffByKey.has(key)) {
+      staffByKey.set(key, {
+        category: userRole,
+        sub_category: userTeam,
+        name: user.name,
+        email: user.email,
+      });
+    }
+  }
 
   const servicesByPortal = {
     user: serviceRows.map((row) => row.service).filter((service) => SERVICE_OPTIONS_BY_PORTAL.user.includes(service)),
@@ -542,12 +584,15 @@ async function loadTicketLookups() {
       acc[row.category].push(row.sub_category);
       return acc;
     }, {}),
-    staffAssignments: staffRows.map((row) => ({
-      category: row.category,
-      sub_category: row.sub_category,
-      name: row.staff_name,
-      email: row.staff_email,
-    })),
+    staffAssignments: Array.from(staffByKey.values()).sort((a, b) => {
+      const aCategory = String(a.category || "");
+      const bCategory = String(b.category || "");
+      if (aCategory !== bCategory) return aCategory.localeCompare(bCategory);
+      const aSub = String(a.sub_category || "");
+      const bSub = String(b.sub_category || "");
+      if (aSub !== bSub) return aSub.localeCompare(bSub);
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    }),
     ctmPlantAssignments: Array.from(ctmByPlant.values()).sort((a, b) => {
       const aCode = String(a.plant_code || "");
       const bCode = String(b.plant_code || "");
