@@ -278,6 +278,12 @@ db.connect((err) => {
         }
       }
 
+      // Wipe the entire staff_assignment table and rebuild from the canonical
+      // STAFF_ASSIGNMENTS list. This removes stale rows (manually added test
+      // members, old emails, etc.) so the table always exactly matches the
+      // taxonomy. syncAllItStaffAssignmentsFromUsers (called below) will then
+      // add any extra user-account-based rows on top.
+      await query(`DELETE FROM staff_assignment`);
       for (const [index, assignment] of STAFF_ASSIGNMENTS.entries()) {
         await query(
           `INSERT INTO staff_assignment (category, sub_category, staff_name, staff_email, display_order)
