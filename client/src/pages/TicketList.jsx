@@ -223,26 +223,6 @@ export default function TicketList() {
                         View
                       </Link>
 
-                      {ticket.status === "Resolved" ? (
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 select-none">
-                          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 0 1 0 1.414l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.414L8 12.586l7.293-7.293a1 1 0 0 1 1.414 0z" clipRule="evenodd" />
-                          </svg>
-                          Resolved
-                        </span>
-                      ) : ticket.assigned_to ? (
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 select-none">
-                          Staff Resolves
-                        </span>
-                      ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/resolve/${ticket.id}`); }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:bg-emerald-700"
-                        >
-                          Resolve
-                        </button>
-                      )}
-
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteRow(ticket); }}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-all duration-150 hover:bg-red-50 hover:border-red-300"

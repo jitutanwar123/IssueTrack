@@ -149,7 +149,7 @@ function AlreadyResolvedCard({ ticket }) {
 export default function DepartmentResolve() {
   const { ticketId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isStaff } = useAuth();
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -202,10 +202,6 @@ export default function DepartmentResolve() {
       setError(`Please fill in: ${missing.map((f) => f.label).join(", ")}`);
       return;
     }
-    if (!resolvedBy.trim()) {
-      setError("Please enter the resolver's name.");
-      return;
-    }
 
     const resolutionNote = buildResolutionNote();
     if (!resolutionNote.trim()) {
@@ -216,14 +212,10 @@ export default function DepartmentResolve() {
     setError("");
     setSubmitting(true);
     try {
-      await api.resolveTicket(ticketId, {
-        resolvedBy: resolvedBy.trim(),
-        resolutionNote,
-        department: dept,
-      });
+      await api.resolveStaffTicket(ticketId, { resolutionNote });
       setSuccess(true);
       // Redirect to ticket list after a short delay
-      setTimeout(() => navigate("/tickets"), 2200);
+      setTimeout(() => navigate("/staff/dashboard"), 2200);
     } catch (err) {
       setError(err.message || "Failed to resolve ticket. Please try again.");
     } finally {
@@ -247,8 +239,22 @@ export default function DepartmentResolve() {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-700">
         <p className="font-semibold">{error || "Ticket not found."}</p>
-        <Link to="/tickets" className="mt-4 inline-block text-sm underline text-red-600">
-          ← Back to Ticket List
+        <Link to="/staff/dashboard" className="mt-4 inline-block text-sm underline text-red-600">
+          ← Back to Staff Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  if (!isStaff) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center text-amber-900">
+        <p className="text-base font-semibold">Only assigned staff members can resolve tickets.</p>
+        <p className="mt-2 text-sm text-amber-700">
+          Please use the staff portal to resolve work items assigned to your account.
+        </p>
+        <Link to="/staff/dashboard" className="mt-4 inline-block text-sm font-semibold underline">
+          Go to Staff Dashboard
         </Link>
       </div>
     );
@@ -281,7 +287,7 @@ export default function DepartmentResolve() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link
-            to="/tickets"
+            to="/staff/dashboard"
             className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 transition"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -340,14 +346,13 @@ export default function DepartmentResolve() {
               {/* Resolved By */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
-                  Resolved By <span className="text-red-500">*</span>
+                  Resolved By
                 </label>
                 <input
                   type="text"
                   value={resolvedBy}
-                  onChange={(e) => setResolvedBy(e.target.value)}
                   placeholder="Your name or department team name"
-                  required
+                  readOnly
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-green-400 focus:ring-2 focus:ring-green-100"
                 />
               </div>
@@ -396,7 +401,7 @@ export default function DepartmentResolve() {
             {/* Submit footer */}
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-4">
               <Link
-                to="/tickets"
+                to="/staff/dashboard"
                 className="text-sm font-semibold text-slate-500 hover:text-slate-700 transition"
               >
                 Cancel
