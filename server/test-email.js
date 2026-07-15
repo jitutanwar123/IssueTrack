@@ -39,7 +39,7 @@ if (!BREVO_API_KEY || !BREVO_FROM_EMAIL || !ADMIN_EMAIL) {
       throw new Error(`Brevo ${response.status}: ${data.message || JSON.stringify(data)}`);
     }
 
-    console.log("✅ Test email sent to:", ADMIN_EMAIL);
+    console.log("✅ Test email accepted by Brevo for:", ADMIN_EMAIL);
     console.log("✅ Brevo messageId:", data.messageId || "(not provided)");
   } catch (err) {
     console.error("❌ Brevo error:", err.message);

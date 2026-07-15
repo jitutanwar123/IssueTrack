@@ -152,7 +152,7 @@ async function sendEmail({ to, subject, html, attachments = [] }) {
   if (!res.ok) {
     throw new Error(`Brevo ${res.status}: ${data.message || JSON.stringify(data)}`);
   }
-  console.log(`📧 Email sent to ${to} via Brevo — messageId: ${data.messageId}`);
+  console.log(`📧 Email accepted by Brevo for ${to} — messageId: ${data.messageId}`);
   return data;
 }
 

@@ -35,6 +35,7 @@ const DEFAULT_FORM = {
   sub_category: "",
   priority: "",
   assigned_to: "",
+  assigned_to_email: "",
   name: "",
   email: "",
   phone: "",
@@ -241,19 +242,23 @@ export function CreateTicketForm({ variant = "user" }) {
         next.category = "";
         next.sub_category = "";
         next.assigned_to = "";
+        next.assigned_to_email = "";
       }
 
       if (field === "category") {
         next.sub_category = "";
         next.assigned_to = "";
+        next.assigned_to_email = "";
       }
 
       if (field === "sub_category") {
         next.assigned_to = "";
+        next.assigned_to_email = "";
       }
 
       if (field === "plant" && prev.category === "SAP Application" && prev.sub_category === "CTM") {
         next.assigned_to = "";
+        next.assigned_to_email = "";
       }
 
       return next;
@@ -809,13 +814,21 @@ export function CreateTicketForm({ variant = "user" }) {
                 </label>
                 <select
                   value={form.assigned_to}
-                  onChange={(e) => setField("assigned_to", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const selected = currentAssignees.find((staff) => `${staff.name}__${staff.email || ""}` === value);
+                    setForm((current) => ({
+                      ...current,
+                      assigned_to: selected?.name || "",
+                      assigned_to_email: selected?.email || "",
+                    }));
+                  }}
                   className="pro-select"
                   disabled={assignToDisabled}
                 >
                   <option value="">— Select IT Staff Member (optional) —</option>
                   {currentAssignees.map((staff) => (
-                    <option key={`${staff.name}-${staff.email}`} value={staff.name}>
+                    <option key={`${staff.name}-${staff.email}`} value={`${staff.name}__${staff.email || ""}`}>
                       {formatAssignmentLabel(staff)}
                     </option>
                   ))}

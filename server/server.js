@@ -1086,7 +1086,7 @@ app.get("/api/test-email", async (req, res) => {
 
     res.json({
       success: true,
-      message: `✅ Test email sent to ${to} via Brevo`,
+      message: `✅ Test email accepted by Brevo for ${to}`,
       messageId: data.messageId,
       config,
     });
@@ -1580,13 +1580,13 @@ app.post("/api/tickets", async (req, res) => {
 
     // 1. Notify the admin inbox that a ticket was created
     sendAdminCreatedTicketToAdmin(newTicket)
-      .then(() => console.log(`✅ Admin creation email sent for ${ticketId}`))
+      .then(() => console.log(`✅ Admin creation email accepted by Brevo for ${ticketId}`))
       .catch((e) => console.error(`❌ Admin creation email error:`, e.message));
 
     // 2. If a requester email was provided, send them a confirmation
     if (requester_email) {
       sendTicketConfirmationToUser(newTicket)
-        .then(() => console.log(`✅ Requester confirmation email sent to ${requester_email} for ${ticketId}`))
+        .then(() => console.log(`✅ Requester confirmation email accepted by Brevo for ${requester_email} (${ticketId})`))
         .catch((e) => console.error(`❌ Requester email error:`, e.message));
     }
 
@@ -1597,7 +1597,7 @@ app.post("/api/tickets", async (req, res) => {
           const assigneeEmail = rows[0]?.email;
           if (assigneeEmail) {
             return sendTicketAssignedToAssignee(newTicket, assigneeEmail)
-              .then(() => console.log(`✅ Assignment email sent to ${assigneeEmail} for ${ticketId}`))
+              .then(() => console.log(`✅ Assignment email accepted by Brevo for ${assigneeEmail} (${ticketId})`))
               .catch((e) => console.error(`❌ Assignment email error:`, e.message));
           } else {
             console.warn(`⚠️ Could not find email for assigned user "${assigned_to}"`);
@@ -1673,7 +1673,7 @@ app.put("/api/tickets/:id", async (req, res) => {
           if (assigneeEmail) {
             const updatedTicket = { ...oldTicket, ...req.body, assigned_to: newAssigned };
             return sendTicketAssignedToAssignee(updatedTicket, assigneeEmail)
-              .then(() => console.log(`✅ Assignment email sent to ${assigneeEmail} (update) for ticket #${id}`))
+              .then(() => console.log(`✅ Assignment email accepted by Brevo for ${assigneeEmail} (update) for ticket #${id}`))
               .catch((e) => console.error(`❌ Assignment email error on update:`, e.message));
           }
         })
@@ -2265,7 +2265,7 @@ app.post("/api/staff/tickets/:id/transfer", authenticateJWT, requireStaff, async
     const updatedTicket = updatedRows[0] || { ...currentTicket, assigned_to: target.name };
 
     sendTicketTransferredToAssignee(updatedTicket, target.email, actorName)
-      .then(() => console.log(`✅ Transfer email sent to ${target.email} for ticket #${id}`))
+      .then(() => console.log(`✅ Transfer email accepted by Brevo for ${target.email} for ticket #${id}`))
       .catch((e) => console.error(`❌ Transfer email error:`, e.message));
 
     res.json({ success: true, message: "Ticket transferred successfully", data: updatedTicket });
@@ -2279,6 +2279,7 @@ async function createPortalTicket(req, res, portal) {
   const user = req.user;
   const {
     title, description, service, category, sub_category, priority, assigned_to, plant,
+    assigned_to_email,
     // Staff-on-behalf fields (only used when portal === "staff")
     requester_name, requester_email: bodyRequesterEmail, requester_phone, requester_cisco_number,
     request_source,
@@ -2456,18 +2457,19 @@ async function createPortalTicket(req, res, portal) {
     console.log(`📧 Sending confirmation email to ${confirmationRecipient} for ticket ${ticketId}`);
     const emailJobs = [
       sendTicketConfirmationToUser(newTicket).then(() => {
-        console.log(`✅ Confirmation email sent to ${confirmationRecipient} for ${ticketId}`);
+        console.log(`✅ Confirmation email accepted by Brevo for ${confirmationRecipient} (${ticketId})`);
       }),
     ];
 
     if (finalAssignee) {
       try {
-        const assigneeEmail = await lookupAssigneeEmailByName(finalAssignee);
+        const explicitAssigneeEmail = normalizeEmail(assigned_to_email);
+        const assigneeEmail = explicitAssigneeEmail || await lookupAssigneeEmailByName(finalAssignee);
 
         if (assigneeEmail) {
           emailJobs.push(
             sendTicketAssignedToAssignee(newTicket, assigneeEmail, raisedByStaff).then(() => {
-              console.log(`✅ Assignment email sent to ${assigneeEmail} for ticket ${ticketId}`);
+              console.log(`✅ Assignment email accepted by Brevo for ${assigneeEmail} (${ticketId})`);
             })
           );
         } else {
@@ -2727,7 +2729,7 @@ app.put("/api/tickets/:id/resolve", authenticateJWT, requireAdmin, async (req, r
 
     // Send resolution email to user (non-blocking)
     sendResolutionToUser(updatedTicket, resolvedByName, resolutionNote.trim())
-      .then(() => console.log(`✅ Resolution email sent for ticket #${id}`))
+      .then(() => console.log(`✅ Resolution email accepted by Brevo for ticket #${id}`))
       .catch((e) => console.error(`❌ Resolution email error:`, e.message));
 
     res.json({ success: true, message: "Ticket resolved successfully" });
@@ -2840,11 +2842,11 @@ app.patch("/api/staff/tickets/:id/status", authenticateJWT, requireStaff, async 
 
     if (status === "Resolved") {
       sendResolutionToUser(updatedTicket, staffName, cleanNote || "Resolved by staff")
-        .then(() => console.log(`✅ Staff resolution email sent for ticket #${id}`))
+        .then(() => console.log(`✅ Staff resolution email accepted by Brevo for ticket #${id}`))
         .catch((e) => console.error(`❌ Staff resolution email error:`, e.message));
     } else {
       sendStatusUpdateToUser(updatedTicket, status, cleanNote || null)
-        .then(() => console.log(`✅ Staff status update email sent for ticket #${id}`))
+        .then(() => console.log(`✅ Staff status update email accepted by Brevo for ticket #${id}`))
         .catch((e) => console.error(`❌ Staff status email error:`, e.message));
     }
 
@@ -3032,11 +3034,11 @@ app.put("/api/staff/tickets/:id/resolve", authenticateJWT, requireStaff, async (
     const updatedTicket = updatedRows[0] || { ...oldTicket, status: "Resolved" };
     // Email user: your ticket has been resolved
     sendResolutionToUser(updatedTicket, staffName, resolutionNote.trim())
-      .then(() => console.log(`✅ Resolution email sent to user for ticket #${id}`))
+      .then(() => console.log(`✅ Resolution email accepted by Brevo for user ticket #${id}`))
       .catch((e) => console.error(`❌ User resolution email error:`, e.message));
     // Email admin: sub-branch has resolved a ticket
     sendSubBranchResolutionToAdmin(updatedTicket, staffName, resolutionNote.trim())
-      .then(() => console.log(`✅ Sub-branch resolution notification sent to admin for ticket #${id}`))
+      .then(() => console.log(`✅ Sub-branch resolution notification accepted by Brevo for ticket #${id}`))
       .catch((e) => console.error(`❌ Admin resolution notification error:`, e.message));
     res.json({ success: true, message: "Ticket resolved successfully" });
   } catch (err) {
