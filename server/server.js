@@ -1292,9 +1292,9 @@ app.post("/api/auth/password-reset/confirm", async (req, res) => {
     const hashed = await bcrypt.hash(String(newPassword), 10);
     await query(
       `UPDATE users
-       SET hashed_password = ?, password = ?, reset_otp_hash = NULL, reset_otp_expires_at = NULL, reset_otp_sent_at = NULL
+       SET hashed_password = ?, reset_otp_hash = NULL, reset_otp_expires_at = NULL, reset_otp_sent_at = NULL
        WHERE id = ?`,
-      [hashed, hashed, userId]
+      [hashed, userId]
     );
 
     res.json({ success: true, message: "Password updated successfully. Please sign in again." });
