@@ -355,14 +355,13 @@ export default function UserTicketDetail() {
             <dl className="space-y-3">
               {[
                 ["Ticket ID", ticket.ticket_id || `#${ticket.id}`],
-                ["Category", ticket.category],
-                ["Sub-Category", ticket.sub_category],
-                ["Plant", plantLabel(ticket.plant)],
-                ["Priority", ticket.priority],
-                ["Status", getStatusLabel(ticket.status)],
-                ["Assigned To", ticket.assigned_to || "Unassigned"],
-                ["Location", ticket.location],
-                ["Created", formatDateTime(ticket.created_at)],
+              ["Category", ticket.category],
+              ["Sub-Category", ticket.sub_category],
+              ["Plant", plantLabel(ticket.plant)],
+              ["Priority", ticket.priority],
+              ["Status", getStatusLabel(ticket.status)],
+              ["Assigned To", ticket.assigned_to || "Unassigned"],
+              ["Created", formatDateTime(ticket.created_at)],
               ].filter(([, v]) => v).map(([label, value]) => (
                 <div key={label} className="flex flex-col rounded-xl bg-slate-50 px-4 py-3">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt>

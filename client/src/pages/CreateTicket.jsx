@@ -44,9 +44,6 @@ export default function CreateTicket() {
     actual_closure_date: "",
     response_time: 0,
     resolution_time: 0,
-    location: "",
-    workstream: "",
-    workgroup: "",
     service: "Incident",
   });
 
@@ -279,24 +276,6 @@ navigate("/tickets");
             type="number"
             value={form.resolution_time}
             onChange={(value) => setField("resolution_time", value)}
-          />
-
-          <Field
-            label="Location"
-            value={form.location}
-            onChange={(value) => setField("location", value)}
-          />
-
-          <Field
-            label="Workstream"
-            value={form.workstream}
-            onChange={(value) => setField("workstream", value)}
-          />
-
-          <Field
-            label="Workgroup"
-            value={form.workgroup}
-            onChange={(value) => setField("workgroup", value)}
           />
 
           <Field

@@ -50,6 +50,11 @@ function DataRow({ label, value }) {
   );
 }
 
+function getLatestActor(entries = [], fallback = "") {
+  const latest = [...entries].reverse().find((entry) => String(entry.actor_name || "").trim());
+  return latest?.actor_name || fallback || "—";
+}
+
 function isStaffWorkStage(status = "") {
   const value = String(status || "").toLowerCase();
   return value === "work in progress" || value.startsWith("on hold");
@@ -126,9 +131,6 @@ export default function StaffTicketDetail() {
       ["Raised By", ticket.customer_name || ticket.requested_by || "—"],
       ["Requester Email", ticket.requester_email || "—"],
       ["Phone", ticket.phone || "—"],
-      ["Location", ticket.location || "—"],
-      ["Workstream", ticket.workstream || "—"],
-      ["Workgroup", ticket.workgroup || "—"],
       ["Service", ticket.service || "—"],
       ["Assigned To", ticket.assigned_to || "—"],
       ["Expected Closure", ticket.expected_closure_date || "—"],
@@ -139,6 +141,14 @@ export default function StaffTicketDetail() {
   const activityItems = useMemo(
     () => timeline.map((entry) => formatTicketActivity(entry)),
     [timeline]
+  );
+  const createdBy = useMemo(
+    () => getLatestActor(activityItems.filter((entry) => entry.type === "created"), ticket?.requested_by || ticket?.customer_name || ticket?.requester_email),
+    [activityItems, ticket]
+  );
+  const lastModifiedBy = useMemo(
+    () => getLatestActor(activityItems, ticket?.assigned_to || ticket?.requested_by || ticket?.customer_name),
+    [activityItems, ticket]
   );
 
   async function saveStatus() {
@@ -557,9 +567,9 @@ export default function StaffTicketDetail() {
         <div className="space-y-6">
           <SectionCard title="Audit Trail" subtitle="Who touched the ticket and when">
             <div className="space-y-3">
-              <MetaItem label="Created By" value={ticket.created_by || ticket.requested_by || "—"} time={ticket.created_at} />
+              <MetaItem label="Created By" value={createdBy} time={ticket.created_at} />
               <MetaItem label="Assigned To" value={ticket.assigned_to || "—"} time={ticket.updated_at} />
-              <MetaItem label="Last Modified By" value={ticket.last_modified_by || "—"} time={ticket.updated_at} />
+              <MetaItem label="Last Modified By" value={lastModifiedBy} time={ticket.updated_at} />
               <MetaItem label="Created At" value={formatDateTime(ticket.created_at)} />
               <MetaItem label="Resolved At" value={formatDateTime(ticket.resolved_at || ticket.actual_closure_date)} />
               <MetaItem label="Closed At" value={formatDateTime(ticket.closed_at || ticket.actual_closure_date)} />

@@ -38,6 +38,11 @@ function MetaCard({ label, value, time }) {
   );
 }
 
+function getLatestActor(entries = [], fallback = "") {
+  const latest = [...entries].reverse().find((entry) => String(entry.actor_name || "").trim());
+  return latest?.actor_name || fallback || "—";
+}
+
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -80,9 +85,6 @@ export default function TicketDetail() {
       ["Raised By", ticket.customer_name || ticket.requested_by || "—"],
       ["Requester Email", ticket.requester_email || "—"],
       ["Phone", ticket.phone || "—"],
-      ["Location", ticket.location || "—"],
-      ["Workstream", ticket.workstream || "—"],
-      ["Workgroup", ticket.workgroup || "—"],
       ["Service", ticket.service || "—"],
       ["Assigned To", ticket.assigned_to || "—"],
       ["Expected Closure", ticket.expected_closure_date || "—"],
@@ -93,6 +95,14 @@ export default function TicketDetail() {
   const activityItems = useMemo(
     () => timeline.map((entry) => formatTicketActivity(entry)),
     [timeline]
+  );
+  const createdBy = useMemo(
+    () => getLatestActor(activityItems.filter((entry) => entry.type === "created"), ticket?.requested_by || ticket?.customer_name || ticket?.requester_email),
+    [activityItems, ticket]
+  );
+  const lastModifiedBy = useMemo(
+    () => getLatestActor(activityItems, ticket?.assigned_to || ticket?.requested_by || ticket?.customer_name),
+    [activityItems, ticket]
   );
 
   async function deleteTicket() {
@@ -215,9 +225,9 @@ export default function TicketDetail() {
         <div className="space-y-6">
           <SectionCard title="Audit Trail" subtitle="Record metadata">
             <div className="space-y-3">
-              <MetaCard label="Created By" value={ticket.created_by || ticket.requested_by || "—"} time={ticket.created_at} />
+              <MetaCard label="Created By" value={createdBy} time={ticket.created_at} />
               <MetaCard label="Assigned To" value={ticket.assigned_to || "—"} time={ticket.updated_at} />
-              <MetaCard label="Last Modified By" value={ticket.last_modified_by || "—"} time={ticket.updated_at} />
+              <MetaCard label="Last Modified By" value={lastModifiedBy} time={ticket.updated_at} />
               <MetaCard label="Response Time" value={formatMinutes(ticket.response_time)} />
               <MetaCard label="Resolution Time" value={formatMinutes(ticket.resolution_time)} />
             </div>
