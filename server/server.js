@@ -660,6 +660,20 @@ async function loadAssignableStaffFromDb(category, subCategory, plant) {
     }
   }
 
+  // Also include IT staff users whose role/team matches this category/sub-category.
+  // This keeps server-side validation in sync with the client dropdown (loadTicketLookups).
+  const userRows = await query(
+    `SELECT name, email FROM users WHERE portal_role = 'it_staff' AND role = ? AND team = ?`,
+    [category, subCategory]
+  ).catch(() => []);
+  for (const user of userRows) {
+    if (!user.name || !user.email) continue;
+    const key = `${normalizeText(user.name).toLowerCase()}|${normalizeEmail(user.email)}`;
+    if (!merged.has(key)) {
+      merged.set(key, { name: user.name, email: user.email });
+    }
+  }
+
   return Array.from(merged.values());
 }
 
