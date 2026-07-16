@@ -36,6 +36,7 @@ const DEFAULT_FORM = {
   priority: "",
   assigned_to: "",
   assigned_to_email: "",
+  assigned_to_key: "", // composite key: "name__email" — drives the <select> value
   name: "",
   email: "",
   phone: "",
@@ -212,15 +213,25 @@ export function CreateTicketForm({ variant = "user" }) {
   useEffect(() => {
     setForm((current) => {
       if (!current.category || !current.sub_category) {
-        return current.assigned_to ? { ...current, assigned_to: "" } : current;
+        if (!current.assigned_to && !current.assigned_to_key) return current;
+        return { ...current, assigned_to: "", assigned_to_email: "", assigned_to_key: "" };
       }
 
-      const nextNames = assignableStaff.map((item) => item.name).filter(Boolean);
-      const currentAssigned = current.assigned_to || "";
-      if (nextNames.includes(currentAssigned)) return current;
+      // Auto-select when exactly one assignee matches
+      if (assignableStaff.length === 1) {
+        const only = assignableStaff[0];
+        const key = `${only.name}__${only.email || ""}`;
+        if (current.assigned_to_key === key) return current;
+        return { ...current, assigned_to: only.name, assigned_to_email: only.email || "", assigned_to_key: key };
+      }
 
-      const nextAssigned = nextNames.length === 1 ? nextNames[0] : "";
-      return nextAssigned === currentAssigned ? current : { ...current, assigned_to: nextAssigned };
+      // If multiple assignees, clear selection if current one is no longer in the list
+      const validKeys = assignableStaff.map((s) => `${s.name}__${s.email || ""}`);
+      if (current.assigned_to_key && !validKeys.includes(current.assigned_to_key)) {
+        return { ...current, assigned_to: "", assigned_to_email: "", assigned_to_key: "" };
+      }
+
+      return current;
     });
   }, [assignableStaff]);
 
@@ -243,22 +254,26 @@ export function CreateTicketForm({ variant = "user" }) {
         next.sub_category = "";
         next.assigned_to = "";
         next.assigned_to_email = "";
+        next.assigned_to_key = "";
       }
 
       if (field === "category") {
         next.sub_category = "";
         next.assigned_to = "";
         next.assigned_to_email = "";
+        next.assigned_to_key = "";
       }
 
       if (field === "sub_category") {
         next.assigned_to = "";
         next.assigned_to_email = "";
+        next.assigned_to_key = "";
       }
 
       if (field === "plant" && prev.category === "SAP Application" && prev.sub_category === "CTM") {
         next.assigned_to = "";
         next.assigned_to_email = "";
+        next.assigned_to_key = "";
       }
 
       return next;
@@ -813,7 +828,7 @@ export function CreateTicketForm({ variant = "user" }) {
                   Assign To — IT Sub-Branch
                 </label>
                 <select
-                  value={form.assigned_to}
+                  value={form.assigned_to_key}
                   onChange={(e) => {
                     const value = e.target.value;
                     const selected = currentAssignees.find((staff) => `${staff.name}__${staff.email || ""}` === value);
@@ -821,6 +836,7 @@ export function CreateTicketForm({ variant = "user" }) {
                       ...current,
                       assigned_to: selected?.name || "",
                       assigned_to_email: selected?.email || "",
+                      assigned_to_key: value,
                     }));
                   }}
                   className="pro-select"

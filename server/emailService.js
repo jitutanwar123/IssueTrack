@@ -25,11 +25,14 @@ const priorityColors = {
   P4: { bg: "#16a34a", label: "P4 — Low"      },
 };
 const statusColors = {
-  Open:          "#3b82f6",
-  "In Progress": "#f97316",
-  Pending:       "#eab308",
-  Resolved:      "#22c55e",
-  Closed:        "#64748b",
+  Open:              "#3b82f6",
+  Assigned:          "#8b5cf6",
+  "Work In Progress": "#f97316",
+  "In Progress":     "#f97316",
+  "On Hold":         "#eab308",
+  Pending:           "#eab308",
+  Resolved:          "#22c55e",
+  Closed:            "#64748b",
 };
 
 // ─── Base HTML template ──────────────────────────────────────────
@@ -212,27 +215,30 @@ export async function sendTicketConfirmationToUser(ticket) {
 
 // ─── 3. Status update → User ─────────────────────────────────────
 export async function sendStatusUpdateToUser(ticket, newStatus, adminNote) {
-  if (!ticket.requester_email) return;
+  // Fallback: some tickets store the user's email in user_email instead of requester_email
+  const recipientEmail = ticket.requester_email || ticket.user_email;
+  if (!recipientEmail) return;
   const sc = statusColors[newStatus] || "#64748b";
   const html = baseTemplate("Ticket Status Updated",
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">🔄 Your ticket status has been updated</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">Ticket <strong>${ticket.ticket_id || ticket.id}</strong> has been moved to:</p>
      <div style="text-align:center;margin:20px 0;"><span class="badge" style="background:${sc};font-size:16px;padding:8px 24px;">${newStatus}</span></div>
      ${ticketTable({ ...ticket, status: newStatus })}
-     ${adminNote ? `<p class="section-title">Admin Note</p><div class="comment-box">${adminNote}</div>` : ""}`);
-  await sendEmail({ to: ticket.requester_email, subject: `[TICKET UPDATE] ${ticket.ticket_id || ticket.id} — Status changed to ${newStatus}`, html });
+     ${adminNote ? `<p class="section-title">Note</p><div class="comment-box">${adminNote}</div>` : ""}`);
+  await sendEmail({ to: recipientEmail, subject: `[TICKET UPDATE] ${ticket.ticket_id || ticket.id} — Status changed to ${newStatus}`, html });
 }
 
 // ─── 4. Admin comment → User ─────────────────────────────────────
 export async function sendAdminCommentToUser(ticket, comment) {
-  if (!ticket.requester_email) return;
+  const recipientEmail = ticket.requester_email || ticket.user_email;
+  if (!recipientEmail) return;
   const html = baseTemplate("Admin has responded to your ticket",
     `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">💬 The support team has responded</p>
      <p style="color:#64748b;font-size:14px;margin:0 0 16px">A reply has been added to ticket <strong>${ticket.ticket_id || ticket.id}</strong>.</p>
      <p class="section-title">Admin Reply</p>
      <div class="comment-box">${comment}</div>
      ${ticketTable(ticket)}`);
-  await sendEmail({ to: ticket.requester_email, subject: `[REPLY] ${ticket.ticket_id || ticket.id} — Admin has responded`, html });
+  await sendEmail({ to: recipientEmail, subject: `[REPLY] ${ticket.ticket_id || ticket.id} — Admin has responded`, html });
 }
 
 // ─── 5. User comment → Admin ─────────────────────────────────────
@@ -309,7 +315,8 @@ export async function sendAdminCreatedTicketToAdmin(ticket) {
 
 // ─── 8. Ticket resolved → User ───────────────────────────────────
 export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
-  if (!ticket.requester_email) return;
+  const recipientEmail = ticket.requester_email || ticket.user_email;
+  if (!recipientEmail) return;
   const resolvedAt = ticket.resolved_at
     ? new Date(ticket.resolved_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
     : new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
@@ -323,7 +330,7 @@ export async function sendResolutionToUser(ticket, resolvedBy, resolutionNote) {
        <p><strong>Note:</strong> ${resolutionNote}</p>
      </div>
      ${ticketTable({ ...ticket, status: "Resolved" })}`);
-  await sendEmail({ to: ticket.requester_email, subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`, html });
+  await sendEmail({ to: recipientEmail, subject: `[RESOLVED] ${ticket.ticket_id || ticket.id} — Your ticket has been resolved`, html });
 }
 
 // ─── 9. Sub-branch resolved → Admin ─────────────────────────────
