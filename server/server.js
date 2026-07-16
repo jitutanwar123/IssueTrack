@@ -2301,24 +2301,35 @@ async function createPortalTicket(req, res, portal) {
   const allowedAssignments = await loadAssignableStaffFromDb(category, sub_category, selectedPlant).catch(() => []);
   const allowedNames = allowedAssignments.map((item) => item.name || item.staff_name).filter(Boolean);
   const manualAssignee = String(assigned_to || "").trim();
+  const manualAssigneeEmail = normalizeEmail(assigned_to_email || "");
   let finalAssignee = manualAssignee || "";
+  let finalAssigneeEmail = manualAssigneeEmail || "";
 
   if (manualAssignee) {
-    const normalizedManualAssignee = manualAssignee.toLowerCase();
-    const matchedAssignee = allowedAssignments.find((item) => {
-      const candidateName = String(item.name || item.staff_name || "").trim().toLowerCase();
-      const candidateEmail = String(item.email || item.staff_email || "").trim().toLowerCase();
-      return candidateName === normalizedManualAssignee || candidateEmail === normalizedManualAssignee;
-    });
+    // If the client provided an explicit email alongside the name, trust it directly.
+    // The dropdown was already filtered by the allowed list on the client side.
+    if (manualAssigneeEmail) {
+      finalAssignee = manualAssignee;
+      finalAssigneeEmail = manualAssigneeEmail;
+    } else {
+      const normalizedManualAssignee = manualAssignee.toLowerCase();
+      const matchedAssignee = allowedAssignments.find((item) => {
+        const candidateName = String(item.name || item.staff_name || "").trim().toLowerCase();
+        const candidateEmail = String(item.email || item.staff_email || "").trim().toLowerCase();
+        return candidateName === normalizedManualAssignee || candidateEmail === normalizedManualAssignee;
+      });
 
-    if (matchedAssignee?.name || matchedAssignee?.staff_name) {
-      finalAssignee = matchedAssignee.name || matchedAssignee.staff_name;
-    } else if (!allowedNames.includes(manualAssignee)) {
-      console.warn(
-        `⚠️ Invalid assignee "${manualAssignee}" for ${category} / ${sub_category} ` +
-        `(plant: ${selectedPlant || "none"}). Continuing without assignee.`
-      );
-      finalAssignee = allowedNames.length === 1 ? allowedNames[0] : "";
+      if (matchedAssignee?.name || matchedAssignee?.staff_name) {
+        finalAssignee = matchedAssignee.name || matchedAssignee.staff_name;
+        finalAssigneeEmail = matchedAssignee.email || matchedAssignee.staff_email || "";
+      } else if (!allowedNames.includes(manualAssignee)) {
+        console.warn(
+          `⚠️ Invalid assignee "${manualAssignee}" for ${category} / ${sub_category} ` +
+          `(plant: ${selectedPlant || "none"}). Continuing without assignee.`
+        );
+        finalAssignee = allowedNames.length === 1 ? allowedNames[0] : "";
+        finalAssigneeEmail = "";
+      }
     }
   }
 
@@ -2463,8 +2474,8 @@ async function createPortalTicket(req, res, portal) {
 
     if (finalAssignee) {
       try {
-        const explicitAssigneeEmail = normalizeEmail(assigned_to_email);
-        const assigneeEmail = explicitAssigneeEmail || await lookupAssigneeEmailByName(finalAssignee);
+        // finalAssigneeEmail is already resolved above; fall back to DB lookup if empty
+        const assigneeEmail = finalAssigneeEmail || await lookupAssigneeEmailByName(finalAssignee);
 
         if (assigneeEmail) {
           emailJobs.push(
