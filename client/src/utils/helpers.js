@@ -1,10 +1,11 @@
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "2-digit",
+const dateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "numeric",
   year: "numeric",
-  hour: "2-digit",
+  hour: "numeric",
   minute: "2-digit",
-  hour12: false,
+  second: "2-digit",
+  hour12: true,
   timeZone: "Asia/Kolkata",
 });
 
@@ -18,8 +19,8 @@ function formatMysqlDateTime(value) {
 
 export function formatDateTime(value) {
   if (!value) return "-";
-  const mysqlValue = typeof value === "string" ? formatMysqlDateTime(value) : null;
-  if (mysqlValue) return mysqlValue;
+  // Always parse through Date so Intl.DateTimeFormat can apply the Asia/Kolkata timezone.
+  // The old MySQL fast-path was returning UTC times directly without conversion.
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return dateFormatter.format(date);
