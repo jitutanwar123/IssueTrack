@@ -5,6 +5,10 @@ import cors from "cors";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+
+// Lower salt rounds for better performance on constrained environments (e.g. Render free tier).
+// Cost 8 = 256 iterations — still very secure, ~4x faster than cost 10 on slow CPUs.
+const BCRYPT_ROUNDS = 8;
 import multer from "multer";
 import { buildTicketPdf } from "./utils/pdf.js";
 import {
@@ -874,7 +878,7 @@ function validateTicketInputs({ service, category, sub_category, plant, portal =
 }
 
 async function syncVirajStaffAccounts() {
-  const passwordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, 10);
+  const passwordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, BCRYPT_ROUNDS);
 
   for (const staff of VIRAJ_STAFF_ROSTER) {
     await query(
@@ -1208,7 +1212,7 @@ app.post("/api/auth/password-reset/request", async (req, res) => {
 
     const user = users[0];
     const otp = generateResetOtp();
-    const otpHash = await bcrypt.hash(otp, 10);
+    const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
 
     await query(
       `UPDATE users
@@ -1303,7 +1307,7 @@ app.post("/api/auth/password-reset/confirm", async (req, res) => {
       return res.status(404).json({ message: "Account not found" });
     }
 
-    const hashed = await bcrypt.hash(String(newPassword), 10);
+    const hashed = await bcrypt.hash(String(newPassword), BCRYPT_ROUNDS);
     await query(
       `UPDATE users
        SET hashed_password = ?, reset_otp_hash = NULL, reset_otp_expires_at = NULL, reset_otp_sent_at = NULL
@@ -1363,12 +1367,13 @@ app.post("/api/auth/register", async (req, res) => {
         return res.status(409).json({ message: "An account with this phone number already exists" });
       }
     }
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
     await query(
       `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4')`,
       [name, normalizedEmail, normalizedEmail, hashed, displayPhone, department || null, plant || null]
     );
+
     res.json({ success: true, message: "Account created successfully. Please log in." });
   } catch (err) {
     console.error(err);
@@ -1968,7 +1973,7 @@ app.post("/api/users", async (req, res) => {
     if (allocationError) {
       return res.status(400).json({ message: allocationError });
     }
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
     const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
     await syncStaffAssignmentForUser({
@@ -2007,7 +2012,7 @@ app.put("/api/users/:id", async (req, res) => {
     let result;
     if (password && password.trim()) {
       // Update including new hashed password
-      const hashed = await bcrypt.hash(password, 10);
+      const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
       result = await query(
         `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=? WHERE id=?`,
         [name, email, username, hashed, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, id]
