@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge.jsx";
 import { useTickets } from "../context/TicketContext.jsx";
+import { TableSkeleton, EmptyState } from "../components/Skeleton.jsx";
 import { formatDateTime } from "../utils/helpers.js";
 import { PLANTS } from "../utils/plants.js";
 
@@ -37,6 +38,7 @@ export default function TicketList() {
     tickets,
     pagination,
     ticketFilters,
+    loadingTickets,
     setTicketFilters,
     refreshTickets,
     removeTicket,
@@ -113,14 +115,17 @@ export default function TicketList() {
     }
   }
 
+  const thCls = "px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40";
+  const thStyle = { borderBottom: "1px solid #f1f5f9" };
+
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/80 p-5 shadow-soft">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Ticketing</div>
-            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Tickets</h2>
-            <p className="mt-1 text-sm text-slate-500">Search, filter and manage all ticket records from one clean view.</p>
+            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">Tickets</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Search, filter and manage all ticket records from one clean view.</p>
           </div>
         </div>
       </section>
@@ -141,17 +146,6 @@ export default function TicketList() {
           <Select label="Priority" value={draft.priority} onChange={(v) => setDraft((c) => ({ ...c, priority: v }))} options={priorities} />
           <Select label="Category" value={draft.category} onChange={(v) => setDraft((c) => ({ ...c, category: v }))} options={categories} />
           <Select label="Plant" value={draft.plant} onChange={(v) => setDraft((c) => ({ ...c, plant: v }))} options={PLANTS} />
-          <div className="flex flex-col gap-1.5">
-            <label className="block">
-              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Assignee ID</span>
-              <input
-                value={draft.assignee}
-                onChange={(event) => setDraft((c) => ({ ...c, assignee: event.target.value }))}
-                placeholder="Numeric user id"
-                className="pro-input"
-              />
-            </label>
-          </div>
           <div className="flex items-end">
             <button onClick={applyFilters} className="btn-primary w-full">
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -170,89 +164,96 @@ export default function TicketList() {
           <table className="min-w-full">
             <thead>
               <tr>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Ticket ID</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Title</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Priority</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Status</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Category</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Assigned To</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Created</th>
-                <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 bg-slate-50/80" style={{ borderBottom: "1px solid #f1f5f9" }}>Actions</th>
+                <th className={thCls} style={thStyle}>Ticket ID</th>
+                <th className={thCls} style={thStyle}>Title</th>
+                <th className={thCls} style={thStyle}>Priority</th>
+                <th className={thCls} style={thStyle}>Status</th>
+                <th className={thCls} style={thStyle}>Category</th>
+                <th className={thCls} style={thStyle}>Assigned To</th>
+                <th className={thCls} style={thStyle}>Created</th>
+                <th className={thCls} style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
-                {tickets.map((ticket) => (
-                  <tr
-                    key={ticket.id}
-                    role="link"
-                    tabIndex={0}
-                    onClick={() => navigate(`/tickets/${ticket.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate(`/tickets/${ticket.id}`);
-                      }
-                    }}
-                    className="cursor-pointer transition-colors duration-100 hover:bg-slate-50/70"
-                    style={{ borderBottom: "1px solid #f1f5f9" }}
-                  >
-                  <td className="px-4 py-3.5">
-                    <span className="font-mono text-xs font-bold text-slate-700">INC{ticket.id}</span>
-                  </td>
-                  <td className="px-4 py-3.5 max-w-[200px]">
-                    <span className="text-sm font-medium text-slate-800 line-clamp-1">{ticket.title}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge status={ticket.priority} type="priority" />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge status={ticket.status} />
-                  </td>
-                  <td className="px-4 py-3.5 text-sm text-slate-600">{ticket.category || "—"}</td>
-                  <td className="px-4 py-3.5 text-sm text-slate-600">
-                    {ticket.assigned_to_name || ticket.assigned_to || "Unassigned"}
-                  </td>
-                  <td className="px-4 py-3.5 text-xs text-slate-500">{formatDateTime(ticket.created_at)}</td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/tickets/${ticket.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300"
-                      >
-                        View
-                      </Link>
+              {loadingTickets ? (
+                <TableSkeleton count={8} cols={8} />
+              ) : (
+                <>
+                  {tickets.map((ticket) => (
+                    <tr
+                      key={ticket.id}
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => navigate(`/tickets/${ticket.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(`/tickets/${ticket.id}`);
+                        }
+                      }}
+                      className="cursor-pointer transition-colors duration-100 hover:bg-slate-50/70 dark:hover:bg-slate-700/30"
+                      style={{ borderBottom: "1px solid #f1f5f9" }}
+                    >
+                      <td className="px-4 py-3.5">
+                        <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">INC{ticket.id}</span>
+                      </td>
+                      <td className="px-4 py-3.5 max-w-[200px]">
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-1">{ticket.title}</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusBadge status={ticket.priority} type="priority" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusBadge status={ticket.status} />
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-slate-400">{ticket.category || "—"}</td>
+                      <td className="px-4 py-3.5 text-sm text-slate-600 dark:text-slate-400">
+                        {ticket.assigned_to_name || ticket.assigned_to || "Unassigned"}
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-slate-500 dark:text-slate-500">{formatDateTime(ticket.created_at)}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/tickets/${ticket.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                          >
+                            View
+                          </Link>
 
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteRow(ticket); }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-all duration-150 hover:bg-red-50 hover:border-red-300"
-                      >
-                        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <path d="M10 11v6M14 11v6" />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteRow(ticket); }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-all duration-150 hover:bg-red-50 hover:border-red-300"
+                          >
+                            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                            </svg>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
 
-              {tickets.length === 0 && (
-                <tr>
-                  <td colSpan="8" className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M4 7a2 2 0 0 0 2 2 2 2 0 0 1 0 4 2 2 0 0 0-2 2v2h16v-2a2 2 0 0 0-2-2 2 2 0 0 1 0-4 2 2 0 0 0 2-2V5H4Z" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <p className="text-sm font-medium text-slate-400">No tickets found</p>
-                      <p className="text-xs text-slate-300">Try adjusting your filters</p>
-                    </div>
-                  </td>
-                </tr>
+                  {tickets.length === 0 && (
+                    <tr>
+                      <td colSpan="8">
+                        <EmptyState
+                          title="No tickets found"
+                          subtitle="Try adjusting your filters or search term."
+                          icon={
+                            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="11" cy="11" r="8" />
+                              <path d="M21 21l-4.35-4.35" />
+                            </svg>
+                          }
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>
@@ -260,19 +261,19 @@ export default function TicketList() {
 
         {/* Pagination */}
         <div
-          className="flex items-center justify-between gap-4 px-4 py-3.5"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3.5"
           style={{ borderTop: "1px solid #f1f5f9" }}
         >
-          <span className="text-xs text-slate-500">
-            Page <span className="font-semibold text-slate-700">{pagination.page}</span> of{" "}
-            <span className="font-semibold text-slate-700">{pagination.totalPages}</span>{" "}
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Page <span className="font-semibold text-slate-700 dark:text-slate-300">{pagination.page}</span> of{" "}
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{pagination.totalPages}</span>{" "}
             &mdash; {pagination.total} total tickets
           </span>
           <div className="flex gap-2">
             <button
               disabled={pagination.page <= 1}
               onClick={() => nextPage(pagination.page - 1)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <polyline points="15 18 9 12 15 6" />
@@ -282,7 +283,7 @@ export default function TicketList() {
             <button
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => nextPage(pagination.page + 1)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               Next
               <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

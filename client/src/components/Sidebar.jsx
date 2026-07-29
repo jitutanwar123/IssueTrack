@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import virajLogo from "../viraaj.webp";
+import { useTheme } from "../context/ThemeContext.jsx";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: "grid", section: null },
@@ -52,67 +53,109 @@ function Icon({ name }) {
   }
 }
 
-export function Sidebar() {
+export function Sidebar({ open, onClose }) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <aside
-      className="fixed left-0 top-0 z-50 flex h-screen flex-col overflow-y-auto"
-      style={{
-        width: "var(--sidebar-width, 15rem)",
-        background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-      }}
-    >
-      {/* Logo area */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <img
-          src={virajLogo}
-          alt="Viraj Profiles"
-          className="w-full max-w-[160px] h-auto object-contain"
+    <>
+      {/* Mobile overlay backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={onClose}
         />
-      </div>
+      )}
 
-      {/* Portal label */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">Admin Command Center</span>
+      <aside
+        className={`
+          fixed left-0 top-0 z-50 flex h-screen flex-col overflow-y-auto
+          transition-transform duration-300 ease-in-out
+          ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+        style={{
+          width: "var(--sidebar-width-fixed, 15rem)",
+          background: "linear-gradient(180deg, #0b1220 0%, #111827 100%)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Logo area */}
+        <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <img
+            src={virajLogo}
+            alt="Viraj Profiles"
+            className="w-full max-w-[160px] h-auto object-contain"
+          />
         </div>
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
-        {/* Overview section */}
-        <p className="sidebar-section-label mt-2 mb-1.5">Overview</p>
-        {navItems.slice(0, 1).map((item) => (
-          <SidebarLink key={item.to} item={item} />
-        ))}
+        {/* Portal label */}
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">Admin Command Center</span>
+          </div>
+        </div>
 
-        <p className="sidebar-section-label mt-4 mb-1.5">Manage</p>
-        {navItems.slice(1, 2).map((item) => (
-          <SidebarLink key={item.to} item={item} />
-        ))}
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-3 space-y-0.5">
+          <p className="sidebar-section-label mt-2 mb-1.5">Overview</p>
+          {navItems.slice(0, 1).map((item) => (
+            <SidebarLink key={item.to} item={item} onClose={onClose} />
+          ))}
 
-        <p className="sidebar-section-label mt-4 mb-1.5">Analytics</p>
-        {navItems.slice(2).map((item) => (
-          <SidebarLink key={item.to} item={item} />
-        ))}
-      </nav>
+          <p className="sidebar-section-label mt-4 mb-1.5">Manage</p>
+          {navItems.slice(1, 2).map((item) => (
+            <SidebarLink key={item.to} item={item} onClose={onClose} />
+          ))}
 
-      {/* Footer */}
-      <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(148,163,184,0.58)" }}>
-          Incident · Service Request · Change · Problem
-        </p>
-      </div>
-    </aside>
+          <p className="sidebar-section-label mt-4 mb-1.5">Analytics</p>
+          {navItems.slice(2).map((item) => (
+            <SidebarLink key={item.to} item={item} onClose={onClose} />
+          ))}
+        </nav>
+
+        {/* Dark mode toggle */}
+        <div className="px-4 py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 hover:bg-white/10"
+            style={{ color: "rgba(148,163,184,0.85)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            {theme === "dark" ? (
+              <>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+                Light Mode
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                Dark Mode
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <p className="text-[10px] leading-relaxed" style={{ color: "rgba(148,163,184,0.58)" }}>
+            Incident · Service Request · Change · Problem
+          </p>
+        </div>
+      </aside>
+    </>
   );
 }
 
-function SidebarLink({ item }) {
+function SidebarLink({ item, onClose }) {
   return (
     <NavLink
       to={item.to}
       end={item.to === "/"}
+      onClick={onClose}
       className={({ isActive }) =>
         `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
           isActive

@@ -4,6 +4,7 @@ import { useTickets } from "../context/TicketContext.jsx";
 import { AgeingChart, CategoryPieChart, ResolverChart } from "../components/Charts.jsx";
 import { StatsCard } from "../components/StatsCard.jsx";
 import { TicketCard } from "../components/TicketCard.jsx";
+import { StatSkeleton, ChartSkeleton, ListSkeleton, EmptyState } from "../components/Skeleton.jsx";
 import { PLANTS } from "../utils/plants.js";
 import { CATEGORY_OPTIONS, getServiceOptions, getSubCategoryOptions } from "../utils/ticketTaxonomy.js";
 
@@ -41,6 +42,7 @@ export default function Dashboard() {
   const {
     tickets,
     summary,
+    loadingSummary,
     reportData,
     dashboardFilters,
     setDashboardFilters,
@@ -175,15 +177,15 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/80 p-6 shadow-soft">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] mb-3 text-slate-500">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] mb-3 text-slate-500 dark:text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
               Operations Snapshot
             </div>
-            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900">Live Ticket Control Room</h2>
-            <p className="mt-2 max-w-xl text-sm text-slate-500">
+            <h2 className="text-[28px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">Live Ticket Control Room</h2>
+            <p className="mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">
               Monitor open work, SLA risk, and resolver load across the ticket types your project actually uses.
             </p>
           </div>
@@ -215,31 +217,35 @@ export default function Dashboard() {
 
       {/* ── Stats Cards ── */}
       <section className="grid gap-3 grid-cols-2 md:grid-cols-3 2xl:grid-cols-6">
-        {visibleCards.map((card) => (
-          <button
-            key={card.key}
-            type="button"
-            onClick={() => selectFocus(card.key)}
-            aria-pressed={activeFocus === card.key}
-            className={`block text-left transition-transform duration-150 ${activeFocus === card.key ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
-          >
-            <div className={activeFocus === card.key ? "ring-2 ring-slate-900/10 rounded-2xl" : ""}>
-              <StatsCard title={card.title} value={card.value} accentIndex={card.accentIndex} />
-            </div>
-          </button>
-        ))}
+        {loadingSummary && !summary ? (
+          <StatSkeleton count={6} />
+        ) : (
+          visibleCards.map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => selectFocus(card.key)}
+              aria-pressed={activeFocus === card.key}
+              className={`block text-left transition-transform duration-150 ${activeFocus === card.key ? "scale-[1.01]" : "hover:-translate-y-0.5"}`}
+            >
+              <div className={activeFocus === card.key ? "ring-2 ring-slate-900/10 rounded-2xl" : ""}>
+                <StatsCard title={card.title} value={card.value} accentIndex={card.accentIndex} />
+              </div>
+            </button>
+          ))
+        )}
       </section>
 
       {/* ── Filters ── */}
       <section
-        className="rounded-2xl bg-white p-4"
+        className="rounded-2xl bg-white dark:bg-slate-800/80 p-4"
         style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
       >
         <div className="flex items-center gap-2 mb-4">
           <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
           </svg>
-          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Filters</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">Filters</h3>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <FilterSelect label="Classifications" value={dashboardFilters.category}     onChange={(v) => setDashboardFilters({ category: v })}      options={dynamicOptions.category} />
@@ -258,10 +264,10 @@ export default function Dashboard() {
       </section>
 
       {/* ── Charts ── */}
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-soft">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/80 px-5 py-3 shadow-soft">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Current focus</div>
-          <div className="text-sm font-semibold text-slate-900">{activeLabel}</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{activeLabel}</div>
         </div>
         <button
           type="button"
@@ -271,6 +277,7 @@ export default function Dashboard() {
           Show all
         </button>
       </div>
+
       <section className="grid gap-6 xl:grid-cols-2">
         <AgeingChart data={chartData.activeAgeing} />
         <CategoryPieChart data={chartData.activeByCategory} />
@@ -279,19 +286,35 @@ export default function Dashboard() {
       <section className="grid gap-6 xl:grid-cols-2">
         <ResolverChart data={chartData.resolverBreakdown} />
         <div
-          className="rounded-2xl bg-white overflow-hidden"
+          className="rounded-2xl bg-white dark:bg-slate-800/80 overflow-hidden"
           style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
         >
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
-            <h3 className="text-sm font-bold text-slate-900">Recent Tickets</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Recent Tickets</h3>
             <Link to="/tickets" className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 transition-colors">
               View all →
             </Link>
           </div>
-          <div className="p-4 space-y-2">
-            {recentTickets.map((ticket, index) => (
-              <TicketCard key={ticket.id || ticket.ticket_id || index} ticket={ticket} />
-            ))}
+          <div className="p-4">
+            {loadingSummary && !recentTickets.length ? (
+              <ListSkeleton count={4} />
+            ) : recentTickets.length === 0 ? (
+              <EmptyState
+                title="No tickets in focus"
+                subtitle="Try selecting a different filter or refreshing data."
+                icon={
+                  <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 7a2 2 0 0 0 2 2 2 2 0 0 1 0 4 2 2 0 0 0-2 2v2h16v-2a2 2 0 0 0-2-2 2 2 0 0 1 0-4 2 2 0 0 0 2-2V5H4Z" />
+                  </svg>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                {recentTickets.map((ticket, index) => (
+                  <TicketCard key={ticket.id || ticket.ticket_id || index} ticket={ticket} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

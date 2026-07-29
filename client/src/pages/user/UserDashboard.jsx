@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api } from "../../utils/api.js";
 import { StatusBadge } from "../../components/StatusBadge.jsx";
+import { StatSkeleton, ListSkeleton, EmptyState } from "../../components/Skeleton.jsx";
 import { formatDateTime } from "../../utils/helpers.js";
 
 const STAT_COLORS = [
@@ -16,14 +17,14 @@ function StatCard({ title, value, icon, index }) {
   const c = STAT_COLORS[index % STAT_COLORS.length];
   return (
     <div
-      className="relative overflow-hidden rounded-2xl bg-white p-5 transition-all duration-200 hover:-translate-y-0.5"
+      className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-5 transition-all duration-200 hover:-translate-y-0.5"
       style={{ border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}
     >
       <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: c.gradient }} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: c.color }}>{title}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{value}</p>
         </div>
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -61,8 +62,9 @@ export default function UserDashboard() {
 
   return (
     <div className="space-y-5">
+      {/* Hero Banner */}
       <section
-        className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 p-6 text-white shadow-elevated"
+        className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-900 p-6 text-white shadow-elevated"
         style={{ background: "linear-gradient(135deg, #0f172a 0%, #111827 55%, #0f172a 100%)" }}
       >
         <div
@@ -110,32 +112,36 @@ export default function UserDashboard() {
 
       {/* Stats */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Link to="/user/my-tickets?status=Open" className="block">
-          <StatCard title="Open Tickets" value={stats.open} index={0}
-            icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" strokeLinecap="round" /></svg>}
-          />
-        </Link>
-        <Link to="/user/my-tickets?status=In%20Progress" className="block">
-          <StatCard title="In Progress" value={stats.inProgress} index={1}
-            icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" strokeLinecap="round" /></svg>}
-          />
-        </Link>
-        <Link to="/user/my-tickets?status=On%20Hold" className="block">
-          <StatCard title="On Hold" value={stats.pending} index={2}
-            icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round" /><line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round" /></svg>}
-          />
-        </Link>
-        <Link to="/user/my-tickets?status=Resolved" className="block">
-          <StatCard title="Resolved" value={stats.resolved} index={3}
-            icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeLinecap="round" /><polyline points="22 4 12 14.01 9 11.01" strokeLinecap="round" /></svg>}
-          />
-        </Link>
+        {loading ? (
+          <StatSkeleton count={4} />
+        ) : (
+          <>
+            <Link to="/user/my-tickets?status=Open" className="block">
+              <StatCard title="Open Tickets" value={stats.open} index={0}
+                icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" strokeLinecap="round" /></svg>}
+              />
+            </Link>
+            <Link to="/user/my-tickets?status=In%20Progress" className="block">
+              <StatCard title="In Progress" value={stats.inProgress} index={1}
+                icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" strokeLinecap="round" /></svg>}
+              />
+            </Link>
+            <Link to="/user/my-tickets?status=On%20Hold" className="block">
+              <StatCard title="On Hold" value={stats.pending} index={2}
+                icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round" /><line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round" /></svg>}
+              />
+            </Link>
+            <Link to="/user/my-tickets?status=Resolved" className="block">
+              <StatCard title="Resolved" value={stats.resolved} index={3}
+                icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeLinecap="round" /><polyline points="22 4 12 14.01 9 11.01" strokeLinecap="round" /></svg>}
+              />
+            </Link>
+          </>
+        )}
       </section>
 
       {/* Recent Tickets */}
-      <section
-        className="pro-card overflow-hidden"
-      >
+      <section className="pro-card overflow-hidden">
         <div
           className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: "1px solid #e8eef5" }}
@@ -144,7 +150,7 @@ export default function UserDashboard() {
             <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <h3 className="text-sm font-bold text-slate-900">Recent Tickets</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Recent Tickets</h3>
           </div>
           <Link to="/user/my-tickets" className="text-[11px] font-semibold text-brand-700 hover:text-brand-800 transition-colors">
             View all →
@@ -152,34 +158,24 @@ export default function UserDashboard() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-14 text-sm text-slate-400">
-            <svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Loading your tickets…
-          </div>
+          <ListSkeleton count={4} />
         ) : recentTickets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
-            <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="h-6 w-6 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <EmptyState
+            title="No tickets yet"
+            subtitle="Raise your first support request and we'll get right on it."
+            icon={
+              <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
               </svg>
-            </div>
-            <p className="text-sm font-medium text-slate-400">No tickets yet</p>
-            <Link
-              to="/user/create-ticket"
-              className="mt-1 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white btn-primary"
-            >
-              Raise your first ticket
-            </Link>
-          </div>
+            }
+            action={{ label: "Raise your first ticket", href: "/user/create-ticket" }}
+          />
         ) : (
           <div>
             {recentTickets.map((ticket, i) => (
               <div
                 key={ticket.id}
-                className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors duration-100 hover:bg-slate-50/70"
+                className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors duration-100 hover:bg-slate-50/70 dark:hover:bg-slate-700/30"
                 style={{ borderBottom: i < recentTickets.length - 1 ? "1px solid #f1f5f9" : "none" }}
               >
                 <div className="min-w-0 flex-1">
@@ -189,14 +185,14 @@ export default function UserDashboard() {
                     </span>
                     <StatusBadge status={ticket.priority} type="priority" />
                   </div>
-                  <p className="truncate text-sm font-semibold text-slate-900">{ticket.title}</p>
+                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{ticket.title}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(ticket.created_at)}</p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <StatusBadge status={ticket.status} />
                   <Link
                     to={`/user/ticket/${ticket.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
                   >
                     View
                     <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
