@@ -1169,6 +1169,7 @@ app.post("/api/auth/login", (req, res) => {
           department: user.department,
           plant: user.plant,
           phone: user.phone,
+          cisco_number: user.cisco_number || "",
         },
         JWT_SECRET,
         { expiresIn: "7d" }

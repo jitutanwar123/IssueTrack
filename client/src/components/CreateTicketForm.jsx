@@ -88,15 +88,15 @@ export function CreateTicketForm({ variant = "user" }) {
   const isStaff = variant === "staff";
   const isSelfMode = isStaff && staffMode === "self";
 
-  // Pre-fill requester info from logged-in user
+  // Pre-fill requester info from logged-in user — always override with current user data
   useEffect(() => {
     if (user) {
       setForm((prev) => ({
         ...prev,
-        name: prev.name || user.name || "",
-        email: prev.email || user.email || "",
-        phone: prev.phone || user.phone || "",
-        cisco_number: prev.cisco_number || user.cisco_number || "",
+        name: user.name || prev.name || "",
+        email: user.email || prev.email || "",
+        phone: user.phone || prev.phone || "",
+        cisco_number: user.cisco_number || prev.cisco_number || "",
       }));
     }
   }, [user]);
@@ -562,7 +562,7 @@ export function CreateTicketForm({ variant = "user" }) {
                       type="text"
                       value={form.requester_name}
                       onChange={(e) => setField("requester_name", e.target.value)}
-                      placeholder={isSelfMode ? "" : "Your full name"}
+                      placeholder={isSelfMode ? "" : "Requester's name"}
                       className={`pro-input ${
                         isSelfMode
                           ? "border-blue-200 bg-blue-50 text-slate-700"
@@ -643,30 +643,37 @@ export function CreateTicketForm({ variant = "user" }) {
                 </>
               ) : (
                 <>
+                  {/* Name — read-only, taken from account */}
                   <div>
-                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                      Your Name
+                    <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      Requester Name
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 normal-case tracking-normal">Auto-filled</span>
                     </label>
                     <input
                       type="text"
                       value={form.name}
-                      onChange={(e) => setField("name", e.target.value)}
-                      placeholder="Your full name"
-                      className="pro-input"
+                      readOnly
+                      tabIndex={-1}
+                      className="pro-input cursor-default select-none bg-slate-50 text-slate-700"
+                      style={{ borderColor: "#e2eaf4" }}
                     />
                   </div>
+                  {/* Email — read-only */}
                   <div>
-                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Email Address
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 normal-case tracking-normal">Auto-filled</span>
                     </label>
                     <input
                       type="email"
                       value={form.email}
-                      onChange={(e) => setField("email", e.target.value)}
-                      placeholder="your@email.com"
-                      className="pro-input"
+                      readOnly
+                      tabIndex={-1}
+                      className="pro-input cursor-default select-none bg-slate-50 text-slate-700"
+                      style={{ borderColor: "#e2eaf4" }}
                     />
                   </div>
+                  {/* Phone */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Phone
@@ -680,6 +687,7 @@ export function CreateTicketForm({ variant = "user" }) {
                     />
                     {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
                   </div>
+                  {/* Cisco Number */}
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       Cisco Number
