@@ -25,8 +25,9 @@ export default function Login() {
         user?.role === "Administrator" ||
         user?.role === "admin" ||
         user?.role === "Admin";
+      // Always go to the home page — never restore the last visited page
       if (isAdmin) {
-        navigate(location.state?.from || "/");
+        navigate("/");
       } else {
         navigate("/user/dashboard");
       }

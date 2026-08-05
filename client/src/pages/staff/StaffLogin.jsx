@@ -20,7 +20,8 @@ export default function StaffLogin() {
     setError("");
     try {
       await login(email, password);
-      navigate(location.state?.from || "/staff/dashboard");
+      // Always go to staff home — never restore the last visited page
+      navigate("/staff/dashboard");
     } catch (err) {
       setError(err.message || "Invalid credentials");
     } finally {

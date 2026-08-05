@@ -20,13 +20,13 @@ export default function UserLogin() {
     setError("");
     try {
       const user = await login(null, password, email);
-      const fallback = location.state?.from || "/user/dashboard";
       const isAdmin =
         user?.portal_role === "admin" ||
         user?.role === "Administrator" ||
         user?.role === "admin" ||
         user?.role === "Admin";
-      navigate(isAdmin ? (location.state?.from || "/") : fallback);
+      // Always go to the home page — never restore the last visited page
+      navigate(isAdmin ? "/" : "/user/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
