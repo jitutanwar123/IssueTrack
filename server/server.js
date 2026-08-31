@@ -105,6 +105,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// ── Health check — used by keep-alive ping to prevent Render free-tier sleep ──
+app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 import fs from "fs";

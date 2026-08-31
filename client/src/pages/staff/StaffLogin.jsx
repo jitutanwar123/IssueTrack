@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import virajLogo from "../../viraaj.webp";
@@ -13,21 +13,29 @@ export default function StaffLogin() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
+  const slowTimer = useRef(null);
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setSlowHint(false);
+    slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
     try {
       await login(email, password);
-      // Always go to staff home — never restore the last visited page
+      clearTimeout(slowTimer.current);
       navigate("/staff/dashboard");
     } catch (err) {
+      clearTimeout(slowTimer.current);
+      setSlowHint(false);
       setError(err.message || "Invalid credentials");
     } finally {
       setBusy(false);
     }
   }
+
+  useEffect(() => () => clearTimeout(slowTimer.current), []);
 
   return (
     <main className="flex min-h-screen items-center justify-center login-bg px-4 py-8">
@@ -151,6 +159,17 @@ export default function StaffLogin() {
               </span>
             ) : "Sign In to Staff Portal"}
           </button>
+
+          {/* Server wake-up hint */}
+          {slowHint && (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+              <svg className="h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Server is waking up — this may take 20–30 seconds on first use. Please wait…
+            </div>
+          )}
         </form>
 
         <div className="mt-3 text-center text-sm" style={{ color: "rgba(226,232,240,0.82)" }}>

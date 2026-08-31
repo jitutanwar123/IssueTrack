@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import virajLogo from "../viraaj.webp";
@@ -13,30 +13,39 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
+  const slowTimer = useRef(null);
 
   async function submit(event) {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setSlowHint(false);
+    // Show "waking up" hint after 3 seconds
+    slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
     try {
       const user = await login(null, password, email);
+      clearTimeout(slowTimer.current);
       const isAdmin =
         user?.portal_role === "admin" ||
         user?.role === "Administrator" ||
         user?.role === "admin" ||
         user?.role === "Admin";
-      // Always go to the home page — never restore the last visited page
       if (isAdmin) {
         navigate("/");
       } else {
         navigate("/user/dashboard");
       }
     } catch (err) {
+      clearTimeout(slowTimer.current);
+      setSlowHint(false);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => () => clearTimeout(slowTimer.current), []);
 
   return (
     <main className="flex min-h-screen items-center justify-center login-bg px-4 py-8">
@@ -144,6 +153,17 @@ export default function Login() {
               </span>
             ) : "Sign In to Admin Portal"}
           </button>
+
+          {/* Server wake-up hint */}
+          {slowHint && (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-medium" style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+              <svg className="h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Server is waking up — this may take 20–30 seconds on first use. Please wait…
+            </div>
+          )}
 
           {/* Portal links */}
           <div className="mt-4 border-t pt-4" style={{ borderTopColor: "rgba(255,255,255,0.08)" }}>

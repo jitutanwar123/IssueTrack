@@ -1,6 +1,17 @@
 const API_BASE =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+// ── Keep-alive: ping the server every 14 min to prevent Render free-tier sleep ──
+// Only runs when the tab is visible (no wasted pings in background tabs)
+if (API_BASE.includes("render.com") || API_BASE.includes("railway.app") || API_BASE.includes("onrender.com")) {
+  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+  setInterval(() => {
+    if (document.visibilityState === "visible") {
+      fetch(`${API_BASE}/health`, { method: "GET", signal: AbortSignal.timeout(5000) }).catch(() => {});
+    }
+  }, PING_INTERVAL);
+}
+
 export function getToken() {
   return localStorage.getItem("welserve_token") || "";
 }
