@@ -91,7 +91,7 @@ function ticketTable(t) {
     ["Department",      t.department],
     ["Location",        t.location],
     ["Assigned To",     t.assigned_to || "Unassigned"],
-    ["Created At",      t.created_at ? new Date(t.created_at).toLocaleString("en-IN") : "—"],
+    ["Created At",      t.created_at ? new Date(t.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"],
   ]
     .filter(([, v]) => v)
     .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
