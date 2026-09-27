@@ -371,3 +371,20 @@ export async function sendPasswordResetOtp(user, otp) {
     html,
   });
 }
+
+export async function sendAccountPasswordChanged(user) {
+  if (!user?.email) return;
+  const html = baseTemplate("Your Account Password Was Changed",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">Your account password was changed</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">Hi <strong>${user.name || "there"}</strong>, an administrator changed the password for your account.</p>
+     <p style="font-size:13px;color:#64748b">If you did not expect this change, contact your IT administrator.</p>`);
+  await sendEmail({ to: user.email, subject: "[ACCOUNT SECURITY] Your password was changed", html });
+}
+
+export async function sendAccountRemoved(user) {
+  if (!user?.email) return;
+  const html = baseTemplate("Your Account Was Removed",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">Your account was removed</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">Hi <strong>${user.name || "there"}</strong>, an administrator removed your account from the ticket tracking system. You can no longer sign in. Contact your IT administrator if you believe this was a mistake.</p>`);
+  await sendEmail({ to: user.email, subject: "[ACCOUNT UPDATE] Your account was removed", html });
+}

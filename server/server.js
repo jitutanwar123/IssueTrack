@@ -78,6 +78,8 @@ import {
   sendAdminCreatedTicketToAdmin,
   sendSubBranchResolutionToAdmin,
   sendPasswordResetOtp,
+  sendAccountPasswordChanged,
+  sendAccountRemoved,
 } from "./emailService.js";
 
 dotenv.config();
@@ -2003,11 +2005,12 @@ app.put("/api/users/:id", async (req, res) => {
   console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, portal_role, department, plant, hasPassword: !!(password && password.trim()) });
   const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
   try {
-    const currentRows = await query("SELECT email, portal_role FROM users WHERE id = ? LIMIT 1", [id]);
+    const currentRows = await query("SELECT name, email, portal_role FROM users WHERE id = ? LIMIT 1", [id]);
     if (currentRows.length === 0) {
       return res.status(404).json({ message: "User not found. No rows updated." });
     }
     const previousEmail = currentRows[0]?.email || "";
+    const currentUser = currentRows[0];
     const allocationError = validateStaffAllocation({ portalRole: resolvedPortalRole, role, team, plant });
     if (allocationError) {
       return res.status(400).json({ message: allocationError });
@@ -2041,6 +2044,11 @@ app.put("/api/users/:id", async (req, res) => {
     if (resolvedPortalRole === "it_staff" && normalizeText(role) === "SAP Application" && normalizeText(team) === "CTM") {
       await syncCtmAssignmentForUser({ name, email, plant });
     }
+    if (password && password.trim()) {
+      sendAccountPasswordChanged({ name: name || currentUser.name, email: previousEmail || email }).catch((mailErr) => {
+        console.error("Password-change notification failed:", mailErr.message);
+      });
+    }
     console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
     res.json({ success: true });
   } catch (err) {
@@ -2049,26 +2057,24 @@ app.put("/api/users/:id", async (req, res) => {
   }
 });
 
-app.delete("/api/users/:id", (req, res) => {
+app.delete("/api/users/:id", async (req, res) => {
   const { id } = req.params;
-  db.query("SELECT email FROM users WHERE id = ? LIMIT 1", [id], async (selectErr, rows) => {
-    if (selectErr) return res.status(500).json(selectErr);
-    if (!rows || rows.length === 0) return res.status(404).json({ message: "User not found" });
-    const email = rows[0]?.email;
-
-    try {
-      if (email) {
-        await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [email]);
-      }
-      db.query("DELETE FROM users WHERE id = ?", [id], (deleteErr, result) => {
-        if (deleteErr) return res.status(500).json(deleteErr);
-        if (result.affectedRows === 0) return res.status(404).json({ message: "User not found" });
-        res.json({ success: true, message: "User deleted successfully" });
-      });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
+  try {
+    const rows = await query("SELECT name, email FROM users WHERE id = ? LIMIT 1", [id]);
+    if (!rows.length) return res.status(404).json({ message: "User not found" });
+    const removedUser = rows[0];
+    if (removedUser.email) {
+      await query("DELETE FROM staff_assignment WHERE LOWER(staff_email) = LOWER(?)", [removedUser.email]);
     }
-  });
+    const result = await query("DELETE FROM users WHERE id = ?", [id]);
+    if (!result.affectedRows) return res.status(404).json({ message: "User not found" });
+    sendAccountRemoved(removedUser).catch((mailErr) => {
+      console.error("Account-removal notification failed:", mailErr.message);
+    });
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // TICKET COMMENTS (legacy endpoint kept for existing admin TicketDetail)

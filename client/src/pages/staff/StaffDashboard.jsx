@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -51,26 +51,43 @@ export default function StaffDashboard() {
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     const nextStatus = searchParams.get("status") || "";
     setStatusFilter((current) => (current === nextStatus ? current : nextStatus));
   }, [searchParams]);
 
-  async function load() {
-    setLoading(true);
+  async function load({ silent = false } = {}) {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    if (!silent) setLoading(true);
     setError("");
     try {
       const res = await api.staffTickets();
       setTickets(res.data || []);
     } catch (err) {
-      setError(err.message || "Failed to load tickets");
+      if (!silent) setError(err.message || "Failed to load tickets");
     } finally {
-      setLoading(false);
+      loadingRef.current = false;
+      if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") load({ silent: true });
+    };
+    const interval = window.setInterval(refreshIfVisible, 15000);
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, []);
 
   function applyFilters(e) {
     e.preventDefault();
