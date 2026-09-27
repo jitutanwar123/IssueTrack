@@ -2044,13 +2044,24 @@ app.put("/api/users/:id", async (req, res) => {
     if (resolvedPortalRole === "it_staff" && normalizeText(role) === "SAP Application" && normalizeText(team) === "CTM") {
       await syncCtmAssignmentForUser({ name, email, plant });
     }
+    let notificationSent = null;
     if (password && password.trim()) {
-      sendAccountPasswordChanged({ name: name || currentUser.name, email: previousEmail || email }).catch((mailErr) => {
+      try {
+        await sendAccountPasswordChanged({ name: name || currentUser.name, email: previousEmail || email });
+        notificationSent = true;
+      } catch (mailErr) {
+        notificationSent = false;
         console.error("Password-change notification failed:", mailErr.message);
-      });
+      }
     }
     console.log("[PUT /api/users/:id] affectedRows:", result.affectedRows);
-    res.json({ success: true });
+    res.json({
+      success: true,
+      ...(notificationSent === null ? {} : {
+        notificationSent,
+        ...(notificationSent ? {} : { warning: "Password changed, but the email notification could not be sent. Check the server email configuration and logs." }),
+      }),
+    });
   } catch (err) {
     console.error("[PUT /api/users/:id] error:", err.message);
     res.status(500).json({ message: err.message });

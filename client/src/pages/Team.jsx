@@ -321,8 +321,12 @@ export default function Team() {
     setSubmitting(true);
     setError("");
     try {
-      await api.updateUser(updateConfirm.id, updateConfirm.payload);
-      setSuccess("Member updated successfully.");
+      const result = await api.updateUser(updateConfirm.id, updateConfirm.payload);
+      setSuccess(result.notificationSent === false
+        ? "Member updated, but the password-change email could not be sent. Check the server email configuration and logs."
+        : result.notificationSent === true
+          ? "Member updated successfully. Password-change email accepted by the mail service."
+          : "Member updated successfully.");
       window.dispatchEvent(new Event("ticket-metadata-updated"));
       resetForm(form.portal_role);
       await load();
