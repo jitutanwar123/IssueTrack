@@ -78,7 +78,7 @@ import {
   sendAdminCreatedTicketToAdmin,
   sendSubBranchResolutionToAdmin,
   sendPasswordResetOtp,
-  sendLoginVerificationOtp,
+  sendEmailVerificationOtp,
   sendAccountPasswordChanged,
   sendAccountRemoved,
 } from "./emailService.js";
@@ -1153,7 +1153,7 @@ app.post("/api/auth/login", async (req, res) => {
       const code = generateResetOtp();
       const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
       await query("UPDATE users SET login_otp_hash = ?, login_otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?", [codeHash, user.id]);
-      await sendLoginVerificationOtp(user, code);
+      await sendEmailVerificationOtp(user, code);
       return res.json({ otpRequired: true, email: user.email });
     }
 
@@ -1306,14 +1306,29 @@ app.post("/api/auth/password-reset/confirm", async (req, res) => {
 
 // REGISTER (new users)
 app.post("/api/auth/register", async (req, res) => {
-  const { name, email, password, phone, department, plant } = req.body;
+  const { name, email, password, phone, department, plant, otp } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ message: "Name, email, and password are required" });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) {
+    return res.status(400).json({ message: "Enter a valid email address that you can access." });
   }
   try {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = normalizePhone(phone);
     const displayPhone = String(phone || "").trim() || null;
+
+    await query(`CREATE TABLE IF NOT EXISTS pending_user_registrations (
+      email VARCHAR(255) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      phone VARCHAR(30) DEFAULT NULL,
+      department VARCHAR(100) DEFAULT NULL,
+      plant VARCHAR(150) DEFAULT NULL,
+      otp_hash VARCHAR(255) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 
     // ── Block staff-reserved emails ──────────────────────────────────────────
     const staffEmails = new Set(VIRAJ_STAFF_ROSTER.map((p) => p.email.toLowerCase()));
@@ -1346,12 +1361,38 @@ app.post("/api/auth/register", async (req, res) => {
         return res.status(409).json({ message: "An account with this phone number already exists" });
       }
     }
-    const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    if (!otp) {
+      const code = generateResetOtp();
+      const [passwordHash, otpHash] = await Promise.all([
+        bcrypt.hash(password, BCRYPT_ROUNDS),
+        bcrypt.hash(code, BCRYPT_ROUNDS),
+      ]);
+      await query(
+        `INSERT INTO pending_user_registrations (email, name, password_hash, phone, department, plant, otp_hash, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))
+         ON DUPLICATE KEY UPDATE name = VALUES(name), password_hash = VALUES(password_hash), phone = VALUES(phone), department = VALUES(department), plant = VALUES(plant), otp_hash = VALUES(otp_hash), expires_at = VALUES(expires_at), created_at = NOW()`,
+        [normalizedEmail, String(name).trim(), passwordHash, displayPhone, department || null, plant || null, otpHash]
+      );
+      await sendEmailVerificationOtp({ name: String(name).trim(), email: normalizedEmail }, code);
+      return res.json({ otpRequired: true, email: normalizedEmail, message: "Enter the verification code sent to your email to finish creating your account." });
+    }
+
+    const pendingRows = await query("SELECT * FROM pending_user_registrations WHERE email = ? LIMIT 1", [normalizedEmail]);
+    const pending = pendingRows[0];
+    if (!pending || new Date(pending.expires_at).getTime() < Date.now()) {
+      return res.status(400).json({ message: "Verification code expired. Submit the form again to receive a new code." });
+    }
+    if (!(await bcrypt.compare(String(otp).trim(), pending.otp_hash))) {
+      return res.status(401).json({ message: "That verification code is incorrect." });
+    }
+
     await query(
       `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4')`,
-      [name, normalizedEmail, normalizedEmail, hashed, displayPhone, department || null, plant || null]
+      [pending.name, normalizedEmail, normalizedEmail, pending.password_hash, pending.phone, pending.department, pending.plant]
     );
+    await query("DELETE FROM pending_user_registrations WHERE email = ?", [normalizedEmail]);
 
     res.json({ success: true, message: "Account created successfully. Please log in." });
   } catch (err) {

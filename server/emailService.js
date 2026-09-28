@@ -372,16 +372,16 @@ export async function sendPasswordResetOtp(user, otp) {
   });
 }
 
-export async function sendLoginVerificationOtp(user, otp) {
-  if (!user?.email) throw new Error("A verified email address is required to sign in");
-  const html = baseTemplate("Sign-in verification code",
-    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">Sign-in verification</p>
-     <p style="color:#64748b;font-size:14px;margin:0 0 16px">Hi <strong>${user.name || "there"}</strong>, enter this code to finish signing in.</p>
+export async function sendEmailVerificationOtp(user, otp) {
+  if (!user?.email) throw new Error("A valid email address is required");
+  const html = baseTemplate("Email verification code",
+    `<p style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px">Verify your email address</p>
+     <p style="color:#64748b;font-size:14px;margin:0 0 16px">Hi <strong>${user.name || "there"}</strong>, enter this code to verify that you can access this email address.</p>
      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:18px 20px;margin:16px 0;text-align:center;">
        <div style="font-size:30px;line-height:1;font-weight:800;letter-spacing:.28em;color:#0f172a;">${otp}</div>
        <p style="margin:10px 0 0;font-size:13px;color:#64748b;">This code expires in 10 minutes.</p>
      </div>`);
-  await sendEmail({ to: user.email, subject: "[SIGN-IN] Your verification code", html });
+  await sendEmail({ to: user.email, subject: "[EMAIL VERIFICATION] Your code", html });
 }
 
 export async function sendAccountPasswordChanged(user) {

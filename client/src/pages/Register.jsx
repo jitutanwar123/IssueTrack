@@ -10,6 +10,8 @@ export default function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [otpPending, setOtpPending] = useState(false);
+  const [otp, setOtp] = useState("");
 
   function setField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -21,7 +23,12 @@ export default function Register() {
     setError("");
     setSuccess("");
     try {
-      await api.register(form);
+      const result = await api.register({ ...form, ...(otpPending ? { otp } : {}) });
+      if (result.otpRequired) {
+        setOtpPending(true);
+        setSuccess(`We sent a verification code to ${result.email}. Enter it below to create your account.`);
+        return;
+      }
       setSuccess("Account created successfully! Redirecting to login...");
       setTimeout(() => navigate("/user-login"), 2000);
     } catch (err) {
@@ -69,6 +76,7 @@ export default function Register() {
               placeholder="John Doe"
               value={form.name}
               onChange={(e) => setField("name", e.target.value)}
+              disabled={otpPending}
               required
               className={inputClass}
               style={inputStyle}
@@ -85,6 +93,7 @@ export default function Register() {
               placeholder="you@virajprofiles.com"
               value={form.email}
               onChange={(e) => setField("email", e.target.value)}
+              disabled={otpPending}
               required
               className={inputClass}
               style={inputStyle}
@@ -102,6 +111,7 @@ export default function Register() {
                 placeholder="Minimum 6 characters"
                 value={form.password}
                 onChange={(e) => setField("password", e.target.value)}
+                disabled={otpPending}
                 required
                 minLength={6}
                 className={`${inputClass} pr-10`}
@@ -138,10 +148,30 @@ export default function Register() {
               placeholder="+91 98765 43210"
               value={form.phone}
               onChange={(e) => setField("phone", e.target.value)}
+              disabled={otpPending}
               className={inputClass}
               style={inputStyle}
             />
           </div>
+
+          {otpPending && <div>
+            <label className={labelClass} style={labelStyle}>Email Verification Code</label>
+            <input
+              id="reg-email-otp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="Enter the 6-digit code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              required
+              className={inputClass}
+              style={inputStyle}
+            />
+            <p className="mt-2 text-xs text-slate-400">The code expires in 10 minutes. To request another, start over and submit again.</p>
+            <button type="button" className="mt-2 text-xs font-semibold text-cyan-300 underline" onClick={() => { setOtpPending(false); setOtp(""); setSuccess(""); }}>Start over</button>
+          </div>}
 
           {/* Error */}
           {error && (
@@ -179,7 +209,7 @@ export default function Register() {
                 </svg>
                 Creating Account…
               </span>
-            ) : "Create Account"}
+            ) : otpPending ? "Verify Email and Create Account" : "Create Account"}
           </button>
 
           {/* Sign in link */}
