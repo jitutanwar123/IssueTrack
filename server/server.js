@@ -78,6 +78,7 @@ import {
   sendAdminCreatedTicketToAdmin,
   sendSubBranchResolutionToAdmin,
   sendPasswordResetOtp,
+  sendLoginVerificationOtp,
   sendAccountPasswordChanged,
   sendAccountRemoved,
 } from "./emailService.js";
@@ -157,6 +158,8 @@ db.connect((err) => {
     "ALTER TABLE users ADD COLUMN reset_otp_hash VARCHAR(255) DEFAULT NULL",
     "ALTER TABLE users ADD COLUMN reset_otp_expires_at DATETIME DEFAULT NULL",
     "ALTER TABLE users ADD COLUMN reset_otp_sent_at DATETIME DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN login_otp_hash VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN login_otp_expires_at DATETIME DEFAULT NULL",
     // Expand portal_role to support it_staff
     "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
     // Speed up staff queue lookups
@@ -430,13 +433,11 @@ function authenticateJWT(req, res, next) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const token = auth.slice(7);
-  // Support old demo-token for backwards compatibility during transition
-  if (token === "demo-token") {
-    req.user = { id: 1, name: "Admin", role: "admin", portal_role: "admin" };
-    return next();
-  }
   try {
     req.user = jwt.verify(token, JWT_SECRET);
+    if (req.user.email_verified !== true) {
+      return res.status(401).json({ message: "Please sign in again and verify your email address." });
+    }
     next();
   } catch {
     return res.status(401).json({ message: "Invalid or expired token" });
@@ -1132,72 +1133,44 @@ app.get("/api/test-email", async (req, res) => {
 // ════════════════════════════════════════════════════════════════
 
 // LOGIN (upgraded with real JWT + role)
-app.post("/api/auth/login", (req, res) => {
-  const { username, password, email } = req.body;
-  const loginField = username || email;
-  console.log("LOGIN ATTEMPT:", loginField);
+app.post("/api/auth/login", async (req, res) => {
+  const loginField = normalizeEmail(req.body?.email || req.body?.username);
+  const { password, otp } = req.body || {};
+  if (!loginField || !password) return res.status(400).json({ message: "Email and password are required" });
+  try {
+    const users = await query("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? LIMIT 1", [loginField, loginField]);
+    const user = users[0];
+    if (!user) return res.status(401).json({ message: "Invalid email or password" });
+    const passwordMatch = user.hashed_password
+      ? await bcrypt.compare(password, user.hashed_password)
+      : user.password === password;
+    if (!passwordMatch) return res.status(401).json({ message: "Invalid email or password" });
 
-  // Try username-based login first (admin), then email-based (user portal)
-  db.query(
-    "SELECT * FROM users WHERE (username = ? OR email = ?)",
-    [loginField, loginField],
-    async (err, results) => {
-      if (err) return res.status(500).json(err);
-      if (results.length === 0) {
-        return res.status(401).json({ message: "Invalid username or password" });
+    if (!otp) {
+      if (!user.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
+        return res.status(403).json({ message: "This account needs a valid email address before it can sign in. Contact an administrator." });
       }
-
-      const user = results[0];
-
-      // Check password — support both plain-text (legacy admin) and bcrypt (new users)
-      let passwordMatch = false;
-      if (user.hashed_password) {
-        passwordMatch = await bcrypt.compare(password, user.hashed_password);
-      } else {
-        // Legacy plain-text check
-        passwordMatch = user.password === password;
-      }
-
-      if (!passwordMatch) {
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-
-      const portalRole = user.portal_role || (user.role === "Administrator" || user.role === "admin" ? "admin" : "user");
-
-      const token = jwt.sign(
-        {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          portal_role: portalRole,
-          department: user.department,
-          plant: user.plant,
-          phone: user.phone,
-          cisco_number: user.cisco_number || "",
-        },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-
-      res.json({
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          portal_role: portalRole,
-          department: user.department,
-          plant: user.plant,
-          phone: user.phone,
-          status: user.status || "Available",
-          team: user.team || "",
-          avatar_color: user.avatar_color || "#0f172a",
-        },
-      });
+      const code = generateResetOtp();
+      const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
+      await query("UPDATE users SET login_otp_hash = ?, login_otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?", [codeHash, user.id]);
+      await sendLoginVerificationOtp(user, code);
+      return res.json({ otpRequired: true, email: user.email });
     }
-  );
+
+    if (!user.login_otp_hash || !user.login_otp_expires_at || new Date(user.login_otp_expires_at) < new Date()) {
+      return res.status(401).json({ message: "Verification code expired. Sign in again to receive a new code." });
+    }
+    if (!(await bcrypt.compare(String(otp).trim(), user.login_otp_hash))) {
+      return res.status(401).json({ message: "Invalid verification code" });
+    }
+    await query("UPDATE users SET login_otp_hash = NULL, login_otp_expires_at = NULL WHERE id = ?", [user.id]);
+    const portalRole = user.portal_role || (user.role === "Administrator" || user.role === "admin" ? "admin" : "user");
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, email_verified: true, role: user.role, portal_role: portalRole, department: user.department, plant: user.plant, phone: user.phone, cisco_number: user.cisco_number || "" }, JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, portal_role: portalRole, department: user.department, plant: user.plant, phone: user.phone, status: user.status || "Available", team: user.team || "", avatar_color: user.avatar_color || "#0f172a" } });
+  } catch (err) {
+    console.error("Login verification failed:", err);
+    res.status(500).json({ message: "Unable to verify sign-in right now. Check email delivery settings and try again." });
+  }
 });
 
 app.post("/api/auth/password-reset/request", async (req, res) => {

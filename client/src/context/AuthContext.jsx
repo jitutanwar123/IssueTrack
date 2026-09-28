@@ -67,8 +67,9 @@ export function AuthProvider({ children }) {
     return () => { mounted = false; };
   }, []);
 
-  async function login(username, password, email) {
-    const response = await api.login(username, password, email);
+  async function login(username, password, email, otp) {
+    const response = await api.login(username, password, email, otp);
+    if (response.otpRequired) return response;
     setToken(response.token);
     setUser(response.user);
     return response.user;

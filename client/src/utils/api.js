@@ -94,10 +94,10 @@ async function requestForm(path, formData) {
 
 export const api = {
   // ── Auth ──────────────────────────────────────────────────────
-  login: (username, password, email) =>
+  login: (username, password, email, otp) =>
     request("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ username: username || email, password, email }),
+      body: JSON.stringify({ username: username || email, password, email, otp }),
       token: "",
     }),
   requestPasswordReset: (email) =>

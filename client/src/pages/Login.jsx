@@ -10,6 +10,8 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpPending, setOtpPending] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,7 +26,13 @@ export default function Login() {
     // Show "waking up" hint after 3 seconds
     slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
     try {
-      const user = await login(null, password, email);
+      const result = await login(null, password, email, otpPending ? otp : undefined);
+      if (result.otpRequired) {
+        setOtpPending(true);
+        setError("");
+        return;
+      }
+      const user = result;
       clearTimeout(slowTimer.current);
       const isAdmin =
         user?.portal_role === "admin" ||
@@ -125,6 +133,11 @@ export default function Login() {
             </div>
           </div>
 
+          {otpPending && <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-200">Email verification code</label>
+            <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="Enter 6-digit code" className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
+            <p className="mt-2 text-xs text-slate-400">We sent a code to your account email. <button type="button" className="underline" onClick={() => { setOtpPending(false); setOtp(""); }}>Start over</button></p>
+          </div>}
           {/* Error */}
           {error && (
             <div className="flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c" }}>
@@ -151,7 +164,7 @@ export default function Login() {
                 </svg>
                 Signing In…
               </span>
-            ) : "Sign In to Admin Portal"}
+            ) : otpPending ? "Verify Email and Sign In" : "Sign In to Admin Portal"}
           </button>
 
           {/* Server wake-up hint */}
