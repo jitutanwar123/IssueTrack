@@ -160,6 +160,7 @@ db.connect((err) => {
     "ALTER TABLE users ADD COLUMN reset_otp_sent_at DATETIME DEFAULT NULL",
     "ALTER TABLE users ADD COLUMN login_otp_hash VARCHAR(255) DEFAULT NULL",
     "ALTER TABLE users ADD COLUMN login_otp_expires_at DATETIME DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN email_verified TINYINT(1) NOT NULL DEFAULT 1",
     // Expand portal_role to support it_staff
     "ALTER TABLE users MODIFY COLUMN portal_role ENUM('admin','user','it_staff') DEFAULT 'user'",
     // Speed up staff queue lookups
@@ -435,9 +436,6 @@ function authenticateJWT(req, res, next) {
   const token = auth.slice(7);
   try {
     req.user = jwt.verify(token, JWT_SECRET);
-    if (req.user.email_verified !== true) {
-      return res.status(401).json({ message: "Please sign in again and verify your email address." });
-    }
     next();
   } catch {
     return res.status(401).json({ message: "Invalid or expired token" });
@@ -1133,44 +1131,53 @@ app.get("/api/test-email", async (req, res) => {
 // ════════════════════════════════════════════════════════════════
 
 // LOGIN (upgraded with real JWT + role)
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", (req, res) => {
   const loginField = normalizeEmail(req.body?.email || req.body?.username);
   const { password, otp } = req.body || {};
   if (!loginField || !password) return res.status(400).json({ message: "Email and password are required" });
-  try {
-    const users = await query("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? LIMIT 1", [loginField, loginField]);
-    const user = users[0];
+  db.query("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? LIMIT 1", [loginField, loginField], async (err, results) => {
+    if (err) return res.status(500).json({ message: "Unable to sign in right now" });
+    const user = results?.[0];
     if (!user) return res.status(401).json({ message: "Invalid email or password" });
     const passwordMatch = user.hashed_password
       ? await bcrypt.compare(password, user.hashed_password)
       : user.password === password;
     if (!passwordMatch) return res.status(401).json({ message: "Invalid email or password" });
-
-    if (!otp) {
-      if (!user.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
-        return res.status(403).json({ message: "This account needs a valid email address before it can sign in. Contact an administrator." });
+    if (!user.email_verified) {
+      if (!otp) {
+        if (!user.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
+          return res.status(403).json({ message: "This new account needs a valid email address. Contact an administrator." });
+        }
+        const code = generateResetOtp();
+        const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
+        db.query("UPDATE users SET login_otp_hash = ?, login_otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?", [codeHash, user.id], async (saveErr) => {
+          if (saveErr) return res.status(500).json({ message: "Unable to start email verification" });
+          try {
+            await sendEmailVerificationOtp(user, code);
+            res.json({ otpRequired: true, email: user.email });
+          } catch (sendErr) {
+            console.error("Account email verification delivery failed:", sendErr);
+            res.status(503).json({ message: "Could not deliver a verification code to this email. Ask an administrator to correct the address." });
+          }
+        });
+        return;
       }
-      const code = generateResetOtp();
-      const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
-      await query("UPDATE users SET login_otp_hash = ?, login_otp_expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE) WHERE id = ?", [codeHash, user.id]);
-      await sendEmailVerificationOtp(user, code);
-      return res.json({ otpRequired: true, email: user.email });
+      if (!user.login_otp_hash || !user.login_otp_expires_at || new Date(user.login_otp_expires_at) < new Date()) {
+        return res.status(401).json({ message: "Verification code expired. Submit your sign-in details again for a new code." });
+      }
+      if (!(await bcrypt.compare(String(otp).trim(), user.login_otp_hash))) {
+        return res.status(401).json({ message: "Invalid verification code" });
+      }
+      await new Promise((resolve, reject) => db.query(
+        "UPDATE users SET email_verified = 1, login_otp_hash = NULL, login_otp_expires_at = NULL WHERE id = ?",
+        [user.id],
+        (updateErr) => updateErr ? reject(updateErr) : resolve()
+      ));
     }
-
-    if (!user.login_otp_hash || !user.login_otp_expires_at || new Date(user.login_otp_expires_at) < new Date()) {
-      return res.status(401).json({ message: "Verification code expired. Sign in again to receive a new code." });
-    }
-    if (!(await bcrypt.compare(String(otp).trim(), user.login_otp_hash))) {
-      return res.status(401).json({ message: "Invalid verification code" });
-    }
-    await query("UPDATE users SET login_otp_hash = NULL, login_otp_expires_at = NULL WHERE id = ?", [user.id]);
     const portalRole = user.portal_role || (user.role === "Administrator" || user.role === "admin" ? "admin" : "user");
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, email_verified: true, role: user.role, portal_role: portalRole, department: user.department, plant: user.plant, phone: user.phone, cisco_number: user.cisco_number || "" }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role, portal_role: portalRole, department: user.department, plant: user.plant, phone: user.phone, cisco_number: user.cisco_number || "" }, JWT_SECRET, { expiresIn: "7d" });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, portal_role: portalRole, department: user.department, plant: user.plant, phone: user.phone, status: user.status || "Available", team: user.team || "", avatar_color: user.avatar_color || "#0f172a" } });
-  } catch (err) {
-    console.error("Login verification failed:", err);
-    res.status(500).json({ message: "Unable to verify sign-in right now. Check email delivery settings and try again." });
-  }
+  });
 });
 
 app.post("/api/auth/password-reset/request", async (req, res) => {
@@ -1388,8 +1395,8 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     await query(
-      `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4')`,
+      `INSERT INTO users (name, email, username, hashed_password, phone, department, plant, portal_role, role, status, avatar_color, email_verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'user', 'User', 'Active', '#00bcd4', 1)`,
       [pending.name, normalizedEmail, normalizedEmail, pending.password_hash, pending.phone, pending.department, pending.plant]
     );
     await query("DELETE FROM pending_user_registrations WHERE email = ?", [normalizedEmail]);
@@ -1994,8 +2001,11 @@ app.post("/api/users", async (req, res) => {
       return res.status(400).json({ message: allocationError });
     }
     const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
-    const result = await query(sql, [name, email, username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) {
+      return res.status(400).json({ message: "Enter a valid email address for the new account." });
+    }
+    const sql = `INSERT INTO users (name,email,username,hashed_password,role,team,status,avatar_color,portal_role,department,plant,email_verified) VALUES (?,?,?,?,?,?,?,?,?,?,?,0)`;
+    const result = await query(sql, [name, normalizeEmail(email), username, hashed, role, team, status || "Available", avatar_color || "#0f172a", resolvedPortalRole, department || null, plant || null]);
     await syncStaffAssignmentForUser({
       name,
       email,
@@ -2019,12 +2029,16 @@ app.put("/api/users/:id", async (req, res) => {
   console.log("[PUT /api/users/:id] id:", id, "body:", { name, email, username, role, team, status, avatar_color, portal_role, department, plant, hasPassword: !!(password && password.trim()) });
   const resolvedPortalRole = portal_role || (role === "Administrator" || role === "Admin" || role === "admin" ? "admin" : "user");
   try {
-    const currentRows = await query("SELECT name, email, portal_role FROM users WHERE id = ? LIMIT 1", [id]);
+    const currentRows = await query("SELECT name, email, portal_role, email_verified FROM users WHERE id = ? LIMIT 1", [id]);
     if (currentRows.length === 0) {
       return res.status(404).json({ message: "User not found. No rows updated." });
     }
     const previousEmail = currentRows[0]?.email || "";
     const currentUser = currentRows[0];
+    const emailChanged = normalizeEmail(previousEmail) !== normalizeEmail(email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) {
+      return res.status(400).json({ message: "Enter a valid email address for the account." });
+    }
     const allocationError = validateStaffAllocation({ portalRole: resolvedPortalRole, role, team, plant });
     if (allocationError) {
       return res.status(400).json({ message: allocationError });
@@ -2035,14 +2049,14 @@ app.put("/api/users/:id", async (req, res) => {
       // Update including new hashed password
       const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
       result = await query(
-        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=? WHERE id=?`,
-        [name, email, username, hashed, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, id]
+        `UPDATE users SET name=?,email=?,username=?,hashed_password=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=?,email_verified=? WHERE id=?`,
+        [name, normalizeEmail(email), username, hashed, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, emailChanged ? 0 : currentUser.email_verified, id]
       );
     } else {
       // Update without touching the password
       result = await query(
-        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=? WHERE id=?`,
-        [name, email, username, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, id]
+        `UPDATE users SET name=?,email=?,username=?,role=?,team=?,status=?,avatar_color=?,portal_role=?,department=?,plant=?,email_verified=? WHERE id=?`,
+        [name, normalizeEmail(email), username, role, team, status, avatar_color, resolvedPortalRole, department || null, plant || null, emailChanged ? 0 : currentUser.email_verified, id]
       );
     }
     if (previousEmail && normalizeEmail(previousEmail) !== normalizeEmail(email)) {

@@ -27,11 +27,7 @@ export default function Login() {
     slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
     try {
       const result = await login(null, password, email, otpPending ? otp : undefined);
-      if (result.otpRequired) {
-        setOtpPending(true);
-        setError("");
-        return;
-      }
+      if (result.otpRequired) { clearTimeout(slowTimer.current); setSlowHint(false); setOtpPending(true); return; }
       const user = result;
       clearTimeout(slowTimer.current);
       const isAdmin =
@@ -136,7 +132,7 @@ export default function Login() {
           {otpPending && <div>
             <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-200">Email verification code</label>
             <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="Enter 6-digit code" className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
-            <p className="mt-2 text-xs text-slate-400">We sent a code to your account email. <button type="button" className="underline" onClick={() => { setOtpPending(false); setOtp(""); }}>Start over</button></p>
+            <p className="mt-2 text-xs text-slate-400">This new account needs email verification once. <button type="button" className="underline" onClick={() => { setOtpPending(false); setOtp(""); }}>Start over</button></p>
           </div>}
           {/* Error */}
           {error && (
