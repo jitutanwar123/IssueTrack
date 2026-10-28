@@ -97,13 +97,13 @@ export function Sidebar({ open, onClose }) {
       >
         {/* Logo area */}
         <div
-          className="flex items-center px-5 py-[18px]"
+          className="flex items-center px-5 py-4"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
         >
           <img
             src={virajLogo}
             alt="Viraj Profiles"
-            className="h-8 w-auto object-contain"
+            className="h-14 w-auto object-contain"
           />
         </div>
 

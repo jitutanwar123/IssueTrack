@@ -84,10 +84,10 @@ export function UserSidebar({ open, onClose }) {
       >
         {/* Logo */}
         <div
-          className="flex items-center px-5 py-[18px]"
+          className="flex items-center px-5 py-4"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
         >
-          <img src={virajLogo} alt="Viraj Profiles" className="h-8 w-auto object-contain" />
+          <img src={virajLogo} alt="Viraj Profiles" className="h-14 w-auto object-contain" />
         </div>
 
         {/* Portal badge */}
