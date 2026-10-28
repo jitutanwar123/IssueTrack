@@ -1,25 +1,51 @@
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const certPath = path.join(__dirname, "certs", "aiven-ca.pem");
+const sslConfig = fs.existsSync(certPath)
+  ? { ca: fs.readFileSync(certPath), rejectUnauthorized: true }
+  : undefined;
+
 const db = await mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
+  host:     process.env.DB_HOST,
+  user:     process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  port:     Number(process.env.DB_PORT) || 3306,
+  ssl:      sslConfig,
 });
 
 console.log("✅ Connected. Running migrations...");
-   // Create base tables first
+
+// Create base tables first — full schema expected by server.js
 await db.execute(`CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
+  username VARCHAR(255) UNIQUE DEFAULT NULL,
   hashed_password VARCHAR(255),
   phone VARCHAR(20) DEFAULT NULL,
   department VARCHAR(100) DEFAULT NULL,
-  portal_role ENUM('admin','user') DEFAULT 'user',
+  plant VARCHAR(150) DEFAULT NULL,
+  portal_role ENUM('admin','user','it_staff') DEFAULT 'user',
+  role VARCHAR(100) DEFAULT 'user',
+  team VARCHAR(100) DEFAULT NULL,
+  status VARCHAR(50) DEFAULT 'Available',
+  avatar_color VARCHAR(20) DEFAULT '#0f172a',
+  email_verified TINYINT(1) NOT NULL DEFAULT 1,
+  login_otp_hash VARCHAR(255) DEFAULT NULL,
+  login_otp_expires_at DATETIME DEFAULT NULL,
+  reset_otp_hash VARCHAR(255) DEFAULT NULL,
+  reset_otp_expires_at DATETIME DEFAULT NULL,
+  reset_otp_sent_at DATETIME DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
@@ -64,7 +90,7 @@ async function addColumn(table, column, definition) {
 await addColumn("users", "phone", "VARCHAR(20) DEFAULT NULL");
 await addColumn("users", "department", "VARCHAR(100) DEFAULT NULL");
 await addColumn("users", "hashed_password", "VARCHAR(255) DEFAULT NULL");
-await addColumn("users", "portal_role", "ENUM('admin','user') DEFAULT 'user'");
+await addColumn("users", "portal_role", "ENUM('admin','user','it_staff') DEFAULT 'user'");
 await addColumn("tickets", "user_email", "VARCHAR(255) DEFAULT NULL");
 await addColumn("tickets", "ticket_id", "VARCHAR(50) DEFAULT NULL");
 

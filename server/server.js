@@ -120,25 +120,36 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
-  multipleStatements: true,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
   ssl: {
     ca: fs.readFileSync(path.join(__dirname, "certs", "aiven-ca.pem")),
     rejectUnauthorized: true,
   },
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-    return;
-  }
-  console.log("✅ MySQL Connected");
+// Run startup migrations + seed in a pool-compatible async IIFE
+(async () => {
+  // Test pool connection with a simple ping
+  await new Promise((resolve, reject) => {
+    db.query("SELECT 1", (err) => {
+      if (err) {
+        console.error("Database connection failed:", err);
+        process.exit(1);
+      }
+      console.log("✅ MySQL Pool Connected");
+      resolve();
+    });
+  });
 
   // ─── Auto-migration: add resolution columns if they don't exist ──
   // Run as 3 separate statements; duplicate-column errors (1060) are silently ignored
@@ -174,23 +185,19 @@ db.connect((err) => {
     "ALTER TABLE ticket_status_history ADD COLUMN from_value TEXT DEFAULT NULL",
     "ALTER TABLE ticket_status_history ADD COLUMN to_value TEXT DEFAULT NULL",
   ];
-  migrationCols.forEach((sql) => {
-    db.query(sql, (migErr) => {
-      if (migErr && migErr.errno !== 1060 && migErr.errno !== 1061) {
-        // errno 1060 = "Duplicate column name" — column already exists, that's fine
-        // errno 1061 = "Duplicate key name" — index already exists, that's fine
-        // Other MODIFY errors are also silently handled (e.g. column already correct type)
-        if (!migErr.message?.includes("Duplicate column") && !migErr.message?.includes("Duplicate key") && migErr.errno !== 1060 && migErr.errno !== 1061) {
-          console.warn("⚠️  Migration warning:", migErr.message);
-        }
+  for (const sql of migrationCols) {
+    await query(sql).catch((migErr) => {
+      if (migErr.errno !== 1060 && migErr.errno !== 1061 &&
+          !migErr.message?.includes("Duplicate column") &&
+          !migErr.message?.includes("Duplicate key")) {
+        console.warn("⚠️  Migration warning:", migErr.message);
       }
     });
-  });
+  }
       console.log("✅ Migration queued (resolved_at, closed_at, resolution_note, resolved_by, attachment columns, it_staff role)");
 
-  (async () => {
-    try {
-      await query(`
+  try {
+    await query(`
         CREATE TABLE IF NOT EXISTS ticket_sequences (
           service VARCHAR(50) PRIMARY KEY,
           prefix VARCHAR(10) NOT NULL,
@@ -315,6 +322,7 @@ db.connect((err) => {
         );
       }
 
+      await seedAdminUser();
       await syncVirajStaffAccounts();
       await syncAllItStaffAssignmentsFromUsers();
 
@@ -378,12 +386,11 @@ db.connect((err) => {
 
 
       console.log("✅ Ticket lookup tables seeded");
-    } catch (bootstrapErr) {
-      console.warn("⚠️ Ticket lookup bootstrap warning:", bootstrapErr.message);
-    }
-  })();
+  } catch (bootstrapErr) {
+    console.warn("⚠️ Ticket lookup bootstrap warning:", bootstrapErr.message);
+  }
 
-});
+})();
 
 const JWT_SECRET = process.env.JWT_SECRET || "viraj_jwt_secret_change_me";
 const STAFF_DEFAULT_PASSWORD = "Viraj@123";
@@ -881,6 +888,44 @@ function validateTicketInputs({ service, category, sub_category, plant, portal =
   };
 }
 
+// ─── Seed the master admin account on every startup (idempotent) ─────────────
+async function seedAdminUser() {
+  const adminEmail    = process.env.ADMIN_EMAIL || "jatinsinghtanwar783@gmail.com";
+  const adminPassword = process.env.ADMIN_PASSWORD || "#Jatin@123";
+  const adminName     = process.env.ADMIN_NAME    || "Jatin Singh Tanwar";
+  const adminUsername = process.env.ADMIN_USERNAME || "admin";
+
+  try {
+    const existing = await query(
+      "SELECT id, portal_role, email_verified FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
+      [adminEmail]
+    );
+
+    const passwordHash = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
+
+    if (existing.length === 0) {
+      await query(
+        `INSERT INTO users
+           (name, email, username, hashed_password, role, team, status, avatar_color, portal_role, email_verified)
+         VALUES (?, ?, ?, ?, 'Administrator', '', 'Available', '#0f172a', 'admin', 1)`,
+        [adminName, adminEmail.toLowerCase(), adminUsername, passwordHash]
+      );
+      console.log("✅ Admin user created:", adminEmail);
+    } else {
+      // Always ensure email_verified=1 and portal_role='admin' for the admin account
+      await query(
+        `UPDATE users
+         SET portal_role = 'admin', email_verified = 1,
+             login_otp_hash = NULL, login_otp_expires_at = NULL
+         WHERE LOWER(email) = LOWER(?)`,
+        [adminEmail]
+      );
+      console.log("✅ Admin user verified:", adminEmail);
+    }
+  } catch (err) {
+    console.error("⚠️  seedAdminUser failed:", err.message);
+  }
+}
 async function syncVirajStaffAccounts() {
   const passwordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, BCRYPT_ROUNDS);
 
@@ -912,7 +957,7 @@ async function syncVirajStaffAccounts() {
   }
 }
 
-// ─── Helper: query as promise ────────────────────────────────────
+// ─── Helper: query as promise (pool callback-based) ─────────────
 function query(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.query(sql, params, (err, results) => {
